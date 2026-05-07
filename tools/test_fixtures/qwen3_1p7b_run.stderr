@@ -1,0 +1,9 @@
+lis: simd backend=avx2 selected=avx2 reason=runtime
+lis: perf-stage tag=qwen3_1p7b name=model_load ns=1038195000 ms=1038.195 tokens=0
+lis: perf-stage tag=qwen3_1p7b name=tokenizer_load ns=97921000 ms=97.921 tokens=0
+lis: perf-stage tag=qwen3_1p7b name=tokenizer_encode ns=4000 ms=0.004 tokens=0
+lis: perf-stage tag=qwen3_1p7b name=runtime_init ns=4895000 ms=4.895 tokens=0
+lis: perf-stage tag=qwen3_1p7b name=prefill ns=414592000 ms=414.592 tokens=2
+lis: perf-stage tag=qwen3_1p7b name=first_decode ns=206777000 ms=206.777 tokens=1
+lis: perf-stage tag=qwen3_1p7b name=decode_steady_state ns=1853223000 ms=1853.223 tokens=9
+lis: perf-summary tag=qwen3_1p7b threads=1 prompt_tokens=2 generated_tokens=10 ttft_ms=626.268 itl_ms=205.914 tps_steady=4.856 tps_end_to_end=4.041

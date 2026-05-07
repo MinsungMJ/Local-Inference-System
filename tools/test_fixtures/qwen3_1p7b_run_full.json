@@ -1,0 +1,55 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "run_report",
+  "manifest": {
+    "retention": {
+      "absolute_paths": false,
+      "raw_prompt_text": false,
+      "generated_text": false
+    },
+    "binary_fingerprint": "fnv1a64:c12d6ff3efd1ce93",
+    "model_format": "safetensors",
+    "model_family": "qwen3_dense_decoder",
+    "model_fingerprint": "fnv1a64:ccd87757f0c4ea58",
+    "config_fingerprint": "fnv1a64:0ccf42c9ad05cc49",
+    "input_mode": "prompt_text",
+    "input_fingerprint": "fnv1a64:df48170cd33ef65c",
+    "runtime_settings": {
+      "context": 128,
+      "batch_size": 1,
+      "generate_limit": 10,
+      "threads": 1,
+      "diagnostics_enabled": false,
+      "perf_enabled": true,
+      "perf_per_token_enabled": true
+    },
+    "runtime_fingerprint": "fnv1a64:ea989e5e6f0b8cdf",
+    "backend": "avx2",
+    "backend_fingerprint": "fnv1a64:43d7bf68cb75ed71"
+  },
+  "report": {
+    "execution_status": "OK",
+    "status_code": 0,
+    "stop_reason": "decode_limit",
+    "output_mode": "token_ids",
+    "prompt_sequences": [
+      {
+        "token_count": 2,
+        "digest": "fnv1a64:1111111122222222"
+      }
+    ],
+    "generated_token_count": 10,
+    "selected_token_count": 10,
+    "selected_token_digest": "fnv1a64:abcdef0123456789",
+    "selected_token_ids": [101, 202, 303, 404, 505, 606, 707, 808, 909, 1010],
+    "emitted_token_count": 10,
+    "emitted_token_digest": "fnv1a64:abcdef0123456789",
+    "emitted_token_ids": [101, 202, 303, 404, 505, 606, 707, 808, 909, 1010],
+    "perf_summary": {
+      "ttft_ms": 626.268,
+      "itl_ms": 205.914,
+      "tps_steady": 4.856,
+      "tps_end_to_end": 4.041
+    }
+  }
+}

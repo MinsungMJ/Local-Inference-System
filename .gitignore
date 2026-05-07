@@ -1,0 +1,37 @@
+# LIS original request
+LIS_init_request.md
+
+# Onboarding guide (local reference, untracked)
+docs/ONBOARDING.md
+
+# Build Artifacts
+srcs/libs/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Python virtual environments
+.venv/
+tools/.venv/
+
+# OS Generated
+.DS_Store
+
+# Logs and Debug
+*.log
+*.out
+*.err
+compile_err.txt
+compile_out.txt
+.codex
+.aider*
+.claude/
+.wolf/
+.opencode/
+docs/onboarding_swe_kr.md
+
+# Local maintainer notes
+docs/*_local.md
+docs/*_private.md
+docs/*_draft.md

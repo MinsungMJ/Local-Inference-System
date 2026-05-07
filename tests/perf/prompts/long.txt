@@ -1,0 +1,11 @@
+You are writing an internal engineering memo. The audience is a team of systems engineers who have deep experience in C, Linux, and CPU micro-architecture, but limited familiarity with large language model inference. Your task is to explain, in a single memo of moderate length and precise technical language, why a correctness-first CPU-only local inference stack is a reasonable starting point before any SIMD, GPU, or distributed work is considered. Cover at least the following dimensions in your explanation, with concrete examples where possible:
+
+1. The role of a reference implementation as the authoritative correctness oracle against which all future optimized backends must compare.
+2. The separation of prefill and decode as two distinct execution regimes with different compute, memory, and parallelism characteristics.
+3. Why static batching is the right initial target even though production systems ultimately want continuous batching or paged attention.
+4. The context window as an explicit architectural policy rather than a loose runtime option, and the reasons that conflating trained maximum context with configured context leads to subtle bugs in KV cache allocation, attention masking, and RoPE frequency tables.
+5. The specific reasons plain RoPE is handled first, and why Llama 3 style extended RoPE, YaRN, and long-context schemes should be explicitly deferred rather than silently supported.
+6. The discipline of keeping every newly added .c file paired with a docs explanation so that the project remains navigable to a future coding agent or new team member.
+7. Performance measurement as a separate, opt-in surface layered onto the correctness baseline so that timing instrumentation cannot accidentally change inference outputs.
+
+Close the memo with three concrete, actionable recommendations for the team to follow in the coming two weeks, and end with a short note inviting questions. Keep the tone direct, technical, and free of marketing language.

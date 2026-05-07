@@ -1,0 +1,19 @@
+lis: simd backend=avx2 selected=avx2 reason=runtime
+lis: perf-stage tag=qwen3_1p7b_compare name=model_load ns=990000000 ms=990.000 tokens=0
+lis: perf-stage tag=qwen3_1p7b_compare name=tokenizer_load ns=90000000 ms=90.000 tokens=0
+lis: perf-stage tag=qwen3_1p7b_compare name=tokenizer_encode ns=4000 ms=0.004 tokens=0
+lis: perf-stage tag=qwen3_1p7b_compare name=runtime_init ns=5000000 ms=5.000 tokens=0
+lis: perf-stage tag=qwen3_1p7b_compare name=prefill ns=340000000 ms=340.000 tokens=2
+lis: perf-stage tag=qwen3_1p7b_compare name=first_decode ns=180000000 ms=180.000 tokens=1
+lis: perf-stage tag=qwen3_1p7b_compare name=decode_steady_state ns=1500000000 ms=1500.000 tokens=9
+lis: perf-per-token tag=qwen3_1p7b_compare step=0 ns=180000000 ms=180.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=1 ns=170000000 ms=170.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=2 ns=160000000 ms=160.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=3 ns=168000000 ms=168.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=4 ns=166000000 ms=166.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=5 ns=172000000 ms=172.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=6 ns=163000000 ms=163.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=7 ns=169000000 ms=169.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=8 ns=171000000 ms=171.000
+lis: perf-per-token tag=qwen3_1p7b_compare step=9 ns=167000000 ms=167.000
+lis: perf-summary tag=qwen3_1p7b_compare threads=2 prompt_tokens=2 generated_tokens=10 ttft_ms=520.000 itl_ms=166.667 tps_steady=6.000 tps_end_to_end=4.900
