@@ -22,6 +22,7 @@ LIS is an independent personal project. The initial codebase is personally autho
 - CPU-only local execution
 - Causal decoder-only models within the documented plain-RoPE Llama-family scope
 - A narrow Qwen3 Dense BF16 merged-safetensors path (does not imply broad Qwen-family support)
+  - Prompts are passed as raw tokenizer text. LIS does not apply model-specific chat templates or expose thinking-mode controls, so reasoning-oriented models may produce extended explanatory output even for short prompts.
 - Local HuggingFace-style directories containing `config.json`, a merged `model.safetensors`, and a compatible `tokenizer.json`
 - Supported floating dtypes:
   - Llama-family path: F32, F16, BF16

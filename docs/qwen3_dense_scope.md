@@ -182,6 +182,15 @@ Direct token-ID input remains the most controlled validation path. Any prompt
 builder added later must be explicitly scoped and verified; it is not part of
 the current public support path unless separately approved.
 
+### Prompt and Generation Behavior Note
+
+LIS currently passes prompts as raw tokenizer text. It does not apply
+model-specific chat templates, role formatting, or thinking-mode controls.
+As a result, reasoning-oriented Qwen3 models may produce extended
+explanatory output even for short prompts. The observed output reflects
+the model's behavior under the supplied raw prompt and greedy decoding
+path; it does not indicate a runtime failure.
+
 ## Verification Expectations
 
 Qwen3 Dense support must reuse the documented verification discipline:
