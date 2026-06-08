@@ -1,5 +1,7 @@
 # LIS (Local Inference System)
 
+[![CI](https://github.com/MinsungMJ/Local-Inference-System/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MinsungMJ/Local-Inference-System/actions/workflows/ci.yml)
+
 > **Correctness first. Transparency always.**
 
 LIS is a CPU-only local inference runtime for causal decoder-only models, built for engineers and researchers who need a system they can inspect, validate, reproduce, and optimise with confidence. It prioritises correctness, clear diagnostics, reproducibility, and performance transparency over broad feature coverage.
