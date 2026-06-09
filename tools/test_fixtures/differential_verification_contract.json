@@ -1,0 +1,1056 @@
+{
+  "contract_status": "approved",
+  "implementation_status": "planned",
+  "contract_version": "1.0",
+  "schema": "lis.execution_artifact/v1",
+  "kind": "verification_report",
+  "artifact_kind": "verification_report",
+  "report_version": "1.0",
+  "fixture_metadata": {
+    "role": "machine_readable_conformance_oracle",
+    "markdown_role": "normative_human_readable_contract",
+    "disagreement_policy": "contract_validation_failure",
+    "silent_override_allowed": false,
+    "stable_public_support_claim": false
+  },
+  "comparison_modes": [
+    "backend_differential",
+    "runtime_differential",
+    "external_semantic"
+  ],
+  "mvp_modes": [
+    "backend_differential",
+    "runtime_differential"
+  ],
+  "deferred_modes": [
+    "external_semantic"
+  ],
+  "mode_b_submodes": [
+    "runtime_regression",
+    "determinism_check",
+    "configuration_equivalence",
+    "precision_policy_comparison"
+  ],
+  "phase_enum": [
+    "prefill",
+    "decode"
+  ],
+  "dtype_enum": [
+    "fp32",
+    "bf16"
+  ],
+  "model_family_enum": [
+    "llama3_decoder",
+    "qwen3_dense_decoder"
+  ],
+  "canonical_stage_enum": [
+    "embedding",
+    "layer_input",
+    "attention_norm_out",
+    "q_projection",
+    "k_projection",
+    "v_projection",
+    "qk_norm",
+    "rope_out",
+    "kv_append",
+    "attention_output",
+    "mlp_output",
+    "final_norm",
+    "logits"
+  ],
+  "token_identity_levels": [
+    "hash",
+    "strong_digest",
+    "array_equal"
+  ],
+  "digest_algorithm_enum": [
+    "fnv1a64",
+    "sha256",
+    "none"
+  ],
+  "strong_digest_algorithm": "sha256",
+  "strong_digest_representation": {
+    "prefix": "sha256:",
+    "hex_characters": 64,
+    "hex_case": "lowercase",
+    "regex": "^sha256:[0-9a-f]{64}$",
+    "equality_meaning": "strong_digest_identity_evidence",
+    "not_elementwise_array_equality": true,
+    "not_tolerance_aware_numeric_evidence": true
+  },
+  "existing_compatibility_fingerprint_algorithm": "fnv1a64",
+  "hash_only_limitations": {
+    "fnv1a64_remains_compatibility_fingerprint": true,
+    "sha256_equality_is_not_array_equality": true,
+    "sha256_mismatch_is_not_numeric_evidence": true,
+    "hash_only_byte_mismatch_cannot_confirm_checkpoint_divergence": true,
+    "hash_only_mismatch_result_class": "verification_inconclusive"
+  },
+  "evidence_tier_enum": [
+    "tier0_structural",
+    "tier1_bounded",
+    "tier2_exhaustive"
+  ],
+  "evidence_completeness_enum": [
+    "complete",
+    "partial",
+    "incomplete"
+  ],
+  "divergence_state_enum": [
+    "no_divergence_observed",
+    "suspected_divergence",
+    "confirmed_divergence_at_checkpoint",
+    "confirmed_first_divergence",
+    "inconclusive_partial_coverage",
+    "inconclusive_prefix_reproduction_failure"
+  ],
+  "comparison_outcome_enum": [
+    "no_divergence_observed_on_coverage",
+    "suspected_divergence_on_coverage",
+    "divergence_confirmed_at_checkpoint",
+    "first_divergence_confirmed",
+    "bitwise_equal",
+    "byte_difference_only",
+    "inconclusive"
+  ],
+  "overall_verdict_enum": [
+    "verified_equivalent",
+    "divergence_confirmed_at_checkpoint",
+    "first_divergence_confirmed",
+    "inconclusive"
+  ],
+  "first_divergence_scope_enum": [
+    "captured_checkpoints_only",
+    "full_runtime"
+  ],
+  "cleanup_status_enum": [
+    "success",
+    "failed",
+    "partial",
+    "retained_debug",
+    "not_applicable"
+  ],
+  "existing_public_result_classes": [
+    "pass",
+    "documented_unsupported",
+    "numeric_regression",
+    "token_parity_regression",
+    "benchmark_protocol_regression",
+    "harness_configuration_error"
+  ],
+  "additive_result_classes": [
+    "verification_inconclusive"
+  ],
+  "result_class_enum": [
+    "pass",
+    "documented_unsupported",
+    "numeric_regression",
+    "token_parity_regression",
+    "benchmark_protocol_regression",
+    "harness_configuration_error",
+    "verification_inconclusive"
+  ],
+  "reason_code_enum": [
+    "equivalent_full_coverage",
+    "equivalent_on_observed_coverage",
+    "bitwise_identical",
+    "unsupported_comparison",
+    "incompatible_model_family",
+    "unsupported_mode",
+    "unsupported_model",
+    "input_token_divergence",
+    "prefix_reproduction_failed",
+    "asymmetric_checkpoint",
+    "requested_step_absent",
+    "truncated_artifact",
+    "malformed_artifact",
+    "oversized_capture",
+    "byte_difference_only",
+    "temp_cleanup_failed",
+    "structural_divergence",
+    "nonfinite_divergence",
+    "suspected_numeric_divergence",
+    "confirmed_numeric_divergence_at_checkpoint",
+    "confirmed_first_divergence",
+    "token_selection_divergence",
+    "reference_run_failed",
+    "candidate_run_failed",
+    "incomplete_exhaustive_comparison",
+    "interrupted_verification",
+    "partial_evidence_inconclusive"
+  ],
+  "result_class_mapping": {
+    "equivalent_full_coverage": "pass",
+    "equivalent_on_observed_coverage": "pass",
+    "bitwise_identical": "pass",
+    "unsupported_comparison": "documented_unsupported",
+    "incompatible_model_family": "documented_unsupported",
+    "unsupported_mode": "documented_unsupported",
+    "unsupported_model": "documented_unsupported",
+    "input_token_divergence": "harness_configuration_error",
+    "prefix_reproduction_failed": "verification_inconclusive",
+    "asymmetric_checkpoint": "harness_configuration_error",
+    "requested_step_absent": "harness_configuration_error",
+    "truncated_artifact": "harness_configuration_error",
+    "malformed_artifact": "harness_configuration_error",
+    "oversized_capture": "harness_configuration_error",
+    "byte_difference_only": "verification_inconclusive",
+    "temp_cleanup_failed": "verification_inconclusive",
+    "structural_divergence": "numeric_regression",
+    "nonfinite_divergence": "numeric_regression",
+    "suspected_numeric_divergence": "verification_inconclusive",
+    "confirmed_numeric_divergence_at_checkpoint": "numeric_regression",
+    "confirmed_first_divergence": "numeric_regression",
+    "token_selection_divergence": "token_parity_regression",
+    "reference_run_failed": "harness_configuration_error",
+    "candidate_run_failed": "harness_configuration_error",
+    "incomplete_exhaustive_comparison": "verification_inconclusive",
+    "interrupted_verification": "verification_inconclusive",
+    "partial_evidence_inconclusive": "verification_inconclusive"
+  },
+  "reason_code_outcome_mapping": {
+    "equivalent_full_coverage": "no_divergence_observed_on_coverage",
+    "equivalent_on_observed_coverage": "no_divergence_observed_on_coverage",
+    "bitwise_identical": "bitwise_equal",
+    "unsupported_comparison": "inconclusive",
+    "incompatible_model_family": "inconclusive",
+    "unsupported_mode": "inconclusive",
+    "unsupported_model": "inconclusive",
+    "input_token_divergence": "inconclusive",
+    "prefix_reproduction_failed": "inconclusive",
+    "asymmetric_checkpoint": "inconclusive",
+    "requested_step_absent": "inconclusive",
+    "truncated_artifact": "inconclusive",
+    "malformed_artifact": "inconclusive",
+    "oversized_capture": "inconclusive",
+    "byte_difference_only": "byte_difference_only",
+    "temp_cleanup_failed": "inconclusive",
+    "structural_divergence": "divergence_confirmed_at_checkpoint",
+    "nonfinite_divergence": "divergence_confirmed_at_checkpoint",
+    "suspected_numeric_divergence": "suspected_divergence_on_coverage",
+    "confirmed_numeric_divergence_at_checkpoint": "divergence_confirmed_at_checkpoint",
+    "confirmed_first_divergence": "first_divergence_confirmed",
+    "token_selection_divergence": "divergence_confirmed_at_checkpoint",
+    "reference_run_failed": "inconclusive",
+    "candidate_run_failed": "inconclusive",
+    "incomplete_exhaustive_comparison": "inconclusive",
+    "interrupted_verification": "inconclusive",
+    "partial_evidence_inconclusive": "inconclusive"
+  },
+  "reason_code_verdict_mapping": {
+    "equivalent_full_coverage": "verified_equivalent",
+    "equivalent_on_observed_coverage": "inconclusive",
+    "bitwise_identical": "verified_equivalent",
+    "unsupported_comparison": "inconclusive",
+    "incompatible_model_family": "inconclusive",
+    "unsupported_mode": "inconclusive",
+    "unsupported_model": "inconclusive",
+    "input_token_divergence": "inconclusive",
+    "prefix_reproduction_failed": "inconclusive",
+    "asymmetric_checkpoint": "inconclusive",
+    "requested_step_absent": "inconclusive",
+    "truncated_artifact": "inconclusive",
+    "malformed_artifact": "inconclusive",
+    "oversized_capture": "inconclusive",
+    "byte_difference_only": "inconclusive",
+    "temp_cleanup_failed": "inconclusive",
+    "structural_divergence": "divergence_confirmed_at_checkpoint",
+    "nonfinite_divergence": "divergence_confirmed_at_checkpoint",
+    "suspected_numeric_divergence": "inconclusive",
+    "confirmed_numeric_divergence_at_checkpoint": "divergence_confirmed_at_checkpoint",
+    "confirmed_first_divergence": "first_divergence_confirmed",
+    "token_selection_divergence": "divergence_confirmed_at_checkpoint",
+    "reference_run_failed": "inconclusive",
+    "candidate_run_failed": "inconclusive",
+    "incomplete_exhaustive_comparison": "inconclusive",
+    "interrupted_verification": "inconclusive",
+    "partial_evidence_inconclusive": "inconclusive"
+  },
+  "outcome_allowed_overall_verdicts": {
+    "no_divergence_observed_on_coverage": [
+      "verified_equivalent",
+      "inconclusive"
+    ],
+    "suspected_divergence_on_coverage": [
+      "inconclusive"
+    ],
+    "divergence_confirmed_at_checkpoint": [
+      "divergence_confirmed_at_checkpoint"
+    ],
+    "first_divergence_confirmed": [
+      "first_divergence_confirmed"
+    ],
+    "bitwise_equal": [
+      "verified_equivalent"
+    ],
+    "byte_difference_only": [
+      "inconclusive"
+    ],
+    "inconclusive": [
+      "inconclusive"
+    ]
+  },
+  "exit_code_mapping": {
+    "pass": 0,
+    "documented_unsupported": 0,
+    "harness_configuration_error": 2,
+    "verification_inconclusive": 3,
+    "token_parity_regression": 4,
+    "numeric_regression": 5
+  },
+  "exit_code_cleanup_rules": {
+    "cleanup_warnings_alter_valid_result": false,
+    "cleanup_failure_can_change_exit_status_only_when": [
+      "report_emission_failed",
+      "confidentiality_policy_requires_hard_failure",
+      "required_evidence_cannot_be_trusted"
+    ],
+    "cleanup_warning_reason_code": "temp_cleanup_failed"
+  },
+  "checkpoint_step_mapping": {
+    "prefill_runtime_checkpoint_step": 0,
+    "decode_generated_token_step_base": 0,
+    "decode_runtime_checkpoint_step_formula": "generated_token_step + 1",
+    "pass1_mismatch_index_to_runtime_checkpoint_step": "N + 1",
+    "decode_report_fields_required": [
+      "generated_token_step",
+      "runtime_checkpoint_step"
+    ],
+    "examples": [
+      {
+        "phase": "prefill",
+        "generated_token_step": null,
+        "runtime_checkpoint_step": 0
+      },
+      {
+        "phase": "decode",
+        "generated_token_step": 0,
+        "runtime_checkpoint_step": 1
+      },
+      {
+        "phase": "decode",
+        "generated_token_step": 17,
+        "runtime_checkpoint_step": 18
+      }
+    ]
+  },
+  "checkpoint_identity_fields": [
+    "mode",
+    "submode",
+    "phase",
+    "generated_token_step",
+    "runtime_checkpoint_step",
+    "model_family",
+    "layer",
+    "canonical_stage",
+    "source_checkpoint_name",
+    "execution_ordinal",
+    "dtype",
+    "shape"
+  ],
+  "canonical_stage_taxonomy": {
+    "purpose": [
+      "reporting",
+      "ordering",
+      "schema",
+      "future_inspect"
+    ],
+    "canonical_stages": [
+      "embedding",
+      "layer_input",
+      "attention_norm_out",
+      "q_projection",
+      "k_projection",
+      "v_projection",
+      "qk_norm",
+      "rope_out",
+      "kv_append",
+      "attention_output",
+      "mlp_output",
+      "final_norm",
+      "logits"
+    ],
+    "source_names_remain_family_specific": true,
+    "reporting_only": true,
+    "does_not_enable_cross_family_numeric_comparison": true
+  },
+  "current_checkpoint_coverage": {
+    "llama3_decoder": {
+      "coverage_status": "sparse_current_diagnostic",
+      "current_layers": [
+        0,
+        1,
+        7,
+        8
+      ],
+      "current_global_source_names": [
+        "embedding",
+        "final_norm",
+        "logits"
+      ],
+      "current_source_names": [
+        "embedding",
+        "layer.0.input",
+        "layer.0.input_layernorm_out",
+        "layer.0.q_proj_out",
+        "layer.0.k_proj_out",
+        "layer.0.v_proj_out",
+        "layer.0.q_after_rope",
+        "layer.0.k_after_rope",
+        "layer.0.q_heads",
+        "layer.0.k_heads",
+        "layer.0.attn_out",
+        "layer.0.post_attn_residual",
+        "layer.0.mlp_out",
+        "layer.0.post_mlp_residual",
+        "layer.1.input",
+        "layer.1.input_layernorm_out",
+        "layer.1.q_proj_out",
+        "layer.1.k_proj_out",
+        "layer.1.v_proj_out",
+        "layer.1.q_after_rope",
+        "layer.1.k_after_rope",
+        "layer.1.q_heads",
+        "layer.1.k_heads",
+        "layer.1.k_repeated",
+        "layer.1.attn_scores",
+        "layer.1.attn_scores_head0",
+        "layer.1.attn_scores_head0_recon",
+        "layer.1.attn_scores_head0_fp32k",
+        "layer.1.attn_scores_head0_pos_last_fp32",
+        "layer.1.attn_scores_head0_pos_last_reported",
+        "layer.1.attn_probs",
+        "layer.1.attn_context",
+        "layer.1.attn_out",
+        "layer.1.post_attn_residual",
+        "layer.1.mlp_out",
+        "layer.1.post_mlp_residual",
+        "layer.7.input_layernorm_out",
+        "layer.7.k_proj_weight",
+        "layer.7.v_proj_weight",
+        "layer.7.q_proj_out",
+        "layer.7.k_proj_out",
+        "layer.7.v_proj_out",
+        "layer.7.q_after_rope",
+        "layer.7.k_after_rope",
+        "layer.7.attn_scores",
+        "layer.7.attn_probs",
+        "layer.7.attn_context",
+        "layer.7.attn_out",
+        "layer.7.post_attn_residual",
+        "layer.7.mlp_out",
+        "layer.7.post_mlp_residual",
+        "layer.7.output",
+        "layer.8.input",
+        "layer.8.input_layernorm_out",
+        "layer.8.q_proj_out",
+        "layer.8.k_proj_out",
+        "layer.8.v_proj_out",
+        "layer.8.q_after_rope",
+        "layer.8.k_after_rope",
+        "layer.8.attn_scores",
+        "layer.8.attn_probs",
+        "layer.8.attn_context",
+        "layer.8.attn_out",
+        "layer.8.post_attn_residual",
+        "layer.8.mlp_out",
+        "layer.8.post_mlp_residual",
+        "final_norm",
+        "logits"
+      ],
+      "current_source_name_patterns": [
+        "layer.<selected_layer>.output"
+      ],
+      "current_source_name_pattern_notes": "Emitted via snprintf(\"layer.%zu.output\", layer) for layers selected by lis_checkpoint_layer_selected(); the selected set is model-size dependent.",
+      "current_scalar_diagnostic_names": [
+        "layer.1.attn_scale"
+      ],
+      "not_current_source_names": [
+        "layer.0.attention_norm",
+        "layer.0.q_proj",
+        "layer.0.k_proj",
+        "layer.0.v_proj",
+        "layer.0.q_rope",
+        "layer.0.k_rope",
+        "layer.0.attention_out",
+        "layer.7.input",
+        "layer.7.weights"
+      ],
+      "not_complete_taxonomy": true
+    },
+    "qwen3_dense_decoder": {
+      "coverage_status": "sparse_current_layer0",
+      "current_source_names": [
+        "qwen3.embedding",
+        "qwen3.layer.0.q_after_q_norm",
+        "qwen3.layer.0.k_after_k_norm",
+        "qwen3.final_norm",
+        "qwen3.logits"
+      ],
+      "current_layers": [
+        0
+      ],
+      "not_current_source_patterns": [
+        "qwen3.layer.<n>.q_proj",
+        "qwen3.layer.<n>.k_proj",
+        "qwen3.layer.<n>.v_proj",
+        "qwen3.layer.<n>.rope_out",
+        "qwen3.layer.<n>.attention_output",
+        "qwen3.layer.<n>.mlp_output"
+      ],
+      "arbitrary_layer_projection_rope_attention_mlp_current": false
+    }
+  },
+  "planned_stage_coverage": {
+    "qwen3_dense_decoder": [
+      "q_projection",
+      "k_projection",
+      "v_projection",
+      "rope_out",
+      "attention_output",
+      "mlp_output"
+    ],
+    "status": "planned_later_slices",
+    "current_coverage_is_data_not_future_support_claim": true
+  },
+  "model_family_compatibility_rules": {
+    "same_family_numeric_allowed": true,
+    "cross_family_numeric_prohibited": true,
+    "compatible_config_required": true,
+    "compatible_fingerprints_required": true,
+    "compatible_input_identity_required": true,
+    "canonical_stage_equality_enables_numeric_compare": false,
+    "compatible_same_family_stage_required": true,
+    "supported_precision_path_combinations": {
+      "f32_vs_f32": [
+        "exact",
+        "f32-reference",
+        "f32-simd"
+      ],
+      "f32_vs_bf16": [
+        "bf16-simd"
+      ],
+      "bf16_vs_bf16": [
+        "bf16-simd"
+      ]
+    },
+    "incompatible_precision_combinations": [
+      "f32_vs_bf16_with_exact_profile"
+    ]
+  },
+  "tolerance_profile_names": [
+    "exact",
+    "f32-reference",
+    "f32-simd",
+    "bf16-simd",
+    "external-fp32",
+    "external-bf16"
+  ],
+  "threshold_status_enum": [
+    "uncalibrated_default",
+    "calibrated",
+    "deprecated"
+  ],
+  "tolerance_profile_required_fields": [
+    "name",
+    "profile_version",
+    "threshold_status",
+    "abs_floor",
+    "rel_band",
+    "dtype_policy",
+    "stage_overrides",
+    "reduction_noise_policy",
+    "calibration_provenance",
+    "calibration_dataset_id",
+    "holdout_validation",
+    "created_by",
+    "created_at"
+  ],
+  "tolerance_profiles": {
+    "exact": {
+      "name": "exact",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.0,
+      "rel_band": 0.0,
+      "dtype_policy": "exact_bits_or_values",
+      "stage_overrides": {},
+      "reduction_noise_policy": "none",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    },
+    "f32-reference": {
+      "name": "f32-reference",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.000001,
+      "rel_band": 0.00001,
+      "dtype_policy": "float32_reference",
+      "stage_overrides": {},
+      "reduction_noise_policy": "bounded_reduction_order_noise",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    },
+    "f32-simd": {
+      "name": "f32-simd",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.00001,
+      "rel_band": 0.0001,
+      "dtype_policy": "float32_simd",
+      "stage_overrides": {},
+      "reduction_noise_policy": "bounded_simd_reduction_noise",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    },
+    "bf16-simd": {
+      "name": "bf16-simd",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.001,
+      "rel_band": 0.01,
+      "dtype_policy": "bf16_storage_float32_accumulation",
+      "stage_overrides": {},
+      "reduction_noise_policy": "bf16_rounding_and_simd_reduction_noise",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    },
+    "external-fp32": {
+      "name": "external-fp32",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.00001,
+      "rel_band": 0.0001,
+      "dtype_policy": "external_float32",
+      "stage_overrides": {},
+      "reduction_noise_policy": "framework_reduction_noise",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    },
+    "external-bf16": {
+      "name": "external-bf16",
+      "profile_version": "1.0",
+      "threshold_status": "uncalibrated_default",
+      "abs_floor": 0.001,
+      "rel_band": 0.01,
+      "dtype_policy": "external_bf16",
+      "stage_overrides": {},
+      "reduction_noise_policy": "framework_bf16_and_reduction_noise",
+      "calibration_provenance": null,
+      "calibration_dataset_id": null,
+      "holdout_validation": null,
+      "created_by": "differential_verification_contract",
+      "created_at": "1.0"
+    }
+  },
+  "tolerance_profile_rules": {
+    "current_numeric_values_status": "uncalibrated_default",
+    "calibrated_requires_provenance": true,
+    "calibrated_requires_holdout_validation": true,
+    "calibrated_changes_require_new_profile_version": true,
+    "report_stores_selected_profile": true,
+    "report_stores_resolved_thresholds": true
+  },
+  "coverage_fields": [
+    "target_generated_token_step",
+    "runtime_checkpoint_step",
+    "total_layers",
+    "captured_layers",
+    "captured_stages",
+    "layer_coverage_complete",
+    "stage_coverage_complete",
+    "element_comparison_complete",
+    "prefix_reproduction_verified",
+    "first_divergence_scope"
+  ],
+  "prompt_token_identity_fields": [
+    "level",
+    "count_match",
+    "digest_algorithm",
+    "digest_match",
+    "strong_digest_algorithm",
+    "strong_digest",
+    "array_equal"
+  ],
+  "prefix_reproduction_fields": [
+    "verified",
+    "failed_side",
+    "first_diff_index",
+    "target_generated_token_step",
+    "prior_generated_token_count",
+    "runtime_checkpoint_step",
+    "token_position_alignment",
+    "context_position_alignment"
+  ],
+  "binary_tensor_header": {
+    "magic": "LISB",
+    "major_version": 1,
+    "encoding": "fixed_width_little_endian",
+    "header_length_required": true,
+    "flags_required": true,
+    "rank_limit": 4,
+    "shape_length": 4,
+    "global_layer_sentinel": "UINT64_MAX",
+    "mode_b_submode_sentinel": "none",
+    "source_checkpoint_name_bytes": 96,
+    "digest_algorithm_enum": [
+      "sha256",
+      "none"
+    ],
+    "payload_digest_algorithm": "sha256",
+    "payload_digest_bytes": 32,
+    "reserved_extension_bytes_required": true,
+    "reserved_forward_compatibility_policy": "must_be_zero_for_v1",
+    "required_fields": [
+      "magic",
+      "major_version",
+      "header_length",
+      "flags",
+      "dtype",
+      "phase",
+      "rank",
+      "shape",
+      "element_count",
+      "payload_byte_count",
+      "generated_token_step",
+      "runtime_checkpoint_step",
+      "layer_index",
+      "execution_ordinal",
+      "mode",
+      "mode_b_submode",
+      "model_family",
+      "canonical_stage",
+      "source_checkpoint_name",
+      "digest_algorithm",
+      "payload_digest",
+      "reserved"
+    ],
+    "validation_rules": [
+      "reject_wrong_magic",
+      "reject_unsupported_major_version",
+      "reject_invalid_header_length",
+      "reject_unknown_required_flags",
+      "reject_invalid_rank",
+      "reject_nonzero_unused_shape_dimensions_where_prohibited",
+      "reject_element_count_overflow",
+      "reject_payload_byte_count_mismatch",
+      "reject_file_length_not_exactly_header_plus_payload",
+      "reject_truncated_files",
+      "reject_oversized_files",
+      "reject_checkpoint_identity_mismatch",
+      "reject_dtype_mismatch_across_inputs",
+      "reject_shape_mismatch_across_inputs",
+      "reject_malformed_string_fields",
+      "reject_nonzero_reserved_bytes_for_v1"
+    ]
+  },
+  "secure_temp_file_policy": {
+    "threat_model": "local_single_user_mvp",
+    "defends_against_compromised_same_uid_producer": false,
+    "path_contract": "directory_plus_basename",
+    "per_run_directory_created_by": "python_harness",
+    "per_run_directory_unpredictable": true,
+    "per_run_directory_mode": "0700",
+    "directory_type_required": "directory",
+    "directory_owner_uid_must_match_current_user": true,
+    "reference_candidate_basenames_unpredictable": true,
+    "reference_candidate_basenames_distinct": true,
+    "producer_receives": [
+      "validated_directory",
+      "basename"
+    ],
+    "basename_rejections": [
+      "..",
+      "absolute_basename",
+      "directory_separator",
+      "outside_run_directory"
+    ],
+    "file_creation_mode": "0600",
+    "exclusive_creation_required": true,
+    "silent_overwrite_allowed": false,
+    "nofollow_rule": "use_o_nofollow_where_available_else_private_directory_plus_post_open_checks",
+    "validation_never_silently_skipped": true,
+    "producer_fstat_required": true,
+    "comparator_validations": [
+      "regular_file",
+      "owner_uid",
+      "mode_0600",
+      "hard_link_count_one",
+      "expected_header",
+      "expected_identity",
+      "exact_file_length"
+    ],
+    "streaming_read_required": true,
+    "cleanup_on_normal_path": "mandatory",
+    "cleanup_on_handled_error_path": "mandatory",
+    "cleanup_after_abnormal_termination": "best_effort_only",
+    "abnormal_cleanup_not_guaranteed_after": [
+      "SIGKILL",
+      "host_crash",
+      "power_loss",
+      "kernel_failure",
+      "filesystem_failure"
+    ],
+    "report_contains_paths": false,
+    "report_contains_model_or_input_details_in_cleanup_warnings": false,
+    "retention_requires_debug_option": true,
+    "retained_debug_distinguished": true,
+    "cleanup_failure_warning_reason_code": "temp_cleanup_failed",
+    "cleanup_failure_silently_ignored": false,
+    "numeric_verdict_remains_valid_if_cleanup_fails_after_comparison": true,
+    "stale_run_policy": {
+      "default_stale_threshold_hours": 24,
+      "destructive_cleanup_default": "explicit_cleanup_command_only",
+      "startup_detects_and_warns": true,
+      "startup_deletes_by_default": false,
+      "metadata_marker_required": true,
+      "metadata_marker_fields": [
+        "format_version",
+        "uid",
+        "pid",
+        "creation_time",
+        "last_heartbeat_time",
+        "debug_retain"
+      ],
+      "active_run_protection": [
+        "lock",
+        "heartbeat"
+      ],
+      "validate_owner_and_mode_before_deletion": true,
+      "retained_debug_directories_skipped": true,
+      "audit_summary_for_deleted_or_skipped": true,
+      "warnings_use_safe_run_identifiers_only": true
+    }
+  },
+  "report_schema": {
+    "required_top_level_fields": [
+      "schema",
+      "kind",
+      "report_version",
+      "mode",
+      "submode",
+      "result_class",
+      "reason_code",
+      "comparison_outcome",
+      "overall_verdict",
+      "evidence_completeness",
+      "tolerance_profile",
+      "sources",
+      "prompt_token_identity",
+      "prefix_reproduction",
+      "coverage",
+      "comparison",
+      "suspected_first_divergence",
+      "confirmed_divergence_at_checkpoint",
+      "confirmed_first_divergence",
+      "warnings",
+      "cleanup_status"
+    ],
+    "nullable_fields": [
+      "submode",
+      "generated_token_step",
+      "layer",
+      "prefix_reproduction.failed_side",
+      "prefix_reproduction.first_diff_index",
+      "suspected_first_divergence",
+      "confirmed_divergence_at_checkpoint",
+      "confirmed_first_divergence",
+      "tolerance_profile.calibration_provenance",
+      "tolerance_profile.calibration_dataset_id",
+      "tolerance_profile.holdout_validation"
+    ],
+    "required_source_fields": [
+      "artifact_path_redacted",
+      "run_id",
+      "schema",
+      "artifact_kind",
+      "artifact_version",
+      "model_family",
+      "model_fingerprint",
+      "config_fingerprint",
+      "precision_policy",
+      "build_identity",
+      "runtime_identity"
+    ],
+    "required_provenance_fields": [
+      "model_family",
+      "model_fingerprint",
+      "config_fingerprint",
+      "tokenizer_fingerprint",
+      "runtime_identity",
+      "build_identity",
+      "precision_policy"
+    ],
+    "required_coverage_fields": [
+      "target_generated_token_step",
+      "runtime_checkpoint_step",
+      "total_layers",
+      "captured_layers",
+      "captured_stages",
+      "layer_coverage_complete",
+      "stage_coverage_complete",
+      "element_comparison_complete",
+      "prefix_reproduction_verified",
+      "first_divergence_scope"
+    ],
+    "required_prefix_reproduction_fields": [
+      "verified",
+      "failed_side",
+      "first_diff_index",
+      "target_generated_token_step",
+      "prior_generated_token_count",
+      "runtime_checkpoint_step",
+      "token_position_alignment",
+      "context_position_alignment"
+    ],
+    "required_confirmed_checkpoint_fields": [
+      "checkpoint_identity",
+      "comparison_outcome",
+      "evidence_tier",
+      "element_count",
+      "elements_compared",
+      "max_abs_diff",
+      "max_rel_diff",
+      "beyond_tolerance_count",
+      "tolerance_profile",
+      "source_checkpoint_name",
+      "canonical_stage",
+      "runtime_checkpoint_step",
+      "generated_token_step"
+    ],
+    "redacted_by_default": [
+      "raw_tensor_values",
+      "full_prompt_token_arrays",
+      "raw_text",
+      "absolute_temporary_paths",
+      "model_paths",
+      "temporary_artifact_paths"
+    ]
+  },
+  "confirmation_eligibility_rules": {
+    "confirmed_divergence_at_checkpoint_requires": [
+      "exhaustive_numeric_comparison",
+      "all_elements_compared",
+      "active_tolerance_applied",
+      "at_least_one_beyond_tolerance",
+      "valid_compatible_inputs",
+      "verified_prefix_reproduction",
+      "no_malformed_incomplete_evidence"
+    ],
+    "confirmed_first_divergence_additional_requires": [
+      "all_predecessors_exhaustively_equivalent",
+      "complete_layer_stage_coverage",
+      "prompt_token_array_equal",
+      "complete_evidence",
+      "deep_verification_resource_controls"
+    ],
+    "partial_coverage_forces_confirmed_first_divergence_null": true,
+    "hash_only_mismatch_cannot_produce_numeric_confirmation": true,
+    "bounded_sample_cannot_confirm": true,
+    "incomplete_exhaustive_comparison_cannot_confirm": true,
+    "mvp_confirmed_first_divergence_value": null,
+    "checkpoint_confirmation_over_existing_checkpoint_supported_in_mvp": true
+  },
+  "mvp_capabilities": [
+    "mode_a_backend_differential",
+    "mode_b_runtime_differential",
+    "compatibility_and_identity_gates",
+    "first_mismatching_token_localization",
+    "pass_2_prefix_verification",
+    "tier0_tier1_comparison_over_captured_checkpoints",
+    "exhaustive_tier2_comparison_of_one_existing_checkpoint",
+    "confirmed_divergence_at_checkpoint",
+    "bounded_verification_report",
+    "secure_temporary_transport",
+    "model_free_contract_tests",
+    "model_backed_manual_verification"
+  ],
+  "mvp_limitations": [
+    "confirmed_first_divergence_always_null",
+    "no_whole_runtime_equivalence_claim",
+    "no_cross_family_comparison",
+    "no_numeric_confirmation_from_hash_only_mismatch",
+    "no_mode_c_external_semantic",
+    "partial_coverage_only",
+    "layer_stage_localization_limited_to_captured_layers"
+  ],
+  "strongest_mvp_verdict": "confirmed_divergence_at_checkpoint",
+  "deep_verification_resource_controls": {
+    "status": "outside_mvp",
+    "required_for_confirmed_first_divergence": true,
+    "explicit_user_acknowledgment_required": true,
+    "fields": [
+      "max_tensor_bytes",
+      "max_checkpoints",
+      "max_temp_disk_bytes",
+      "sequential_predecessor_recapture",
+      "retain_predecessor_captures",
+      "early_stop_on_first_confirmed_divergence",
+      "fail_closed_on_resource_limit"
+    ],
+    "numeric_defaults_status": "operator_supplied_or_uncalibrated",
+    "max_tensor_bytes": null,
+    "max_checkpoints": null,
+    "max_temp_disk_bytes": null,
+    "sequential_predecessor_recapture": true,
+    "retain_predecessor_captures": false,
+    "early_stop_on_first_confirmed_divergence": true,
+    "fail_closed_on_resource_limit": true,
+    "mvp_confirmed_first_divergence": null
+  },
+  "mode_c_deferred_contract": {
+    "mode": "external_semantic",
+    "status": "deferred",
+    "not_mvp": true,
+    "required_future_fields": [
+      "explicit_injected_token_prefix_identity",
+      "target_generated_token_step",
+      "runtime_checkpoint_step",
+      "token_position_alignment",
+      "external_framework_name",
+      "external_framework_version",
+      "adapter_name",
+      "adapter_version",
+      "model_provenance",
+      "config_provenance",
+      "tokenizer_provenance",
+      "dependency_environment_identity",
+      "dtype_accumulation_policy",
+      "deterministic_execution_settings",
+      "hook_checkpoint_mapping_version",
+      "confidentiality_policy",
+      "no_raw_prompt_or_model_leakage_by_default"
+    ],
+    "explicit_token_prefix_injection_required": true,
+    "forced_prefix_current_restrictions_apply": true,
+    "checkpoint_capture_at_target_step_required": true,
+    "dependency_isolation_required": true,
+    "version_and_provenance_capture_required": true
+  },
+  "implementation_boundary": {
+    "binary_checkpoint_capture_implemented": false,
+    "exhaustive_comparator_implemented": false,
+    "verification_report_implemented": false,
+    "verification_inconclusive_public_stable_class": false,
+    "new_cli_flags_implemented": false,
+    "verify_diff_make_target_implemented": false,
+    "lis_inspect_verification_view_implemented": false,
+    "mode_c_adapter_implemented": false,
+    "no_stable_public_support_claim": true
+  }
+}

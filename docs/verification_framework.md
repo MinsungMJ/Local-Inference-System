@@ -153,3 +153,8 @@ checkpoint evidence without adding chat-template/Jinja scope.
   inference-semantic changes from verification entry points themselves.
 - No broad prompt-quality evaluation suite.
 - No telemetry platform or new benchmark framework.
+
+The approved design contract for differential verification is documented in
+`docs/differential_verification.md`. The feature remains planned and is not yet
+part of the currently implemented runtime, CLI, verification, or artifact
+surface.

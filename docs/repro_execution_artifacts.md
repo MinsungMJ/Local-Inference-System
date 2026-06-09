@@ -379,3 +379,9 @@ Current LIS Inspect limitation:
 - Current LIS Inspect does not render, interpret, compare, graph, or
   visualize KV cache data. That is deferred to a separate Inspect-owned future
   work item.
+
+The approved design contract for differential verification is documented in
+`docs/differential_verification.md`. It defines a planned `verification_report`
+artifact kind under `lis.execution_artifact/v1`. The feature remains planned and
+is not yet part of the currently implemented runtime, CLI, verification, or
+artifact surface.
