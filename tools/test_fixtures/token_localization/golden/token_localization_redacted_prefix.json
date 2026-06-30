@@ -1,0 +1,108 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "token_localization",
+  "contract_version": "differential_verification_contract_v1",
+  "comparison_mode": "backend_differential",
+  "pass0_verdict": "limited_comparison_allowed",
+  "comparison_eligibility": "limited_comparison",
+  "source_binding": {
+    "reference_run_report_sha256": "sha256:461971018971a3d9588f3580564fb9e5ec27a3224f5cd22f308dccede32c5e33",
+    "candidate_run_report_sha256": "sha256:4806dbcb02381696ab4a503338b83190e166f350cfcd15781d733125033fe2fd",
+    "verified": true
+  },
+  "pass1_status": "first_mismatch_found",
+  "evidence_scope": "generated_selected_token_sequences",
+  "evidence_completeness": "complete",
+  "compatibility": {
+    "comparison_blocked": false,
+    "boundary": null,
+    "model_family_state": "compatible",
+    "config_state": "compatible",
+    "prompt_identity_evidence": "array_equal"
+  },
+  "selected_token_evidence": {
+    "reference": {
+      "level": "array_exact",
+      "source_locations": ["report.selected_token_ids"],
+      "declared_count": 66,
+      "observed_array_length": 66,
+      "digest": {
+        "algorithm": "fnv1a64",
+        "value": "fnv1a64:fa14d792412e8766",
+        "size_bytes": null,
+        "valid": true,
+        "matches_array": true
+      },
+      "stop_reason": "decode_limit",
+      "generation_limit": 66
+    },
+    "candidate": {
+      "level": "array_exact",
+      "source_locations": ["report.selected_token_ids"],
+      "declared_count": 66,
+      "observed_array_length": 66,
+      "digest": {
+        "algorithm": null,
+        "value": null,
+        "size_bytes": null,
+        "valid": false,
+        "matches_array": null
+      },
+      "stop_reason": "decode_limit",
+      "generation_limit": 66
+    }
+  },
+  "token_localization": {
+    "generated_token_step": 65,
+    "runtime_checkpoint_step": 66,
+    "reference_selected_token_id": 65,
+    "candidate_selected_token_id": 999,
+    "matched_generated_prefix_length": 65,
+    "observed_reference_generated_length": 66,
+    "observed_candidate_generated_length": 66,
+    "mismatch_kind": "token_id_mismatch"
+  },
+  "prefix_for_reproduction": {
+    "availability": "exact_source_required",
+    "generated_prefix_token_ids": null,
+    "generated_prefix_token_count": 65,
+    "generated_prefix_sha256": "sha256:b6a586b4161de2c97a91a026c10d0e435cddf4d17c85376be251bc400c40f7f3",
+    "prefix_start_generated_step": 0,
+    "prefix_end_generated_step_exclusive": 65
+  },
+  "pass2_disposition": "ready",
+  "calibration_ref": {
+    "sha256": "sha256:a464bcbe2e5325efd8003d111ce21db4cd973db2f5187c78295bf28991b29b42",
+    "summary": {
+      "comparison_mode": "backend_differential",
+      "pass0_verdict": "limited_comparison_allowed",
+      "comparison_eligibility": "limited_comparison",
+      "prompt_identity_evidence": "array_equal",
+      "verdict_strength_limit": "checkpoint_confirmation_allowed",
+      "blocking_reasons": [],
+      "oracle_scope": "internal_lis_only"
+    },
+    "embedded": null
+  },
+  "verdict_strength_limit": "checkpoint_confirmation_allowed",
+  "reason_codes": [],
+  "inherited_pass0_reason_codes": [
+    "policy_modified_greedy",
+    "decode_policy_not_raw",
+    "config_semantics_uncalibrated",
+    "rms_norm_eps_runtime_unbound",
+    "requires_fix_or_guard",
+    "numeric_policy_uncalibrated",
+    "kv_write_rounding_unverified",
+    "fma_policy_backend_defined",
+    "reduction_order_backend_defined",
+    "external_oracle_ineligible",
+    "hf_default_greedy_ineligible",
+    "hf_forced_token_runtime_eligible",
+    "internal_lis_differential_only",
+    "oracle_scope_limited",
+    "forced_prefix_report_json_channel_missing"
+  ],
+  "blocking_reasons": [],
+  "warnings": []
+}

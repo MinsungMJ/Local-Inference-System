@@ -1,0 +1,30 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "run_report",
+  "manifest": {
+    "model": {
+      "family": "llama3_decoder",
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "bbbbbbbbbbbbbbbb", "size_bytes": 1}
+    },
+    "config": {
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "cccccccccccccccc", "size_bytes": 1}
+    },
+    "input": {
+      "mode": "tokens",
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "dddddddddddddddd", "size_bytes": 1}
+    },
+    "runtime": {"batch_size": 1, "generation_limit": 5},
+    "backend": {"name": "avx2"}
+  },
+  "report": {
+    "execution_status": "ok",
+    "stop_reason": "decode_limit",
+    "selected_token_count": 5,
+    "selected_token_digest": {
+      "algorithm": "fnv1a64",
+      "hex": "2caeed8351fcb045",
+      "size_bytes": 40
+    },
+    "selected_token_ids": [999, 202, 303, 404, 505]
+  }
+}

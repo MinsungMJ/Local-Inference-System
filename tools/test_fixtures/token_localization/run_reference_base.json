@@ -1,0 +1,77 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "run_report",
+  "manifest": {
+    "retention_policy": {
+      "absolute_paths": "omitted",
+      "raw_prompt_text": "omitted",
+      "generated_text": "omitted"
+    },
+    "binary": {
+      "fingerprint": {
+        "algorithm": "fnv1a64",
+        "hex": "aaaaaaaaaaaaaaaa",
+        "size_bytes": 1
+      }
+    },
+    "model": {
+      "format": "safetensors",
+      "family": "llama3_decoder",
+      "fingerprint": {
+        "algorithm": "fnv1a64",
+        "hex": "bbbbbbbbbbbbbbbb",
+        "size_bytes": 1
+      }
+    },
+    "config": {
+      "fingerprint": {
+        "algorithm": "fnv1a64",
+        "hex": "cccccccccccccccc",
+        "size_bytes": 1
+      }
+    },
+    "input": {
+      "mode": "tokens",
+      "fingerprint": {
+        "algorithm": "fnv1a64",
+        "hex": "dddddddddddddddd",
+        "size_bytes": 1
+      }
+    },
+    "runtime": {
+      "configured_context": 128,
+      "batch_size": 1,
+      "generation_limit": 5,
+      "thread_count": 1,
+      "precision_path": "f32_accum;weights=bf16;kv=bf16"
+    },
+    "backend": {
+      "name": "reference"
+    }
+  },
+  "report": {
+    "execution_status": "ok",
+    "status_code": "OK",
+    "stop_reason": "decode_limit",
+    "output_mode": "token_ids",
+    "prompt_sequences": [
+      {
+        "token_count": 3,
+        "token_id_digest": {
+          "algorithm": "fnv1a64",
+          "hex": "1111111111111111",
+          "size_bytes": 24
+        }
+      }
+    ],
+    "selected_token_count": 5,
+    "selected_token_digest": {
+      "algorithm": "fnv1a64",
+      "hex": "49b3d93d19494552",
+      "size_bytes": 40
+    },
+    "selected_token_ids": [101, 202, 303, 404, 505],
+    "emitted_token_count": 5,
+    "emitted_token_ids": [101, 202, 303, 404, 505]
+  }
+}

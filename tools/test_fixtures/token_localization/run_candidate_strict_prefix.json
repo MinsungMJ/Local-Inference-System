@@ -1,0 +1,30 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "run_report",
+  "manifest": {
+    "model": {
+      "family": "llama3_decoder",
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "bbbbbbbbbbbbbbbb", "size_bytes": 1}
+    },
+    "config": {
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "cccccccccccccccc", "size_bytes": 1}
+    },
+    "input": {
+      "mode": "tokens",
+      "fingerprint": {"algorithm": "fnv1a64", "hex": "dddddddddddddddd", "size_bytes": 1}
+    },
+    "runtime": {"batch_size": 1, "generation_limit": 5},
+    "backend": {"name": "avx2"}
+  },
+  "report": {
+    "execution_status": "ok",
+    "stop_reason": "model_eos",
+    "selected_token_count": 3,
+    "selected_token_digest": {
+      "algorithm": "fnv1a64",
+      "hex": "0223857762272c01",
+      "size_bytes": 24
+    },
+    "selected_token_ids": [101, 202, 303]
+  }
+}
