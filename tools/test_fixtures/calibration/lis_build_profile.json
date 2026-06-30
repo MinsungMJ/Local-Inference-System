@@ -1,0 +1,13 @@
+{
+  "build_id": "lis_current",
+  "repetition_penalty": 1.2,
+  "repetition_penalty_enabled": true,
+  "structural_token_suppression": true,
+  "rms_norm_eps_runtime_bound": {
+    "llama3_decoder": false,
+    "qwen3_dense_decoder": true
+  },
+  "kv_write_round_to_nearest_even": false,
+  "fma_contraction_backend_defined": true,
+  "reduction_order_backend_defined": true
+}
