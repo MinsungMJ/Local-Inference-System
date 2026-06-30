@@ -665,8 +665,9 @@ currently exist in the runtime, CLI, build, or artifact surface:
 - LIS Inspect verification views,
 - the Mode-C external semantic adapter.
 
-The next planned implementation area is the typed comparison core and state
-model (Python, model-free), built against this approved contract.
+Pass 0 calibration preflight and Pass 1 selected-token localization are
+implemented as model-free Python tooling. Passes 2–6 and the runtime/numeric
+surfaces listed above remain planned.
 
 ## 22. Calibration Preflight (Pass 0)
 
@@ -810,3 +811,168 @@ Markdown/fixture consistency checks (see
 }
 ```
 <!-- CALIBRATION-INDEX-END -->
+
+## 23. Calibrated Compatibility and Token Localization (Pass 1)
+
+- Pass 1 status: Implemented (model-free Python, `tools/lis_verify/`).
+- Artifact kind: `token_localization` under schema
+  `lis.execution_artifact/v1`.
+- Artifact `contract_version` identifier:
+  `differential_verification_contract_v1`.
+
+Pass 1 consumes the authoritative `Pass0GateDecision`, verifies an immutable
+per-side `run_report_sha256` source binding, and compares explicit generated
+`selected_token_ids` arrays. It stops before selected-token extraction when
+the source binding fails or Pass 0 blocks comparison.
+
+The source digest is SHA-256 over deterministic compact UTF-8 JSON produced
+from the parsed object with sorted object keys. It is not a hash of raw file
+bytes. Duplicate JSON keys are malformed and are rejected before
+canonicalization.
+
+Pass 1 localizes either an exact token-ID mismatch or the boundary where one
+exact sequence is a strict prefix of the other. Generated-token steps are
+zero-based and decode runtime checkpoint steps use
+`runtime_checkpoint_step = generated_token_step + 1`. Prompt tokens are never
+part of this index.
+
+Digest-only selected-token evidence cannot produce a concrete mismatch step or
+Pass 2 reproduction prefix. The default serialized prefix cap is 64 token IDs;
+longer exact prefixes remain in memory but serialize only count, range, and
+SHA-256 with `availability: "exact_source_required"`.
+
+`first_mismatch_found` is local output-selection evidence. It has no frozen
+verification-report reason mapping in Pass 1. In particular, Pass 1 does not
+use `token_selection_divergence`, whose frozen mapping implies checkpoint
+confirmation, and does not claim `confirmed_divergence_at_checkpoint` or
+`confirmed_first_divergence`.
+
+The machine-readable conformance facts live in
+`tools/test_fixtures/differential_verification_contract.json` under the
+`token_localization` key. The block below mirrors that fixture for
+Markdown/fixture consistency checks.
+
+<!-- TOKEN-LOCALIZATION-INDEX-BEGIN -->
+```json
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "token_localization",
+  "contract_version": "differential_verification_contract_v1",
+  "pass1_status_enum": [
+    "comparison_blocked_by_pass0",
+    "token_equivalent_on_observed_range",
+    "first_mismatch_found",
+    "input_token_divergence",
+    "selected_token_array_missing",
+    "selected_token_identity_unverified",
+    "unsupported_comparison",
+    "inconclusive"
+  ],
+  "mismatch_kind_enum": [
+    "token_id_mismatch",
+    "length_mismatch_or_early_termination"
+  ],
+  "selected_token_evidence_level_enum": [
+    "array_exact",
+    "digest_only",
+    "metadata_only",
+    "missing"
+  ],
+  "pass2_disposition_enum": [
+    "ready",
+    "not_required",
+    "blocked_by_pass0",
+    "blocked_by_evidence",
+    "blocked_by_strength_limit"
+  ],
+  "prefix_availability_enum": [
+    "embedded",
+    "exact_source_required",
+    "not_applicable"
+  ],
+  "pass1_reason_code_enum": [
+    "pass1.selected_token_array_missing",
+    "pass1.selected_token_identity_unverified",
+    "pass1.selected_token_metadata_inconsistent",
+    "pass1.gate_run_identity_inconsistent",
+    "pass1.unsupported_run_artifact",
+    "pass1.unsupported_batch_shape"
+  ],
+  "source_binding": {
+    "mandatory": true,
+    "mvp_transport": "Pass0SourceBinding",
+    "identity_field": "run_report_sha256",
+    "digest_algorithm": "sha256",
+    "digest_prefix": "sha256:",
+    "canonicalization": "parsed_json_sorted_keys_compact_utf8",
+    "raw_file_bytes_hashed": false,
+    "duplicate_json_keys": "malformed",
+    "verify_before_selected_token_access": true
+  },
+  "step_mapping": {
+    "generated_token_step_base": 0,
+    "runtime_checkpoint_step_formula": "generated_token_step + 1",
+    "equal_arrays_generated_token_step": null,
+    "equal_arrays_runtime_checkpoint_step": null
+  },
+  "prefix_policy": {
+    "default_embedded_token_cap": 64,
+    "long_prefix_availability": "exact_source_required",
+    "long_prefix_fields": [
+      "generated_prefix_token_count",
+      "generated_prefix_sha256",
+      "prefix_start_generated_step",
+      "prefix_end_generated_step_exclusive"
+    ],
+    "exact_prefix_retained_in_memory": true,
+    "redacted_prefix_is_reproduction_material": false
+  },
+  "calibration_reference": {
+    "default_full_embedding": false,
+    "canonical_sha256_required": true,
+    "selected_summary_fields": [
+      "comparison_mode",
+      "pass0_verdict",
+      "comparison_eligibility",
+      "prompt_identity_evidence",
+      "verdict_strength_limit",
+      "blocking_reasons",
+      "oracle_scope"
+    ]
+  },
+  "report_boundary": {
+    "first_mismatch_is_local_evidence_only": true,
+    "first_mismatch_report_reason_code": null,
+    "prohibited_first_mismatch_reason_codes": [
+      "token_selection_divergence"
+    ],
+    "confirmed_divergence_at_checkpoint": null,
+    "confirmed_first_divergence": null,
+    "frozen_verification_report_enums_modified": false
+  },
+  "artifact_required_fields": [
+    "schema",
+    "kind",
+    "contract_version",
+    "comparison_mode",
+    "pass0_verdict",
+    "comparison_eligibility",
+    "source_binding",
+    "pass1_status",
+    "evidence_scope",
+    "evidence_completeness",
+    "compatibility",
+    "selected_token_evidence",
+    "token_localization",
+    "prefix_for_reproduction",
+    "pass2_disposition",
+    "calibration_ref",
+    "verdict_strength_limit",
+    "reason_codes",
+    "inherited_pass0_reason_codes",
+    "blocking_reasons",
+    "warnings"
+  ]
+}
+```
+<!-- TOKEN-LOCALIZATION-INDEX-END -->

@@ -2,8 +2,9 @@
 
 - Status: Implemented (model-free Python, `tools/lis_verify/`).
 - Artifact: `kind: "calibration_preflight"` under schema `lis.execution_artifact/v1`.
-- Scope: Pass 0 of the planned P1 differential-verification system. Passes 1–6
-  remain planned; see `docs/differential_verification.md`.
+- Scope: Pass 0 of the P1 differential-verification system. Pass 1 is
+  implemented; Passes 2–6 remain planned. See
+  `docs/differential_verification.md`.
 
 ## What Pass 0 is
 
@@ -115,8 +116,10 @@ is `checkpoint_confirmation_allowed`. Pass 0 must never enable
 
 - **Pass 1** consumes `Pass0GateDecision`. It must trust `comparison_mode`,
   `decode_policy_identity`, `tokenizer_boundary`, `oracle_eligibility`, and
-  `verdict_strength_limit` and must not re-infer them. If `gate.proceed` is
-  false, Pass 1 stops before any numeric work.
+  `verdict_strength_limit` and must not re-infer them. The Pass 1 MVP also
+  requires an immutable `Pass0SourceBinding` created alongside the gate. If
+  the binding fails or `gate.proceed` is false, Pass 1 stops before
+  selected-token extraction.
 - **Pass 6** embeds the serialized artifact and maps Pass 0 block reasons into
   existing `verification_report` reason codes via
   `calibration_preflight.block_reason_to_report_reason_code`. The calibration

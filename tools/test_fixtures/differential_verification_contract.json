@@ -1279,5 +1279,128 @@
       "hf_forced_token_runtime_artifact_supported": false,
       "hf_default_greedy_requires_array_equal": true
     }
+  },
+  "token_localization": {
+    "status": "implemented",
+    "schema": "lis.execution_artifact/v1",
+    "kind": "token_localization",
+    "contract_version": "differential_verification_contract_v1",
+    "package": "tools/lis_verify",
+    "model_free": true,
+    "pass1_status_enum": [
+      "comparison_blocked_by_pass0",
+      "token_equivalent_on_observed_range",
+      "first_mismatch_found",
+      "input_token_divergence",
+      "selected_token_array_missing",
+      "selected_token_identity_unverified",
+      "unsupported_comparison",
+      "inconclusive"
+    ],
+    "mismatch_kind_enum": [
+      "token_id_mismatch",
+      "length_mismatch_or_early_termination"
+    ],
+    "selected_token_evidence_level_enum": [
+      "array_exact",
+      "digest_only",
+      "metadata_only",
+      "missing"
+    ],
+    "pass2_disposition_enum": [
+      "ready",
+      "not_required",
+      "blocked_by_pass0",
+      "blocked_by_evidence",
+      "blocked_by_strength_limit"
+    ],
+    "prefix_availability_enum": [
+      "embedded",
+      "exact_source_required",
+      "not_applicable"
+    ],
+    "pass1_reason_code_enum": [
+      "pass1.selected_token_array_missing",
+      "pass1.selected_token_identity_unverified",
+      "pass1.selected_token_metadata_inconsistent",
+      "pass1.gate_run_identity_inconsistent",
+      "pass1.unsupported_run_artifact",
+      "pass1.unsupported_batch_shape"
+    ],
+    "source_binding": {
+      "mandatory": true,
+      "mvp_transport": "Pass0SourceBinding",
+      "identity_field": "run_report_sha256",
+      "digest_algorithm": "sha256",
+      "digest_prefix": "sha256:",
+      "canonicalization": "parsed_json_sorted_keys_compact_utf8",
+      "raw_file_bytes_hashed": false,
+      "duplicate_json_keys": "malformed",
+      "verify_before_selected_token_access": true
+    },
+    "step_mapping": {
+      "generated_token_step_base": 0,
+      "runtime_checkpoint_step_formula": "generated_token_step + 1",
+      "equal_arrays_generated_token_step": null,
+      "equal_arrays_runtime_checkpoint_step": null
+    },
+    "prefix_policy": {
+      "default_embedded_token_cap": 64,
+      "long_prefix_availability": "exact_source_required",
+      "long_prefix_fields": [
+        "generated_prefix_token_count",
+        "generated_prefix_sha256",
+        "prefix_start_generated_step",
+        "prefix_end_generated_step_exclusive"
+      ],
+      "exact_prefix_retained_in_memory": true,
+      "redacted_prefix_is_reproduction_material": false
+    },
+    "calibration_reference": {
+      "default_full_embedding": false,
+      "canonical_sha256_required": true,
+      "selected_summary_fields": [
+        "comparison_mode",
+        "pass0_verdict",
+        "comparison_eligibility",
+        "prompt_identity_evidence",
+        "verdict_strength_limit",
+        "blocking_reasons",
+        "oracle_scope"
+      ]
+    },
+    "report_boundary": {
+      "first_mismatch_is_local_evidence_only": true,
+      "first_mismatch_report_reason_code": null,
+      "prohibited_first_mismatch_reason_codes": [
+        "token_selection_divergence"
+      ],
+      "confirmed_divergence_at_checkpoint": null,
+      "confirmed_first_divergence": null,
+      "frozen_verification_report_enums_modified": false
+    },
+    "artifact_required_fields": [
+      "schema",
+      "kind",
+      "contract_version",
+      "comparison_mode",
+      "pass0_verdict",
+      "comparison_eligibility",
+      "source_binding",
+      "pass1_status",
+      "evidence_scope",
+      "evidence_completeness",
+      "compatibility",
+      "selected_token_evidence",
+      "token_localization",
+      "prefix_for_reproduction",
+      "pass2_disposition",
+      "calibration_ref",
+      "verdict_strength_limit",
+      "reason_codes",
+      "inherited_pass0_reason_codes",
+      "blocking_reasons",
+      "warnings"
+    ]
   }
 }
