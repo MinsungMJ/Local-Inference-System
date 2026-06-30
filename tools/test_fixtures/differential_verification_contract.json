@@ -1052,5 +1052,232 @@
     "lis_inspect_verification_view_implemented": false,
     "mode_c_adapter_implemented": false,
     "no_stable_public_support_claim": true
+  },
+  "calibration_preflight": {
+    "status": "implemented",
+    "schema": "lis.execution_artifact/v1",
+    "kind": "calibration_preflight",
+    "contract_version": "differential_verification_contract_v1",
+    "package": "tools/lis_verify",
+    "model_free": true,
+    "comparison_eligibility_enum": [
+      "comparable",
+      "limited_comparison",
+      "incompatible"
+    ],
+    "pass0_verdict_enum": [
+      "comparison_allowed",
+      "limited_comparison_allowed",
+      "comparison_blocked"
+    ],
+    "verdict_strength_limit_enum": [
+      "no_comparison",
+      "token_localization_only",
+      "checkpoint_confirmation_allowed"
+    ],
+    "selection_mode_enum": [
+      "raw_greedy",
+      "policy_modified_greedy"
+    ],
+    "prompt_boundary_enum": [
+      "direct_token_ids",
+      "text"
+    ],
+    "prompt_identity_evidence_enum": [
+      "array_equal",
+      "digest_only",
+      "unverified",
+      "divergent"
+    ],
+    "confidence_enum": [
+      "high",
+      "medium",
+      "low"
+    ],
+    "config_semantics_status_enum": [
+      "calibrated",
+      "requires_fix_or_guard",
+      "unknown"
+    ],
+    "kv_write_status_enum": [
+      "round_to_nearest_even",
+      "truncate_or_unverified",
+      "not_applicable"
+    ],
+    "oracle_scope_enum": [
+      "internal_lis_only",
+      "internal_lis_and_runtime",
+      "external_semantic"
+    ],
+    "calibration_domain_enum": [
+      "decode_policy",
+      "tokenizer_boundary",
+      "config_semantics",
+      "numeric_policy",
+      "comparison_mode",
+      "oracle_scope"
+    ],
+    "reason_severity_enum": [
+      "block",
+      "downgrade",
+      "informational"
+    ],
+    "calibration_reason_code_enum": [
+      "incompatible_decode_policy",
+      "policy_modified_greedy",
+      "decode_policy_not_raw",
+      "decode_policy_uncalibrated",
+      "tokenizer_boundary_uncalibrated",
+      "prompt_token_array_missing",
+      "prompt_token_identity_unverified",
+      "input_token_divergence",
+      "confidence_downgrade_text_prompt_boundary",
+      "config_semantics_uncalibrated",
+      "rms_norm_eps_runtime_unbound",
+      "config_fingerprint_mismatch",
+      "runtime_config_fingerprint_missing",
+      "requires_fix_or_guard",
+      "incompatible_model_family",
+      "numeric_policy_uncalibrated",
+      "kv_write_rounding_unverified",
+      "fma_policy_backend_defined",
+      "reduction_order_backend_defined",
+      "tolerance_caveat",
+      "external_oracle_ineligible",
+      "hf_default_greedy_ineligible",
+      "hf_forced_token_runtime_eligible",
+      "internal_lis_differential_only",
+      "oracle_scope_limited",
+      "forced_prefix_report_json_channel_missing"
+    ],
+    "reason_code_registry": {
+      "incompatible_decode_policy": {
+        "domain": "decode_policy",
+        "base_severity": "block"
+      },
+      "policy_modified_greedy": {
+        "domain": "decode_policy",
+        "base_severity": "downgrade"
+      },
+      "decode_policy_not_raw": {
+        "domain": "decode_policy",
+        "base_severity": "downgrade"
+      },
+      "decode_policy_uncalibrated": {
+        "domain": "decode_policy",
+        "base_severity": "downgrade"
+      },
+      "tokenizer_boundary_uncalibrated": {
+        "domain": "tokenizer_boundary",
+        "base_severity": "downgrade"
+      },
+      "prompt_token_array_missing": {
+        "domain": "tokenizer_boundary",
+        "base_severity": "downgrade"
+      },
+      "prompt_token_identity_unverified": {
+        "domain": "tokenizer_boundary",
+        "base_severity": "downgrade"
+      },
+      "input_token_divergence": {
+        "domain": "tokenizer_boundary",
+        "base_severity": "block"
+      },
+      "confidence_downgrade_text_prompt_boundary": {
+        "domain": "tokenizer_boundary",
+        "base_severity": "downgrade"
+      },
+      "config_semantics_uncalibrated": {
+        "domain": "config_semantics",
+        "base_severity": "downgrade"
+      },
+      "rms_norm_eps_runtime_unbound": {
+        "domain": "config_semantics",
+        "base_severity": "downgrade"
+      },
+      "config_fingerprint_mismatch": {
+        "domain": "config_semantics",
+        "base_severity": "downgrade"
+      },
+      "runtime_config_fingerprint_missing": {
+        "domain": "config_semantics",
+        "base_severity": "downgrade"
+      },
+      "requires_fix_or_guard": {
+        "domain": "config_semantics",
+        "base_severity": "downgrade"
+      },
+      "incompatible_model_family": {
+        "domain": "config_semantics",
+        "base_severity": "block"
+      },
+      "numeric_policy_uncalibrated": {
+        "domain": "numeric_policy",
+        "base_severity": "downgrade"
+      },
+      "kv_write_rounding_unverified": {
+        "domain": "numeric_policy",
+        "base_severity": "downgrade"
+      },
+      "fma_policy_backend_defined": {
+        "domain": "numeric_policy",
+        "base_severity": "informational"
+      },
+      "reduction_order_backend_defined": {
+        "domain": "numeric_policy",
+        "base_severity": "informational"
+      },
+      "tolerance_caveat": {
+        "domain": "numeric_policy",
+        "base_severity": "downgrade"
+      },
+      "external_oracle_ineligible": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      },
+      "hf_default_greedy_ineligible": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      },
+      "hf_forced_token_runtime_eligible": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      },
+      "internal_lis_differential_only": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      },
+      "oracle_scope_limited": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      },
+      "forced_prefix_report_json_channel_missing": {
+        "domain": "oracle_scope",
+        "base_severity": "informational"
+      }
+    },
+    "aggregator_escalated_codes": [
+      "config_fingerprint_mismatch",
+      "external_oracle_ineligible",
+      "prompt_token_array_missing",
+      "prompt_token_identity_unverified"
+    ],
+    "block_reason_to_report_reason_code": {
+      "incompatible_decode_policy": "unsupported_comparison",
+      "input_token_divergence": "input_token_divergence",
+      "incompatible_model_family": "incompatible_model_family",
+      "config_fingerprint_mismatch": "unsupported_comparison",
+      "external_oracle_ineligible": "unsupported_mode",
+      "prompt_token_array_missing": "unsupported_comparison",
+      "prompt_token_identity_unverified": "unsupported_comparison"
+    },
+    "mvp": {
+      "strongest_pass0_verdict": "comparison_allowed",
+      "strongest_downstream_strength_limit": "checkpoint_confirmation_allowed",
+      "enables_confirmed_first_divergence": false,
+      "external_semantic_mode_blocked_in_mvp": true,
+      "hf_forced_token_runtime_artifact_supported": false,
+      "hf_default_greedy_requires_array_equal": true
+    }
   }
 }

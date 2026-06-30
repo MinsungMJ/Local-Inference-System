@@ -667,3 +667,146 @@ currently exist in the runtime, CLI, build, or artifact surface:
 
 The next planned implementation area is the typed comparison core and state
 model (Python, model-free), built against this approved contract.
+
+## 22. Calibration Preflight (Pass 0)
+
+- Pass 0 status: Implemented (model-free Python, `tools/lis_verify/`).
+- Artifact kind: `calibration_preflight` under schema `lis.execution_artifact/v1`.
+- Artifact `contract_version` identifier: `differential_verification_contract_v1`
+  (distinct from this contract's semantic version `1.0`).
+
+Pass 0 is the calibration gate of the P1 differential-verification system. It
+decides whether two LIS executions are semantically comparable *before* Pass 1
+attempts token localization or any numeric comparison, so later passes never
+mistake a decode-policy, prompt-boundary, config-binding, or numeric-policy
+difference for a runtime tensor divergence. Pass 0 reads existing `run_report`
+(and optional `decode_trace`) artifacts plus a checked-in LIS build calibration
+profile; it runs no model and reads no tensors.
+
+Calibration vocabulary is an additive namespace. It does **not** modify the
+frozen `verification_report` enums (`reason_code_enum`, `result_class_enum`, and
+their mappings); Pass 0 block reasons map *into* existing report reason codes via
+`calibration_preflight.block_reason_to_report_reason_code`.
+
+Key invariants (see also Corrections 1–4 in the implementation plan):
+
+- `ComparisonMode` values are contract-owned: they must equal entries in
+  `comparison_modes`. Mode C is exactly `external_semantic`.
+- The reason-code registry stores base severity only; mode-specific escalation
+  (e.g. `external_oracle_ineligible` blocking only in Mode C) is performed by the
+  aggregator, listed in `aggregator_escalated_codes`.
+- Forced-token runtime oracle is potential-only:
+  `hf_forced_token_runtime.artifact_supported = false` while `--forced-prefix`
+  and `--report-json` are mutually exclusive.
+- Prompt-token array equality (`array_equal`) is distinct from digest-only
+  identity (`digest_only`); only `array_equal` enables HF default-greedy
+  eligibility.
+- `verdict_strength_limit` has no first-divergence member; Pass 0 must never
+  enable `confirmed_first_divergence`. The strongest Pass 0 verdict is
+  `comparison_allowed`; the strongest downstream ceiling it authorizes is
+  `checkpoint_confirmation_allowed`.
+
+The machine-readable conformance facts live in
+`tools/test_fixtures/differential_verification_contract.json` under the
+`calibration_preflight` key. The block below mirrors that fixture for
+Markdown/fixture consistency checks (see
+`tools/tests/test_calibration_contract.py`).
+
+<!-- CALIBRATION-INDEX-BEGIN -->
+```json
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "calibration_preflight",
+  "contract_version": "differential_verification_contract_v1",
+  "comparison_eligibility_enum": [
+    "comparable",
+    "limited_comparison",
+    "incompatible"
+  ],
+  "pass0_verdict_enum": [
+    "comparison_allowed",
+    "limited_comparison_allowed",
+    "comparison_blocked"
+  ],
+  "verdict_strength_limit_enum": [
+    "no_comparison",
+    "token_localization_only",
+    "checkpoint_confirmation_allowed"
+  ],
+  "selection_mode_enum": [
+    "raw_greedy",
+    "policy_modified_greedy"
+  ],
+  "prompt_boundary_enum": [
+    "direct_token_ids",
+    "text"
+  ],
+  "prompt_identity_evidence_enum": [
+    "array_equal",
+    "digest_only",
+    "unverified",
+    "divergent"
+  ],
+  "oracle_scope_enum": [
+    "internal_lis_only",
+    "internal_lis_and_runtime",
+    "external_semantic"
+  ],
+  "calibration_domain_enum": [
+    "decode_policy",
+    "tokenizer_boundary",
+    "config_semantics",
+    "numeric_policy",
+    "comparison_mode",
+    "oracle_scope"
+  ],
+  "reason_severity_enum": [
+    "block",
+    "downgrade",
+    "informational"
+  ],
+  "calibration_reason_code_enum": [
+    "incompatible_decode_policy",
+    "policy_modified_greedy",
+    "decode_policy_not_raw",
+    "decode_policy_uncalibrated",
+    "tokenizer_boundary_uncalibrated",
+    "prompt_token_array_missing",
+    "prompt_token_identity_unverified",
+    "input_token_divergence",
+    "confidence_downgrade_text_prompt_boundary",
+    "config_semantics_uncalibrated",
+    "rms_norm_eps_runtime_unbound",
+    "config_fingerprint_mismatch",
+    "runtime_config_fingerprint_missing",
+    "requires_fix_or_guard",
+    "incompatible_model_family",
+    "numeric_policy_uncalibrated",
+    "kv_write_rounding_unverified",
+    "fma_policy_backend_defined",
+    "reduction_order_backend_defined",
+    "tolerance_caveat",
+    "external_oracle_ineligible",
+    "hf_default_greedy_ineligible",
+    "hf_forced_token_runtime_eligible",
+    "internal_lis_differential_only",
+    "oracle_scope_limited",
+    "forced_prefix_report_json_channel_missing"
+  ],
+  "aggregator_escalated_codes": [
+    "config_fingerprint_mismatch",
+    "external_oracle_ineligible",
+    "prompt_token_array_missing",
+    "prompt_token_identity_unverified"
+  ],
+  "mvp": {
+    "strongest_pass0_verdict": "comparison_allowed",
+    "strongest_downstream_strength_limit": "checkpoint_confirmation_allowed",
+    "enables_confirmed_first_divergence": false,
+    "external_semantic_mode_blocked_in_mvp": true,
+    "hf_forced_token_runtime_artifact_supported": false,
+    "hf_default_greedy_requires_array_equal": true
+  }
+}
+```
+<!-- CALIBRATION-INDEX-END -->
