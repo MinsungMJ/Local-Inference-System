@@ -1,7 +1,8 @@
-"""LIS verification core — P1 Pass 0 and Pass 1.
+"""LIS verification core — P1 Pass 0, Pass 1, and Pass 2.
 
-Model-free calibration gating and exact selected-token localization. Numeric
-comparison and runtime checkpoint confirmation are intentionally out of scope.
+Model-free calibration gating, exact selected-token localization, and
+source-bound mismatch-boundary reproduction. Numeric comparison and runtime
+checkpoint confirmation are intentionally out of scope.
 """
 
 from __future__ import annotations
@@ -49,6 +50,22 @@ from .pass1_model import (
     SelectedTokenEvidenceLevel,
 )
 from .pass1_report_mapping import map_pass1_reason, map_pass1_status
+from .pass2 import run_prefix_policy_reproduction
+from .pass2_artifact import (
+    serialize as serialize_pass2,
+    to_json as pass2_to_json,
+)
+from .pass2_model import (
+    COMPUTED_STEP_EVIDENCE,
+    TRACE_STEP_EVIDENCE,
+    THREAD_COUNT_CAVEAT,
+    Pass2ReasonCode,
+    Pass2Result,
+    Pass2Status,
+    Pass3Disposition,
+    ReproductionEvidenceTier,
+)
+from .pass2_report_mapping import map_pass2_reason, map_pass2_status
 from .report_mapping import map_block_reason
 
 __all__ = [
@@ -92,4 +109,17 @@ __all__ = [
     "pass1_to_json",
     "map_pass1_reason",
     "map_pass1_status",
+    "Pass2Result",
+    "Pass2Status",
+    "Pass2ReasonCode",
+    "ReproductionEvidenceTier",
+    "Pass3Disposition",
+    "COMPUTED_STEP_EVIDENCE",
+    "TRACE_STEP_EVIDENCE",
+    "THREAD_COUNT_CAVEAT",
+    "run_prefix_policy_reproduction",
+    "serialize_pass2",
+    "pass2_to_json",
+    "map_pass2_reason",
+    "map_pass2_status",
 ]
