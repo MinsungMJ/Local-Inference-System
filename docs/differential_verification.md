@@ -976,3 +976,194 @@ Markdown/fixture consistency checks.
 }
 ```
 <!-- TOKEN-LOCALIZATION-INDEX-END -->
+
+## 24. Prefix and Policy Reproduction Verification (Pass 2)
+
+- Pass 2 status: Implemented (model-free Python, `tools/lis_verify/`).
+- Artifact kind: `prefix_policy_reproduction` under schema
+  `lis.execution_artifact/v1`.
+- Artifact `contract_version` identifier:
+  `differential_verification_contract_v1`.
+
+Pass 2 consumes `Pass1Result` as its primary semantic input and requires the
+exact original reference and candidate `CanonicalRunReport`s as evidence
+inputs. It verifies both original canonical report hashes against
+`pass1.source_binding` before materializing either report or reading selected
+tokens, binary identity, prompt count, batch size, thread count, runtime
+metadata, or model/config/input identity.
+
+The pass verifies the exact shared generated prefix `[0..N-1]`, binary/build
+continuity, `runtime_checkpoint_step = generated_token_step + 1`, and derived
+context/batch/sequence alignment. A thread count greater than one is recorded
+as `thread_count_gt_1_determinism_caveat` but is not a local Pass 2 blocker.
+
+`reproduction_verified` is evidence-tier-aware. At
+`original_pair_boundary_consistent`, it means the source-bound original pair
+is internally boundary-consistent; it does not claim a fresh rerun occurred.
+Fresh paired rerun reports are required for `independent_rerun_verified`.
+`reproduction_request_only` can never accompany `reproduction_verified`.
+
+Computed checkpoint-step evidence only validates the Pass 1 step formula. It
+does not establish that a materialized checkpoint artifact exists. Pass 2
+does not read tensors, logits, activations, or numeric checkpoint values, and
+does not emit confirmed-divergence or confirmed-first-divergence fields.
+
+The block below is byte-for-value identical to the
+`prefix_policy_reproduction` namespace in the machine-readable contract.
+
+<!-- PREFIX-POLICY-REPRODUCTION-INDEX-BEGIN -->
+```json
+{
+  "status": "implemented",
+  "schema": "lis.execution_artifact/v1",
+  "kind": "prefix_policy_reproduction",
+  "contract_version": "differential_verification_contract_v1",
+  "package": "tools/lis_verify",
+  "model_free": true,
+  "pass2_status_enum": [
+    "reproduction_verified",
+    "comparison_blocked_by_pass0",
+    "token_localization_not_available",
+    "no_mismatch_to_reproduce",
+    "source_binding_inconsistent",
+    "prefix_material_unavailable",
+    "prefix_reproduction_failed",
+    "decode_policy_reproduction_failed",
+    "checkpoint_step_mapping_mismatch",
+    "context_position_mismatch",
+    "unsupported_reproduction_mode",
+    "inconclusive"
+  ],
+  "pass2_reason_code_enum": [
+    "pass2.source_binding_inconsistent",
+    "pass2.pass1_status_not_reproducible",
+    "pass2.prefix_material_unavailable",
+    "pass2.prefix_digest_mismatch",
+    "pass2.prefix_token_mismatch",
+    "pass2.decode_policy_reproduction_failed",
+    "pass2.checkpoint_step_mapping_mismatch",
+    "pass2.context_position_mismatch",
+    "pass2.unsupported_reproduction_mode",
+    "pass2.reproduction_artifact_malformed",
+    "pass2.verdict_strength_limit_blocks_reproduction"
+  ],
+  "reproduction_evidence_tier_enum": [
+    "independent_rerun_verified",
+    "original_pair_boundary_consistent",
+    "reproduction_request_only"
+  ],
+  "pass3_disposition_enum": [
+    "ready",
+    "not_required",
+    "blocked_by_pass0",
+    "blocked_by_pass1_evidence",
+    "blocked_by_reproduction"
+  ],
+  "checkpoint_step_evidence_enum": [
+    "computed_from_pass1_step_mapping",
+    "corroborated_by_trace_artifact"
+  ],
+  "source_binding": {
+    "pass1_is_primary_semantic_input": true,
+    "required_original_inputs": [
+      "reference_original",
+      "candidate_original"
+    ],
+    "original_identity_field": "run_report_sha256",
+    "verify_both_originals_before_materialization": true,
+    "verify_before_metadata_access": [
+      "selected_token_ids",
+      "binary_fingerprint",
+      "prompt_token_count",
+      "batch_size",
+      "thread_count",
+      "runtime_metadata",
+      "model_config_input_fingerprints"
+    ],
+    "required_original_metadata": [
+      "manifest.binary.fingerprint",
+      "report.prompt_sequences[0].token_count",
+      "manifest.runtime.batch_size",
+      "manifest.runtime.thread_count",
+      "model_fingerprint",
+      "config_fingerprint",
+      "input_fingerprint"
+    ],
+    "reproduction_inputs_are_paired": true,
+    "reproduction_identity_fields": [
+      "model_fingerprint",
+      "config_fingerprint",
+      "input_fingerprint"
+    ],
+    "missing_or_malformed_metadata_fails_closed": true
+  },
+  "prefix_policy": {
+    "exact_token_ids_required": true,
+    "redacted_prefix_requires_exact_source": true,
+    "digest_only_is_not_exact_material": true,
+    "prefix_start_generated_step": 0
+  },
+  "checkpoint_step_evidence": {
+    "runtime_checkpoint_step_formula": "generated_token_step + 1",
+    "default": "computed_from_pass1_step_mapping",
+    "optional_trace": "corroborated_by_trace_artifact",
+    "computed_implies_materialized_checkpoint": false,
+    "numeric_trace_values_accessed": false
+  },
+  "determinism_caveats": {
+    "thread_count_gt_1_warning": "thread_count_gt_1_determinism_caveat",
+    "applies_to_original_or_reproduction": true,
+    "pass2_blocking": false
+  },
+  "downstream_readiness": {
+    "primary_gate": "pass3_disposition",
+    "stronger_claims_also_check": "reproduction_evidence_tier",
+    "ready_implies_independent_rerun": false
+  },
+  "report_boundary": {
+    "reproduction_verified_is_local_evidence_only": true,
+    "reproduction_request_only_may_be_verified": false,
+    "prohibited_status_fields": [
+      "confirmed_divergence_at_checkpoint",
+      "confirmed_first_divergence"
+    ],
+    "frozen_verification_report_enums_modified": false
+  },
+  "artifact_required_fields": [
+    "schema",
+    "kind",
+    "contract_version",
+    "comparison_mode",
+    "pass0_verdict",
+    "comparison_eligibility",
+    "pass1_status",
+    "pass1_pass2_disposition",
+    "source_binding",
+    "source_binding_verified",
+    "pass2_status",
+    "reproduction_evidence_tier",
+    "reproduction_verified_semantics",
+    "target",
+    "prompt_reproduction",
+    "prefix_reproduction",
+    "policy_reproduction",
+    "checkpoint_step_reproduction",
+    "context_reproduction",
+    "pass3_disposition",
+    "localization_ref",
+    "verdict_strength_limit",
+    "reason_codes",
+    "inherited_pass1_reason_codes",
+    "inherited_pass0_reason_codes",
+    "blocking_reasons",
+    "warnings"
+  ],
+  "mvp": {
+    "actual_model_rerun_execution": false,
+    "optional_trace_metadata_input": false,
+    "numeric_checkpoint_comparison": false,
+    "confirmation_verdict_fields_emitted": false
+  }
+}
+```
+<!-- PREFIX-POLICY-REPRODUCTION-INDEX-END -->
