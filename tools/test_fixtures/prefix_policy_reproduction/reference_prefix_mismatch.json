@@ -1,0 +1,18 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "run_report",
+  "manifest": {
+    "binary": {"fingerprint": {"algorithm": "fnv1a64", "hex": "aaaaaaaaaaaaaaaa"}},
+    "model": {"family": "llama3_decoder", "fingerprint": {"algorithm": "fnv1a64", "hex": "bbbbbbbbbbbbbbbb"}},
+    "config": {"fingerprint": {"algorithm": "fnv1a64", "hex": "cccccccccccccccc"}},
+    "input": {"mode": "tokens", "fingerprint": {"algorithm": "fnv1a64", "hex": "dddddddddddddddd"}},
+    "runtime": {"configured_context": 128, "batch_size": 1, "thread_count": 1, "generation_limit": 18},
+    "backend": {"name": "reference-rerun"}
+  },
+  "report": {
+    "execution_status": "ok",
+    "prompt_sequences": [{"token_count": 3}],
+    "selected_token_count": 18,
+    "selected_token_ids": [101, 102, 103, 104, 105, 700, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 501]
+  }
+}

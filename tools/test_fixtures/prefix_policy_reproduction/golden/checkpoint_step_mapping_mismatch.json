@@ -1,0 +1,115 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "prefix_policy_reproduction",
+  "contract_version": "differential_verification_contract_v1",
+  "comparison_mode": "backend_differential",
+  "pass0_verdict": "limited_comparison_allowed",
+  "comparison_eligibility": "limited_comparison",
+  "pass1_status": "first_mismatch_found",
+  "pass1_pass2_disposition": "ready",
+  "source_binding": {
+    "pass1_artifact_sha256": "sha256:73d08c9ed44a5319627ea4d65ceb20c14e57579db83c4af39dcda4cdcb021037",
+    "reference_original_run_report_sha256": "sha256:08b9e3f042e251db8e69eb744f643f0605feb7b8a4c4e088b346b4f7ef86cdf1",
+    "candidate_original_run_report_sha256": "sha256:962987906b3f05c953afbf47ab76f17eaf07399339bf61eac742aa1aeb385eaf",
+    "reference_original_verified": true,
+    "candidate_original_verified": true,
+    "reference_reproduction_sha256": null,
+    "candidate_reproduction_sha256": null,
+    "reproduction_verified": null,
+    "verified": true
+  },
+  "source_binding_verified": true,
+  "pass2_status": "checkpoint_step_mapping_mismatch",
+  "reproduction_evidence_tier": "reproduction_request_only",
+  "reproduction_verified_semantics": "When reproduction_evidence_tier is not independent_rerun_verified, reproduction_verified means the available boundary evidence is internally consistent and sufficient for the declared downstream disposition. It does not mean a fresh independent rerun reproduced the prefix.",
+  "target": {
+    "generated_token_step": 17,
+    "expected_runtime_checkpoint_step": 18,
+    "matched_generated_prefix_length": 17
+  },
+  "prompt_reproduction": {
+    "status": "verified",
+    "inherited_prompt_identity_evidence": "array_equal"
+  },
+  "prefix_reproduction": {
+    "status": "verified",
+    "expected_token_count": 17,
+    "expected_sha256": "sha256:feb3651b9a420921419671577a569ddf4830930e99c24d57a7ee054249a2e6f8",
+    "verified_sides": [
+      "reference_original",
+      "candidate_original"
+    ],
+    "failed_side": null,
+    "first_diff_index": null,
+    "mismatch_kind": null
+  },
+  "policy_reproduction": {
+    "status": "verified",
+    "build_continuity_verified": true,
+    "inherited_calibration_sha256": "sha256:01d73e409e100ae911f1e679e34c1e0cce2943c6cbfb318afec32f7f258e0100",
+    "runs": [
+      {
+        "role": "reference_original",
+        "binary_fingerprint": "fnv1a64:aaaaaaaaaaaaaaaa"
+      },
+      {
+        "role": "candidate_original",
+        "binary_fingerprint": "fnv1a64:aaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "checkpoint_step_reproduction": {
+    "status": "failed",
+    "generated_token_step": 17,
+    "pass1_runtime_checkpoint_step": 99,
+    "expected_runtime_checkpoint_step": 18,
+    "evidence": "computed_from_pass1_step_mapping",
+    "trace_runtime_checkpoint_step": null,
+    "materialized_checkpoint_artifact_verified": false
+  },
+  "context_reproduction": {
+    "status": "not_evaluated",
+    "runs": []
+  },
+  "pass3_disposition": "blocked_by_reproduction",
+  "localization_ref": {
+    "sha256": "sha256:73d08c9ed44a5319627ea4d65ceb20c14e57579db83c4af39dcda4cdcb021037",
+    "summary": {
+      "pass1_status": "first_mismatch_found",
+      "generated_token_step": 17,
+      "runtime_checkpoint_step": 99,
+      "matched_generated_prefix_length": 17,
+      "prefix_availability": "embedded",
+      "pass2_disposition": "ready",
+      "verdict_strength_limit": "checkpoint_confirmation_allowed"
+    },
+    "embedded": null
+  },
+  "verdict_strength_limit": "checkpoint_confirmation_allowed",
+  "reason_codes": [
+    "pass2.checkpoint_step_mapping_mismatch"
+  ],
+  "inherited_pass1_reason_codes": [],
+  "inherited_pass0_reason_codes": [
+    "policy_modified_greedy",
+    "decode_policy_not_raw",
+    "config_semantics_uncalibrated",
+    "rms_norm_eps_runtime_unbound",
+    "requires_fix_or_guard",
+    "numeric_policy_uncalibrated",
+    "kv_write_rounding_unverified",
+    "fma_policy_backend_defined",
+    "reduction_order_backend_defined",
+    "tolerance_caveat",
+    "external_oracle_ineligible",
+    "hf_default_greedy_ineligible",
+    "hf_forced_token_runtime_eligible",
+    "internal_lis_differential_only",
+    "oracle_scope_limited",
+    "forced_prefix_report_json_channel_missing"
+  ],
+  "blocking_reasons": [
+    "pass2.checkpoint_step_mapping_mismatch"
+  ],
+  "warnings": []
+}
