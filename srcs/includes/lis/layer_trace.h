@@ -2,6 +2,7 @@
 #define LIS_LAYER_TRACE_H
 
 #include "lis/artifact.h"
+#include "lis/checkpoint_digest.h"
 #include "lis/cli.h"
 #include "lis/loader.h"
 #include "lis/model.h"
@@ -14,6 +15,8 @@
 #define LIS_LAYER_TRACE_PHASE_MAX        16
 #define LIS_LAYER_TRACE_INITIAL_CAPACITY 64
 #define LIS_LAYER_TRACE_HARD_MAX         8192
+#define LIS_LAYER_TRACE_ROLE_MAX         32
+#define LIS_LAYER_TRACE_DTYPE_MAX        16
 
 typedef struct {
     size_t step;
@@ -27,6 +30,17 @@ typedef struct {
     float  l2;
     int    nan;   /* 0 or 1 */
     int    inf;   /* 0 or 1 */
+    int    has_checkpoint_coordinate;
+    size_t runtime_checkpoint_step;
+    size_t layer_index;
+    char   tensor_role[LIS_LAYER_TRACE_ROLE_MAX];
+    size_t batch_index;
+    size_t sequence_index;
+    size_t stage_order;
+    size_t execution_ordinal;
+    char   observed_dtype[LIS_LAYER_TRACE_DTYPE_MAX];
+    size_t element_count;
+    lis_checkpoint_digest digest;
 } lis_layer_trace_step;
 
 typedef struct {
@@ -34,6 +48,16 @@ typedef struct {
     size_t step_count;
     size_t step_capacity;
     int    append_failed;   /* sticky: alloc, hard-cap, or string-truncation */
+    int    checkpoint_layout_supported;
+    size_t layout_runtime_checkpoint_step;
+    size_t total_layer_count;
+    size_t layer_output_count;
+    size_t digest_element_visits;
+    int    test_observation_perturbation_enabled;
+    size_t test_observation_perturbation_layer;
+    size_t test_observation_perturbation_element;
+    float  test_observation_perturbation_delta;
+    int    test_observation_perturbation_applied;
 } lis_layer_trace_record;
 
 typedef struct {
@@ -60,6 +84,17 @@ lis_status lis_layer_trace_record_init(lis_layer_trace_record *record,
 void       lis_layer_trace_record_destroy(lis_layer_trace_record *record);
 lis_status lis_layer_trace_record_append(lis_layer_trace_record *record,
                                          const lis_layer_trace_step *step);
+lis_status lis_layer_trace_record_configure_llama_layout(
+    lis_layer_trace_record *record,
+    size_t runtime_checkpoint_step,
+    size_t total_layer_count);
+int lis_layer_trace_layout_selects_layer(size_t layer_index,
+                                         size_t total_layer_count);
+lis_status lis_layer_trace_step_set_layer_output(
+    lis_layer_trace_step *step,
+    size_t layer_index,
+    const float *data,
+    size_t element_count);
 lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifact,
                                           const lis_layer_trace_record *record);
 

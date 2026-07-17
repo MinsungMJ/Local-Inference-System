@@ -22,6 +22,60 @@
 static const float LIS_CLI_REPETITION_PENALTY = 1.2f;
 
 /*
+ * Process-local test harness injection. These controls have no CLI surface,
+ * default to disabled, and are used only by the real-artifact integration
+ * test to establish a truthful Pass 2 boundary and a controlled observation
+ * mismatch without changing production executions.
+ */
+typedef struct {
+    int selected_token_override_enabled;
+    size_t selected_token_override_step;
+    size_t selected_token_override_id;
+    int observation_perturbation_enabled;
+    size_t observation_perturbation_layer;
+    size_t observation_perturbation_element;
+    float observation_perturbation_delta;
+} lis_cli_test_injection;
+
+static lis_cli_test_injection s_lis_cli_test_injection = {0};
+
+void lis_cli_test_injection_reset(void)
+{
+    memset(&s_lis_cli_test_injection, 0, sizeof(s_lis_cli_test_injection));
+}
+
+void lis_cli_test_override_selected_token(size_t step, size_t token_id)
+{
+    s_lis_cli_test_injection.selected_token_override_enabled = 1;
+    s_lis_cli_test_injection.selected_token_override_step = step;
+    s_lis_cli_test_injection.selected_token_override_id = token_id;
+}
+
+void lis_cli_test_perturb_layer_observation(size_t layer_index,
+                                            size_t element_index,
+                                            float delta)
+{
+    s_lis_cli_test_injection.observation_perturbation_enabled = 1;
+    s_lis_cli_test_injection.observation_perturbation_layer = layer_index;
+    s_lis_cli_test_injection.observation_perturbation_element = element_index;
+    s_lis_cli_test_injection.observation_perturbation_delta = delta;
+}
+
+static void lis_cli_apply_test_selected_token_override(size_t step,
+                                                       size_t vocab_size,
+                                                       size_t *token_id,
+                                                       int *should_stop)
+{
+    if (token_id != NULL && should_stop != NULL &&
+        s_lis_cli_test_injection.selected_token_override_enabled &&
+        s_lis_cli_test_injection.selected_token_override_step == step &&
+        s_lis_cli_test_injection.selected_token_override_id < vocab_size) {
+        *token_id = s_lis_cli_test_injection.selected_token_override_id;
+        *should_stop = 0;
+    }
+}
+
+/*
  * Fixed top-k candidate count for extended token-selection diagnostics.
  * This is a compile-time constant; k is not user-configurable.
  */
@@ -1529,6 +1583,8 @@ static lis_status lis_cli_emit_generated_tokens(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) {
             break;
         }
+        lis_cli_apply_test_selected_token_override(
+            step, vocab_size, &token_id, &should_stop);
         if (record != NULL) {
             status = lis_cli_execution_record_append_selected(record, token_id);
             if (status != LIS_STATUS_OK) {
@@ -1699,6 +1755,8 @@ static lis_status lis_cli_emit_decoder_tokens(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) {
             break;
         }
+        lis_cli_apply_test_selected_token_override(
+            step, vocab_size, &token_id, &should_stop);
         if (record != NULL) {
             status = lis_cli_execution_record_append_selected(record, token_id);
             if (status != LIS_STATUS_OK) {
@@ -2158,6 +2216,27 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                 lis_status_name(status));
         goto out;
     }
+    if (layer_trace_record != NULL &&
+        model.metadata.config.family == LIS_MODEL_FAMILY_LLAMA3_DECODER) {
+        status = lis_layer_trace_record_configure_llama_layout(
+            layer_trace_record, options->layer_checkpoints_step,
+            model.metadata.config.layer_count);
+        if (status != LIS_STATUS_OK) {
+            fprintf(stderr,
+                    "lis: artifact error: layer-trace layout init failed: %s\n",
+                    lis_status_name(status));
+            goto out;
+        }
+        if (s_lis_cli_test_injection.observation_perturbation_enabled) {
+            layer_trace_record->test_observation_perturbation_enabled = 1;
+            layer_trace_record->test_observation_perturbation_layer =
+                s_lis_cli_test_injection.observation_perturbation_layer;
+            layer_trace_record->test_observation_perturbation_element =
+                s_lis_cli_test_injection.observation_perturbation_element;
+            layer_trace_record->test_observation_perturbation_delta =
+                s_lis_cli_test_injection.observation_perturbation_delta;
+        }
+    }
     lis_perf_stage_end(&perf, LIS_PERF_STAGE_MODEL_LOAD, 0);
 
     /* Load input tokens: from token-ID file, LIS vocab, or HF tokenizer. */
@@ -2458,12 +2537,12 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
             goto out;
         }
         status = lis_cli_write_execution_artifact(options, &model, &batch,
-                                                   &runtime,
-                                                   has_tokenizer, backend_name,
-                                                   precision_path,
-                                                   &artifact_set_id,
-                                                   &execution_record,
-                                                   status, &perf);
+                                                  &runtime,
+                                                  has_tokenizer, backend_name,
+                                                  precision_path,
+                                                  &artifact_set_id,
+                                                  &execution_record,
+                                                  status, &perf);
         if (status != LIS_STATUS_OK) {
             fprintf(stderr,
                     "lis: artifact error: report emission failed: %s\n",

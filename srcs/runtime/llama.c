@@ -34,20 +34,45 @@ typedef struct {
 static void lis_llama_scratch_destroy(lis_llama_scratch *scratch);
 static float lis_scalar_read(lis_dtype dtype, const void *data, size_t index);
 
-static void lis_checkpoint_diagnostic(size_t step, const char *phase,
-                                       const char *name, const size_t *dims,
-                                       size_t rank, const float *data,
-                                       size_t count,
-                                       lis_runtime_context *runtime)
+static void lis_checkpoint_diagnostic_impl(size_t step, const char *phase,
+                                            const char *name,
+                                            const size_t *dims,
+                                            size_t rank, const float *data,
+                                            size_t count,
+                                            lis_runtime_context *runtime,
+                                            int is_layer_output,
+                                            size_t layer_index)
 {
     size_t i;
     lis_layer_trace_step lts = {0};
     int truncated = 0;
     lis_layer_trace_record *record =
         runtime != NULL ? runtime->layer_trace_record : NULL;
+    const float *observed_data = data;
+    float *perturbed_data = NULL;
 
     if (count == 0 || data == NULL || dims == NULL || phase == NULL) {
         return;
+    }
+
+    if (record != NULL && is_layer_output &&
+        record->test_observation_perturbation_enabled &&
+        !record->test_observation_perturbation_applied &&
+        step == record->layout_runtime_checkpoint_step &&
+        layer_index == record->test_observation_perturbation_layer &&
+        record->test_observation_perturbation_element < count &&
+        isfinite(record->test_observation_perturbation_delta) &&
+        count <= SIZE_MAX / sizeof(*perturbed_data)) {
+        perturbed_data = malloc(count * sizeof(*perturbed_data));
+        if (perturbed_data == NULL) {
+            record->append_failed = 1;
+            return;
+        }
+        memcpy(perturbed_data, data, count * sizeof(*perturbed_data));
+        perturbed_data[record->test_observation_perturbation_element] +=
+            record->test_observation_perturbation_delta;
+        observed_data = perturbed_data;
+        record->test_observation_perturbation_applied = 1;
     }
 
     lts.step = step;
@@ -59,10 +84,10 @@ static void lis_checkpoint_diagnostic(size_t step, const char *phase,
     for (i = 0; i < lts.rank; ++i) {
         lts.shape[i] = dims[i];
     }
-    lts.min = data[0];
-    lts.max = data[0];
+    lts.min = observed_data[0];
+    lts.max = observed_data[0];
     for (i = 0; i < count; ++i) {
-        float v = data[i];
+        float v = observed_data[i];
         if (isnan(v)) {
             lts.nan = 1;
         } else if (isinf(v)) {
@@ -90,9 +115,44 @@ static void lis_checkpoint_diagnostic(size_t step, const char *phase,
         if (truncated) {
             record->append_failed = 1;
         } else {
-            lis_layer_trace_record_append(record, &lts);
+            lis_status status = LIS_STATUS_OK;
+
+            if (is_layer_output) {
+                status = lis_layer_trace_step_set_layer_output(
+                    &lts, layer_index, observed_data, count);
+            }
+            if (status != LIS_STATUS_OK ||
+                lis_layer_trace_record_append(record, &lts) != LIS_STATUS_OK) {
+                record->append_failed = 1;
+            }
         }
     }
+    free(perturbed_data);
+}
+
+static void lis_checkpoint_diagnostic(size_t step, const char *phase,
+                                      const char *name, const size_t *dims,
+                                      size_t rank, const float *data,
+                                      size_t count,
+                                      lis_runtime_context *runtime)
+{
+    lis_checkpoint_diagnostic_impl(step, phase, name, dims, rank, data, count,
+                                   runtime, 0, 0U);
+}
+
+static void lis_checkpoint_layer_output_diagnostic(
+    size_t step,
+    const char *phase,
+    const char *name,
+    const size_t *dims,
+    size_t rank,
+    const float *data,
+    size_t count,
+    lis_runtime_context *runtime,
+    size_t layer_index)
+{
+    lis_checkpoint_diagnostic_impl(step, phase, name, dims, rank, data, count,
+                                   runtime, 1, layer_index);
 }
 
 static void lis_checkpoint_strided_diagnostic(size_t step, const char *phase,
@@ -314,23 +374,6 @@ static void lis_checkpoint_per_head_diagnostic(size_t step, const char *phase,
             }
         }
     }
-}
-
-static int lis_checkpoint_layer_selected(size_t layer, size_t layer_count)
-{
-    const size_t three_quarter =
-        (layer_count / 4U) * 3U + ((layer_count % 4U) * 3U) / 4U;
-
-    return layer_count != 0 &&
-           (layer == 0 ||
-            layer == 1 ||
-            layer == 2 ||
-            layer == 4 ||
-            layer == 6 ||
-            layer == layer_count / 4U ||
-            layer == layer_count / 2U ||
-            layer == three_quarter ||
-            layer + 1U == layer_count);
 }
 
 static uint16_t lis_f32_to_f16(float value)
@@ -1382,10 +1425,6 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       "layer.7.post_mlp_residual", h_dims,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
-            lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
-                                      "layer.7.output", h_dims, 1,
-                                      scratch->hidden, cfg->hidden_size,
-            runtime);
         }
         if (emit_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
@@ -1397,15 +1436,17 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         }
 
         if (emit_checkpoints &&
-            lis_checkpoint_layer_selected(layer, cfg->layer_count)) {
+            lis_layer_trace_layout_selects_layer(layer, cfg->layer_count)) {
             char name[64];
             const size_t h_dims[1] = { cfg->hidden_size };
 
             if (snprintf(name, sizeof(name), "layer.%zu.output", layer) < (int)sizeof(name)) {
-                lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
-                                          name, h_dims, 1, scratch->hidden,
-                                          cfg->hidden_size,
-            runtime);
+                if (layer == 7U && strcmp(name, "layer.7.output") != 0) {
+                    return LIS_STATUS_INVALID_ARGUMENT;
+                }
+                lis_checkpoint_layer_output_diagnostic(
+                    checkpoint_step, checkpoint_phase, name, h_dims, 1,
+                    scratch->hidden, cfg->hidden_size, runtime, layer);
             }
         }
     }

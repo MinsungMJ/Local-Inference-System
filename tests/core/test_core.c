@@ -538,6 +538,79 @@ static void test_artifact_set_id_lifecycle(void)
     }
 }
 
+static lis_layer_trace_step make_layer_output_step(size_t step_index,
+                                                   size_t layer_index,
+                                                   float value)
+{
+    lis_layer_trace_step step = {0};
+
+    step.step = step_index;
+    step.rank = 1;
+    step.shape[0] = 1;
+    snprintf(step.phase, sizeof(step.phase), "%s", "decode");
+    snprintf(step.name, sizeof(step.name), "layer.%zu.output", layer_index);
+    step.min = value;
+    step.max = value;
+    step.mean = value;
+    step.l2 = value < 0.0f ? -value : value;
+    expect_status("make layer output digest",
+                  lis_layer_trace_step_set_layer_output(
+                      &step, layer_index, &value, 1),
+                  LIS_STATUS_OK);
+    return step;
+}
+
+static void test_layer_trace_coordinate_guards(void)
+{
+    lis_layer_trace_record disabled = {0};
+    lis_layer_trace_record duplicate = {0};
+    lis_layer_trace_record nonmonotonic = {0};
+    lis_layer_trace_step layer_zero = make_layer_output_step(3, 0, 1.0f);
+    lis_layer_trace_step layer_two = make_layer_output_step(3, 2, 2.0f);
+
+    expect_status("digest disabled record init",
+                  lis_layer_trace_record_init(&disabled, 1), LIS_STATUS_OK);
+    expect_size("digest disabled element visits",
+                disabled.digest_element_visits, 0);
+    lis_layer_trace_record_destroy(&disabled);
+
+    expect_status("duplicate init",
+                  lis_layer_trace_record_init(&duplicate, 2), LIS_STATUS_OK);
+    expect_status("duplicate layout",
+                  lis_layer_trace_record_configure_llama_layout(
+                      &duplicate, 3, 4),
+                  LIS_STATUS_OK);
+    expect_status("duplicate first append",
+                  lis_layer_trace_record_append(&duplicate, &layer_zero),
+                  LIS_STATUS_OK);
+    expect_size("digest enabled element visits",
+                duplicate.digest_element_visits, 1);
+    expect_status("duplicate rejected",
+                  lis_layer_trace_record_append(&duplicate, &layer_zero),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_size("duplicate sticky failure", (size_t)duplicate.append_failed, 1);
+    expect_size("duplicate rejection adds no digest visits",
+                duplicate.digest_element_visits, 1);
+    lis_layer_trace_record_destroy(&duplicate);
+
+    expect_status("nonmonotonic init",
+                  lis_layer_trace_record_init(&nonmonotonic, 2),
+                  LIS_STATUS_OK);
+    expect_status("nonmonotonic layout",
+                  lis_layer_trace_record_configure_llama_layout(
+                      &nonmonotonic, 3, 4),
+                  LIS_STATUS_OK);
+    expect_status("nonmonotonic first append",
+                  lis_layer_trace_record_append(&nonmonotonic, &layer_two),
+                  LIS_STATUS_OK);
+    expect_status("nonmonotonic rejected",
+                  lis_layer_trace_record_append(&nonmonotonic, &layer_zero),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_size("nonmonotonic sticky failure",
+                (size_t)nonmonotonic.append_failed, 1);
+    lis_layer_trace_record_destroy(&nonmonotonic);
+}
+
 int main(void)
 {
     test_dtype();
@@ -550,6 +623,7 @@ int main(void)
     test_layer_trace_record_overflow();
     test_checkpoint_digest_vectors();
     test_artifact_set_id_lifecycle();
+    test_layer_trace_coordinate_guards();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d core test failure(s)\n", g_failures);

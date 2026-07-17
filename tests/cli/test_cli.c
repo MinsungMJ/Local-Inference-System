@@ -1,4 +1,5 @@
 #include "lis/cli.h"
+#include "lis/artifact.h"
 
 #include "lis/status.h"
 #include "lis/tokenizer.h"
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 static int g_failures;
@@ -452,8 +454,12 @@ static int append_safetensors_header_tensor(char *header,
     return 1;
 }
 
-static lis_status write_llama_checkpoint_fixture(const char *path,
-                                                 size_t layer_count)
+static lis_status write_llama_checkpoint_fixture_with_embeddings(
+    const char *path,
+    size_t layer_count,
+    float embedding0,
+    float embedding1,
+    float embedding2)
 {
     const size_t header_cap = 65536U;
     size_t value_count;
@@ -487,9 +493,9 @@ static lis_status write_llama_checkpoint_fixture(const char *path,
         free(data);
         return LIS_STATUS_OVERFLOW;
     }
-    data[data_index++] = 1.0f;
-    data[data_index++] = 2.0f;
-    data[data_index++] = 3.0f;
+    data[data_index++] = embedding0;
+    data[data_index++] = embedding1;
+    data[data_index++] = embedding2;
 
     for (layer = 0; layer < layer_count; ++layer) {
         char name[128];
@@ -617,6 +623,13 @@ static lis_status write_llama_checkpoint_fixture(const char *path,
     free(header);
     free(data);
     return status;
+}
+
+static lis_status write_llama_checkpoint_fixture(const char *path,
+                                                 size_t layer_count)
+{
+    return write_llama_checkpoint_fixture_with_embeddings(
+        path, layer_count, 1.0f, 2.0f, 3.0f);
 }
 
 static void test_cli_llama_instruct_prompt_builder(void)
@@ -1849,6 +1862,7 @@ static void test_cli_hf_qwen3_forward_path(void)
     const char *tokenizer_path = "srcs/libs/test_cli_qwen3_tokenizer.json";
     const char *stdout_path = "srcs/libs/test_cli_qwen3.out";
     const char *stderr_path = "srcs/libs/test_cli_qwen3.err";
+    const char *layer_trace_path = "srcs/libs/test_cli_qwen3_layer.json";
     const char *config_json =
         "{\"architectures\":[\"Qwen3ForCausalLM\"],"
         "\"model_type\":\"qwen3\",\"num_hidden_layers\":1,"
@@ -1915,6 +1929,8 @@ static void test_cli_hf_qwen3_forward_path(void)
         "--context", "4",
         "--batch", "1",
         "--generate", "1",
+        "--layer-checkpoints", "0",
+        "--layer-trace-json", "srcs/libs/test_cli_qwen3_layer.json",
     };
     char *argv_text[] = {
         "lis",
@@ -1934,6 +1950,7 @@ static void test_cli_hf_qwen3_forward_path(void)
     remove(tokenizer_path);
     remove(stdout_path);
     remove(stderr_path);
+    remove(layer_trace_path);
     if (system("mkdir -p srcs/libs/test_cli_qwen3") != 0) {
         fprintf(stderr, "mkdir qwen3 cli fixture failed\n");
         ++g_failures;
@@ -1951,11 +1968,21 @@ static void test_cli_hf_qwen3_forward_path(void)
                   write_text_file(tokenizer_path, tokenizer_json),
                   LIS_STATUS_OK);
     expect_int("cli qwen3 direct token path",
-               run_cli_capture(13, argv_tokens, stdout_path, stderr_path), 0);
+               run_cli_capture(17, argv_tokens, stdout_path, stderr_path), 0);
     expect_file_contains("cli qwen3 token stdout", stdout_path,
                          "generated_token_ids:");
+    expect_file_contains("cli qwen3 legacy trace kind", layer_trace_path,
+                         "\"kind\":\"layer_trace\"");
+    expect_file_contains("cli qwen3 trace role remains q norm",
+                         layer_trace_path, "qwen3.layer.0.q_after_q_norm");
+    expect_file_not_contains("cli qwen3 has no llama checkpoint layout",
+                             layer_trace_path, "\"checkpoint_layout\"");
+    expect_file_not_contains("cli qwen3 q norm not layer output",
+                             layer_trace_path,
+                             "\"tensor_role\":\"layer_output\"");
     remove(stdout_path);
     remove(stderr_path);
+    remove(layer_trace_path);
     expect_int("cli qwen3 plain text tokenizer path",
                run_cli_capture(16, argv_text, stdout_path, stderr_path), 0);
     expect_file_contains("cli qwen3 diagnostics backend", stderr_path,
@@ -2867,7 +2894,7 @@ static void test_cli_layer_checkpoints(void)
         expect_file_equals("layer chk stdout unchanged", stdout_path,
                            "generated_token_ids: 0 0 0 0\n");
         expect_file_occurrences("layer chk one checkpoint set", stderr_path,
-                                "lis: layer-checkpoint ", 80);
+                                "lis: layer-checkpoint ", 79);
         snprintf(expected, sizeof(expected),
                  "lis: layer-checkpoint step=%zu phase=%s name=embedding shape=[1]",
                  step, step_phases[step]);
@@ -2946,11 +2973,8 @@ static void test_cli_layer_checkpoints(void)
                  step, step_phases[step]);
         expect_file_contains("layer chk layer 7 post mlp residual",
                              stderr_path, expected);
-        snprintf(expected, sizeof(expected),
-                 "lis: layer-checkpoint step=%zu phase=%s name=layer.7.output shape=[1]",
-                 step, step_phases[step]);
-        expect_file_contains("layer chk layer 7 output", stderr_path,
-                             expected);
+        expect_file_not_contains("layer chk duplicate layer 7 output",
+                                 stderr_path, "name=layer.7.output shape=");
         snprintf(expected, sizeof(expected),
                  "lis: layer-checkpoint step=%zu phase=%s name=layer.8.input shape=[1]",
                  step, step_phases[step]);
