@@ -38,6 +38,7 @@ typedef struct {
 
 typedef struct {
     const char *path;
+    const lis_artifact_set_id *artifact_set_id;
     const char *model_format_name;
     const char *model_family_name;
     const char *backend_name;

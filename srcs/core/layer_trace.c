@@ -156,7 +156,9 @@ lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifa
     if (record->append_failed != 0) {
         return LIS_STATUS_OVERFLOW;
     }
-    if (!artifact->binary_fingerprint.valid ||
+    if (artifact->artifact_set_id == NULL ||
+        !artifact->artifact_set_id->valid ||
+        !artifact->binary_fingerprint.valid ||
         !artifact->model_fingerprint.valid ||
         !artifact->config_fingerprint.valid ||
         !artifact->input_fingerprint.valid ||
@@ -172,8 +174,9 @@ lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifa
 
     fprintf(fp,
             "{\"schema\":\"lis.execution_artifact/v1\","
-            "\"kind\":\"layer_trace\","
-            "\"manifest\":{");
+            "\"kind\":\"layer_trace\",\"artifact_set_id\":");
+    lis_layer_trace_write_json_string(fp, artifact->artifact_set_id->value);
+    fputs(",\"manifest\":{", fp);
     fprintf(fp, "\"retention_policy\":{"
             "\"absolute_paths\":\"omitted\","
             "\"raw_prompt_text\":\"omitted\","

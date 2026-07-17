@@ -1,8 +1,10 @@
 #include "lis/artifact.h"
 
 #include <inttypes.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/random.h>
 
 #define LIS_ARTIFACT_FNV64_OFFSET UINT64_C(14695981039346656037)
 #define LIS_ARTIFACT_FNV64_PRIME UINT64_C(1099511628211)
@@ -10,6 +12,73 @@
 static uint64_t lis_artifact_hash_init(void)
 {
     return LIS_ARTIFACT_FNV64_OFFSET;
+}
+
+static lis_status lis_artifact_os_random_source(void *context,
+                                                unsigned char *buffer,
+                                                size_t size)
+{
+    size_t offset = 0;
+
+    (void)context;
+    if (buffer == NULL || size == 0U) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    while (offset < size) {
+        ssize_t got = getrandom(buffer + offset, size - offset, 0);
+
+        if (got < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return LIS_STATUS_IO;
+        }
+        if (got == 0) {
+            return LIS_STATUS_IO;
+        }
+        offset += (size_t)got;
+    }
+    return LIS_STATUS_OK;
+}
+
+lis_status lis_artifact_set_id_generate_with_source(
+    lis_artifact_set_id *out,
+    lis_artifact_random_source_fn source,
+    void *source_context)
+{
+    static const char hex[] = "0123456789abcdef";
+    unsigned char random_bytes[LIS_ARTIFACT_SET_ID_RANDOM_BYTES];
+    size_t index;
+    lis_status status;
+
+    if (out == NULL || source == NULL) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+    status = source(source_context, random_bytes, sizeof(random_bytes));
+    if (status != LIS_STATUS_OK) {
+        memset(random_bytes, 0, sizeof(random_bytes));
+        return status;
+    }
+    memcpy(out->value, LIS_ARTIFACT_SET_ID_PREFIX,
+           sizeof(LIS_ARTIFACT_SET_ID_PREFIX) - 1U);
+    for (index = 0; index < sizeof(random_bytes); ++index) {
+        const size_t output_index =
+            sizeof(LIS_ARTIFACT_SET_ID_PREFIX) - 1U + index * 2U;
+
+        out->value[output_index] = hex[random_bytes[index] >> 4U];
+        out->value[output_index + 1U] = hex[random_bytes[index] & 0x0fU];
+    }
+    out->value[LIS_ARTIFACT_SET_ID_LEN] = '\0';
+    out->valid = 1;
+    memset(random_bytes, 0, sizeof(random_bytes));
+    return LIS_STATUS_OK;
+}
+
+lis_status lis_artifact_set_id_generate(lis_artifact_set_id *out)
+{
+    return lis_artifact_set_id_generate_with_source(
+        out, lis_artifact_os_random_source, NULL);
 }
 
 static const char *lis_artifact_model_format_name(lis_model_format format)
@@ -557,6 +626,7 @@ lis_status lis_artifact_write_run_report_md(
     char hex[LIS_ARTIFACT_DIGEST_HEX_LEN + 1U];
 
     if (report == NULL || report->path == NULL || report->options == NULL ||
+        report->artifact_set_id == NULL || !report->artifact_set_id->valid ||
         report->model == NULL || report->model_format_name == NULL ||
         report->model_family_name == NULL || report->backend_name == NULL ||
         report->stop_reason_name == NULL || report->prompt_sequences == NULL ||
@@ -594,6 +664,7 @@ lis_status lis_artifact_write_run_report_md(
     fprintf(fp, "\n## Identity\n\n");
     fprintf(fp, "- Schema: `%s`\n", LIS_ARTIFACT_SCHEMA);
     fprintf(fp, "- Kind: `run_report`\n");
+    fprintf(fp, "- Artifact set: `%s`\n", report->artifact_set_id->value);
     fprintf(fp, "- Model format: %s\n", report->model_format_name);
     fprintf(fp, "- Model family: %s\n", report->model_family_name);
     fprintf(fp, "- Backend: %s\n", report->backend_name);
@@ -687,6 +758,7 @@ lis_status lis_artifact_write_run_report(
     size_t index;
 
     if (report == NULL || report->path == NULL || report->options == NULL ||
+        report->artifact_set_id == NULL || !report->artifact_set_id->valid ||
         report->model == NULL || report->model_format_name == NULL ||
         report->model_family_name == NULL || report->backend_name == NULL ||
         report->stop_reason_name == NULL || report->prompt_sequences == NULL ||
@@ -711,7 +783,9 @@ lis_status lis_artifact_write_run_report(
     }
 
     fputs("{\"schema\":\"" LIS_ARTIFACT_SCHEMA "\",\"kind\":\"run_report\","
-          "\"manifest\":{", fp);
+          "\"artifact_set_id\":", fp);
+    lis_artifact_write_json_string(fp, report->artifact_set_id->value);
+    fputs(",\"manifest\":{", fp);
     fputs("\"retention_policy\":{"
           "\"absolute_paths\":\"omitted\","
           "\"raw_prompt_text\":\"omitted\","

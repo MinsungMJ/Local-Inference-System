@@ -476,6 +476,68 @@ static void test_checkpoint_digest_vectors(void)
     }
 }
 
+static lis_status deterministic_random_source(void *context,
+                                              unsigned char *buffer,
+                                              size_t size)
+{
+    size_t index;
+
+    (void)context;
+    for (index = 0; index < size; ++index) {
+        buffer[index] = (unsigned char)index;
+    }
+    return LIS_STATUS_OK;
+}
+
+static lis_status failing_random_source(void *context,
+                                        unsigned char *buffer,
+                                        size_t size)
+{
+    (void)context;
+    (void)buffer;
+    (void)size;
+    return LIS_STATUS_IO;
+}
+
+static void test_artifact_set_id_lifecycle(void)
+{
+    lis_artifact_set_id deterministic = {{0}, 0};
+    lis_artifact_set_id failed = {{0}, 0};
+    lis_artifact_set_id first = {{0}, 0};
+    lis_artifact_set_id second = {{0}, 0};
+
+    expect_status("artifact set deterministic",
+                  lis_artifact_set_id_generate_with_source(
+                      &deterministic, deterministic_random_source, NULL),
+                  LIS_STATUS_OK);
+    if (!deterministic.valid ||
+        strcmp(deterministic.value,
+               "aset1:000102030405060708090a0b0c0d0e0f") != 0) {
+        fprintf(stderr, "artifact set deterministic bytes changed: %s\n",
+                deterministic.value);
+        ++g_failures;
+    }
+    expect_status("artifact set failure",
+                  lis_artifact_set_id_generate_with_source(
+                      &failed, failing_random_source, NULL),
+                  LIS_STATUS_IO);
+    expect_size("artifact set failure invalid", (size_t)failed.valid, 0);
+    expect_size("artifact set failure empty", strlen(failed.value), 0);
+
+    expect_status("artifact set os first",
+                  lis_artifact_set_id_generate(&first), LIS_STATUS_OK);
+    expect_status("artifact set os second",
+                  lis_artifact_set_id_generate(&second), LIS_STATUS_OK);
+    expect_size("artifact set os first length", strlen(first.value),
+                LIS_ARTIFACT_SET_ID_LEN);
+    expect_size("artifact set os second length", strlen(second.value),
+                LIS_ARTIFACT_SET_ID_LEN);
+    if (strcmp(first.value, second.value) == 0) {
+        fprintf(stderr, "artifact set bounded sample unexpectedly collided\n");
+        ++g_failures;
+    }
+}
+
 int main(void)
 {
     test_dtype();
@@ -487,6 +549,7 @@ int main(void)
     test_layer_trace_record_growth();
     test_layer_trace_record_overflow();
     test_checkpoint_digest_vectors();
+    test_artifact_set_id_lifecycle();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d core test failure(s)\n", g_failures);

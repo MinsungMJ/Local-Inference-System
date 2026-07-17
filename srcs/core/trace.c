@@ -129,6 +129,8 @@ lis_status lis_trace_artifact_write(const lis_trace_artifact *artifact,
     size_t index;
 
     if (artifact == NULL || artifact->path == NULL ||
+        artifact->artifact_set_id == NULL ||
+        !artifact->artifact_set_id->valid ||
         artifact->options == NULL || artifact->model == NULL ||
         record == NULL || record->steps == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
@@ -149,8 +151,9 @@ lis_status lis_trace_artifact_write(const lis_trace_artifact *artifact,
 
     fprintf(fp,
             "{\"schema\":\"lis.execution_artifact/v1\","
-            "\"kind\":\"decode_trace\","
-            "\"manifest\":{");
+            "\"kind\":\"decode_trace\",\"artifact_set_id\":");
+    lis_trace_write_json_string(fp, artifact->artifact_set_id->value);
+    fputs(",\"manifest\":{", fp);
     fprintf(fp, "\"retention_policy\":{"
             "\"absolute_paths\":\"omitted\","
             "\"raw_prompt_text\":\"omitted\","

@@ -494,6 +494,7 @@ static lis_status lis_cli_write_execution_artifact(
     int has_tokenizer,
     const char *backend_name,
     const char *precision_path,
+    const lis_artifact_set_id *artifact_set_id,
     const lis_cli_execution_record *record,
     lis_status run_status,
     const lis_perf_report *perf)
@@ -512,7 +513,8 @@ static lis_status lis_cli_write_execution_artifact(
     if (options == NULL ||
         (options->report_json_path == NULL && options->report_md_path == NULL) ||
         model == NULL || batch == NULL || backend_name == NULL ||
-        runtime == NULL || record == NULL) {
+        runtime == NULL || artifact_set_id == NULL ||
+        !artifact_set_id->valid || record == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 
@@ -588,6 +590,7 @@ static lis_status lis_cli_write_execution_artifact(
 
     stop_reason_name = lis_cli_stop_reason_name(record->stop_reason);
     report.model_format_name = lis_model_format_name(model->format);
+    report.artifact_set_id = artifact_set_id;
     report.model_family_name = lis_model_family_name(model->metadata.config.family);
     report.backend_name = backend_name;
     report.precision_path = precision_path;
@@ -1307,6 +1310,7 @@ static lis_status lis_cli_write_trace_artifact(
     int has_tokenizer,
     const char *backend_name,
     const char *precision_path,
+    const lis_artifact_set_id *artifact_set_id,
     const lis_trace_record *trace_record)
 {
     lis_trace_artifact artifact = { 0 };
@@ -1317,6 +1321,7 @@ static lis_status lis_cli_write_trace_artifact(
 
     if (options == NULL || options->trace_json_path == NULL ||
         model == NULL || batch == NULL || backend_name == NULL ||
+        artifact_set_id == NULL || !artifact_set_id->valid ||
         trace_record == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
@@ -1334,6 +1339,7 @@ static lis_status lis_cli_write_trace_artifact(
     }
 
     artifact.path = options->trace_json_path;
+    artifact.artifact_set_id = artifact_set_id;
     artifact.model_format_name = lis_model_format_name(model->format);
     artifact.model_family_name = lis_model_family_name(model->metadata.config.family);
     artifact.backend_name = backend_name;
@@ -1389,6 +1395,7 @@ static lis_status lis_cli_write_layer_trace_artifact(
     int has_tokenizer,
     const char *backend_name,
     const char *precision_path,
+    const lis_artifact_set_id *artifact_set_id,
     const lis_layer_trace_record *layer_trace_record)
 {
     lis_layer_trace_artifact artifact = { 0 };
@@ -1399,6 +1406,7 @@ static lis_status lis_cli_write_layer_trace_artifact(
 
     if (options == NULL || options->layer_trace_json_path == NULL ||
         model == NULL || batch == NULL || backend_name == NULL ||
+        artifact_set_id == NULL || !artifact_set_id->valid ||
         layer_trace_record == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
@@ -1416,6 +1424,7 @@ static lis_status lis_cli_write_layer_trace_artifact(
     }
 
     artifact.path = options->layer_trace_json_path;
+    artifact.artifact_set_id = artifact_set_id;
     artifact.model_format_name = lis_model_format_name(model->format);
     artifact.model_family_name = lis_model_family_name(model->metadata.config.family);
     artifact.backend_name = backend_name;
@@ -2035,6 +2044,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     lis_perf_report perf = { 0 };
     lis_layer_trace_record layer_trace_record_data = { 0 };
     lis_layer_trace_record *layer_trace_record = NULL;
+    lis_artifact_set_id artifact_set_id = {{0}, 0};
     const char *backend_name = NULL;
     char precision_path[64];
     lis_status status;
@@ -2058,6 +2068,15 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                 "lis: artifact error: --layer-trace-json requires "
                 "--layer-checkpoints\n");
         return LIS_STATUS_INVALID_ARGUMENT;
+    }
+
+    status = lis_artifact_set_id_generate(&artifact_set_id);
+    if (status != LIS_STATUS_OK) {
+        fprintf(stderr,
+                "lis: artifact association error: operating-system random "
+                "source failed before inference: %s\n",
+                lis_status_name(status));
+        return status;
     }
 
     artifact_requested = options->report_json_path != NULL || options->report_md_path != NULL;
@@ -2439,11 +2458,12 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
             goto out;
         }
         status = lis_cli_write_execution_artifact(options, &model, &batch,
-                                                  &runtime,
-                                                  has_tokenizer, backend_name,
-                                                  precision_path,
-                                                  &execution_record,
-                                                  status, &perf);
+                                                   &runtime,
+                                                   has_tokenizer, backend_name,
+                                                   precision_path,
+                                                   &artifact_set_id,
+                                                   &execution_record,
+                                                   status, &perf);
         if (status != LIS_STATUS_OK) {
             fprintf(stderr,
                     "lis: artifact error: report emission failed: %s\n",
@@ -2460,6 +2480,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
         trace_status = lis_cli_write_trace_artifact(
             options, &model, &batch, has_tokenizer, backend_name,
             precision_path,
+            &artifact_set_id,
             trace_record);
         if (trace_status != LIS_STATUS_OK) {
             fprintf(stderr,
@@ -2485,6 +2506,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
             layer_trace_status = lis_cli_write_layer_trace_artifact(
                 options, &model, &batch, has_tokenizer, backend_name,
                 precision_path,
+                &artifact_set_id,
                 layer_trace_record);
             if (layer_trace_status != LIS_STATUS_OK) {
                 fprintf(stderr,
@@ -2509,6 +2531,7 @@ out:
         artifact_status = lis_cli_write_execution_artifact(
             options, &model, &batch, &runtime, has_tokenizer, backend_name,
             precision_path,
+            &artifact_set_id,
             &execution_record, status, &perf);
         if (artifact_status != LIS_STATUS_OK) {
             fprintf(stderr,

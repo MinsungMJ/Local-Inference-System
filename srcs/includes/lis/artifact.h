@@ -12,6 +12,20 @@
 
 #define LIS_ARTIFACT_SCHEMA "lis.execution_artifact/v1"
 #define LIS_ARTIFACT_DIGEST_HEX_LEN 16
+#define LIS_ARTIFACT_SET_ID_RANDOM_BYTES 16
+#define LIS_ARTIFACT_SET_ID_HEX_LEN 32
+#define LIS_ARTIFACT_SET_ID_PREFIX "aset1:"
+#define LIS_ARTIFACT_SET_ID_LEN 38
+
+typedef struct {
+    char value[LIS_ARTIFACT_SET_ID_LEN + 1U];
+    int valid;
+} lis_artifact_set_id;
+
+typedef lis_status (*lis_artifact_random_source_fn)(
+    void *context,
+    unsigned char *buffer,
+    size_t size);
 
 typedef struct {
     uint64_t digest;
@@ -52,6 +66,7 @@ typedef struct {
 
 typedef struct {
     const char *path;
+    const lis_artifact_set_id *artifact_set_id;
     const char *model_format_name;
     const char *model_family_name;
     const char *backend_name;
@@ -85,6 +100,12 @@ const char *lis_artifact_output_mode_name(lis_artifact_output_mode mode);
 
 void lis_artifact_digest_hex(const lis_artifact_fingerprint *fingerprint,
                              char out_hex[LIS_ARTIFACT_DIGEST_HEX_LEN + 1U]);
+
+lis_status lis_artifact_set_id_generate(lis_artifact_set_id *out);
+lis_status lis_artifact_set_id_generate_with_source(
+    lis_artifact_set_id *out,
+    lis_artifact_random_source_fn source,
+    void *source_context);
 
 lis_status lis_artifact_fingerprint_file(const char *path,
                                          lis_artifact_fingerprint *out);

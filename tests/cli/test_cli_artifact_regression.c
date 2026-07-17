@@ -869,8 +869,39 @@ static void test_cli_artifact_regression_trace_determinism(void)
     char *la = read_file_content(layer_a);
     char *lb = read_file_content(layer_b);
     
-    expect_string_equals("artifact_regression_det trace eq", ta, ta ? strlen(ta) : 0, tb ? tb : "");
-    expect_string_equals("artifact_regression_det layer eq", la, la ? strlen(la) : 0, lb ? lb : "");
+    if (ta && tb && la && lb) {
+        static const char marker[] = "\"artifact_set_id\":\"aset1:";
+        char *ta_id = strstr(ta, marker);
+        char *tb_id = strstr(tb, marker);
+        char *la_id = strstr(la, marker);
+        char *lb_id = strstr(lb, marker);
+        const size_t prefix_len = sizeof(marker) - 1U;
+
+        if (!ta_id || !tb_id || !la_id || !lb_id) {
+            fprintf(stderr, "artifact_regression_det artifact-set ID missing\n");
+            g_failures++;
+        } else {
+            if (memcmp(ta_id + prefix_len, la_id + prefix_len, 32U) != 0 ||
+                memcmp(tb_id + prefix_len, lb_id + prefix_len, 32U) != 0) {
+                fprintf(stderr,
+                        "artifact_regression_det same-execution IDs differ\n");
+                g_failures++;
+            }
+            if (memcmp(ta_id + prefix_len, tb_id + prefix_len, 32U) == 0) {
+                fprintf(stderr,
+                        "artifact_regression_det separate executions reused ID\n");
+                g_failures++;
+            }
+            memset(ta_id + prefix_len, '0', 32U);
+            memset(tb_id + prefix_len, '0', 32U);
+            memset(la_id + prefix_len, '0', 32U);
+            memset(lb_id + prefix_len, '0', 32U);
+        }
+    }
+    expect_string_equals("artifact_regression_det trace eq except ID",
+                         ta, ta ? strlen(ta) : 0, tb ? tb : "");
+    expect_string_equals("artifact_regression_det layer eq except ID",
+                         la, la ? strlen(la) : 0, lb ? lb : "");
     
     const char *forbidden[] = {
         "timestamp", "created_at", "wall_", "clock_", "epoch", "unix_",
