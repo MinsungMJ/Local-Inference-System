@@ -265,37 +265,64 @@ Trace artifact writing is fail-closed:
 
 ## Layer-Trace Artifact
 
-LIS supports a compact `layer_trace` artifact emitted via `--layer-trace-json PATH`
-when `--layer-checkpoints` is also enabled:
+LIS supports a bounded `layer_trace` artifact emitted through
+`--layer-trace-json PATH` when `--layer-checkpoints` is also enabled.
 
-- The schema string is `lis.execution_artifact/v1`, the same as `run_report`
-  and `decode_trace`.
-- The kind is `layer_trace`.
-- The top-level object order is `schema`, `kind`, `manifest`, then
-  `layer_trace`.
-- The artifact contains the same manifest shape as `decode_trace` and
-  `run_report`: retention policy, binary, model, config, input, runtime, and
-  backend identity through bounded fingerprints.
-- `manifest.runtime.precision_path` is present and uses the same canonical
-  semicolon-delimited value as the other trace artifacts.
-- The artifact carries a `layer_trace` array instead of a `report` object or a
-  `decode_trace` array.
+All layer traces include:
+
+- schema `lis.execution_artifact/v1`,
+- kind `layer_trace`,
+- an `artifact_set_id` shared with sibling artifacts from the same CLI
+  execution,
+- the bounded semantic manifest used by `run_report` and `decode_trace`,
+- a `layer_trace` array of checkpoint summaries.
+
+The `artifact_set_id` associates artifacts emitted by one CLI execution. It is
+not a content hash and does not replace canonical content identity or semantic
+compatibility checks.
+
+For supported Llama executions, the artifact also includes a versioned
+layer-output checkpoint layout. The layout declares the runtime checkpoint
+step, total layer count, requested coordinates, captured coordinates, stateful
+missing coordinates, execution ordering, available summary fields,
+duplicate-coordinate policy, and representation-digest contract. Qwen3 and
+legacy layer traces remain valid execution artifacts but do not provide a
+supported layer-localization layout.
 
 ### Layer-Trace Entries
 
-Each entry in the `layer_trace` array represents one stat-bearing
-tensor-summary `lis: layer-checkpoint` line and contains:
+Every `layer_trace` entry retains these bounded summary fields:
 
-- `step` — generation/checkpoint step
-- `phase` — checkpoint phase such as `prefill` or `decode`
-- `name` — checkpoint tensor name
-- `shape` — tensor shape dimensions
-- `min` — minimum value, or `null` for non-finite values
-- `max` — maximum value, or `null` for non-finite values
-- `mean` — mean value, or `null` for non-finite values
-- `l2` — L2 norm, or `null` for non-finite values
-- `nan` — `0` or `1` companion flag
-- `inf` — `0` or `1` companion flag
+- `step`,
+- `phase`,
+- `name`,
+- `shape`,
+- `min`,
+- `max`,
+- `mean`,
+- `l2`,
+- `nan`,
+- `inf`.
+
+Entries in the versioned Llama layer-output layout additionally carry explicit
+semantic coordinates and evidence metadata:
+
+- `runtime_checkpoint_step`,
+- `layer_index`,
+- `tensor_role`,
+- `batch_index`,
+- `sequence_index`,
+- `stage_order`,
+- `execution_ordinal`,
+- `observed_dtype`,
+- `element_count`,
+- `available_summary_fields`,
+- a SHA-256 representation-digest envelope and value.
+
+These fields support strict coverage, alignment, ordering, and bounded digest
+comparison without including full tensor payloads. Legacy entries that lack
+the versioned layout remain readable as execution artifacts but are not
+accepted for coverage-scoped layer localization.
 
 The scalar value-only `attn_scale` checkpoint remains stderr-only. It lacks
 shape/min/max/mean/l2 tensor-summary semantics, is not routed through the
@@ -380,8 +407,24 @@ Current LIS Inspect limitation:
   visualize KV cache data. That is deferred to a separate Inspect-owned future
   work item.
 
-The approved design contract for differential verification is documented in
-`docs/differential_verification.md`. It defines a planned `verification_report`
-artifact kind under `lis.execution_artifact/v1`. The feature remains planned and
-is not yet part of the currently implemented runtime, CLI, verification, or
-artifact surface.
+## Differential-Verification Tooling Boundary
+
+The C CLI emits the supported `run_report`, `decode_trace`, and `layer_trace`
+execution artifacts through the existing artifact flags. Supported Llama layer
+traces may include the versioned layer-output checkpoint layout with explicit
+coverage, execution ordering, and representation digests.
+
+The `lis_verify` Python tooling can consume compatible, source-bound artifacts
+for token mismatch localization, mismatch-boundary reproduction, and
+coverage-scoped Llama layer localization. Localization is currently a Python
+library/tooling surface, not a standalone CLI command.
+
+Layer-localization results identify the earliest observed mismatching Llama
+layer-output checkpoint only within validated common captured coverage. They
+are bounded diagnostic evidence, not tensor-equality or
+confirmed-first-divergence claims. Qwen3 inference support does not imply Qwen3
+layer-localization support.
+
+See [Differential Verification](differential_verification.md) for the staged
+contracts, evidence semantics, source-binding requirements, coverage algebra,
+statuses, and nonclaims.

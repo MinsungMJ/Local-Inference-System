@@ -4,20 +4,31 @@
 
 > **Correctness first. Transparency always.**
 
-LIS is a CPU-only local inference runtime for causal decoder-only models, built for engineers and researchers who need a system they can inspect, validate, reproduce, and optimise with confidence. It prioritises correctness, clear diagnostics, reproducibility, and performance transparency over broad feature coverage.
+LIS is a CPU-only local inference runtime for causal decoder-only models, built for engineers and researchers who need a system they can inspect, validate, reproduce, and optimise with confidence. It prioritises correctness, clear diagnostics, reproducibility, differential verification, and performance transparency over broad feature coverage.
 
 LIS is an independent personal project. The initial codebase is personally authored.
 
 ## Key Properties
 
-- **Correctness-first** — reference execution path with verified token parity
+- **Correctness-first** — reference execution path with verified token parity and token mismatch localisation
 - **Inspectability** — opt-in machine-readable execution artifacts and diagnostics
-- **Reproducibility** — bounded, versioned run reports with content-addressable fingerprints
+- **Differential verification** — verified mismatch-boundary reproduction and coverage-scoped Llama layer localisation
+- **Reproducibility** — bounded, versioned, source-bound execution artifacts with canonical content identities
 - **Performance transparency** — opt-in per-stage and per-token wall-clock instrumentation
 - **Artifact-friendly execution** — structured JSON reports, Markdown companions, and diagnostic traces without telemetry or uploads
 - **Conservative support boundaries** — documented subset, explicit rejection of unsupported inputs
 
+## Differential Verification
+
+The workflow localises a selected-token mismatch, verifies its prompt, generated-prefix, decode-policy, context, and target-checkpoint boundary, then compares source-bound Llama layer-output summaries from two verified comparable executions.
+
+LIS can identify the earliest observed mismatching Llama layer-output checkpoint within common captured coverage and report a bounded suspect interval. Sparse capture remains explicit, so the interval may contain uncaptured layers.
+
+This is bounded diagnostic evidence. It does not prove tensor equality, confirm the first numeric divergence, or localise an uncaptured operation. See [Differential Verification](docs/differential_verification.md) for the detailed contract and [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md) for artifact generation and handling.
+
 ## Supported Scope
+
+### Runtime and Model Support
 
 - CPU-only local execution
 - Causal decoder-only models within the documented plain-RoPE Llama-family scope
@@ -31,6 +42,12 @@ LIS is an independent personal project. The initial codebase is personally autho
 - Greedy decode only
 - Opt-in artifact and diagnostic outputs
 - LIS Inspect currently supports `run_report` JSON and optional perf stderr logs
+
+### Differential-Verification Support
+
+- Token mismatch localisation and mismatch-boundary reproduction require semantically compatible, source-bound execution artifacts.
+- Coverage-scoped layer localisation supports the versioned Llama layer-output trace layout with matching precision paths.
+- Qwen3 inference support does not imply layer-localisation support. Qwen3 and legacy layer-trace layouts are unsupported for this comparison.
 
 ## Unsupported / Non-Goals
 
@@ -111,15 +128,15 @@ All artifact and diagnostic surfaces are opt-in.
 
 | Flag | Purpose |
 |---|---|
-| `--report-json PATH` | Canonical machine-readable execution artifact (`lis.execution_artifact/v1`) |
+| `--report-json PATH` | Canonical machine-readable `run_report` execution artifact (`lis.execution_artifact/v1`) |
 | `--report-md PATH` | Human-readable Markdown companion report |
-| `--trace-json PATH` | Bounded decode-step trace artifact |
-| `--layer-trace-json PATH` | Compact per-layer / per-stage trace artifact (requires `--layer-checkpoints`) |
+| `--trace-json PATH` | Bounded `decode_trace` artifact with decode-step token evidence |
+| `--layer-trace-json PATH` | Bounded `layer_trace` artifact; the supported Llama layout records checkpoint coverage, execution order, and representation digests (requires `--layer-checkpoints`) |
 | `--diagnostics` | Opt-in generation diagnostics to stderr |
 | `--perf` | Per-stage wall-clock timings and summary to stderr |
 | `--perf-per-token` | Implies `--perf`; adds per-decode-step latency lines |
 | `--forced-prefix "ID ..."` | Forced token IDs for diagnostic comparison |
-| `--layer-checkpoints STEP` | Layer checkpoint stats at the given step |
+| `--layer-checkpoints STEP` | Capture bounded layer checkpoint summaries at runtime checkpoint `STEP` (`0` = prefill) |
 
 ### Stderr Surfaces
 
@@ -132,8 +149,13 @@ All artifact and diagnostic surfaces are opt-in.
 
 - `report.kv_cache` — deterministic KV cache structural accounting
 - `manifest.runtime.precision_path` — run precision summary in `f32_accum;weights=<dtype>;kv=<dtype>` form
+- `artifact_set_id` — probabilistic association shared by sibling artifacts from one CLI execution. It is not a content hash.
+- `checkpoint_layout.requested_coordinates`, `captured_coordinates`, and `missing_coordinates` — explicit Llama checkpoint coverage, including missing-state metadata
+- `checkpoint_layout.ordering_semantics` and `digest_contract` — declared execution ordering and bounded observed-representation digest rules
 
-The JSON `run_report` is the canonical machine-readable source of truth. The Markdown report is a human-readable companion. `decode_trace` and `layer_trace` are bounded artifact outputs; current LIS Inspect is not required to render them.
+The JSON `run_report` is the canonical machine-readable source of truth. The Markdown report is a human-readable companion. Canonical SHA-256 identifies artifact content, while semantic manifest identity establishes execution and configuration compatibility. The verification tooling validates these roles and each artifact's same-execution association before comparing checkpoint summaries.
+
+`decode_trace` and `layer_trace` are bounded artifact outputs. The resulting `layer_localization` artifact records common coverage, digest decisions, and any suspect interval without embedding full tensor payloads. LIS Inspect currently supports `run_report` only; it has no dedicated `decode_trace`, `layer_trace`, or `layer_localization` view. Artifact generation and machine-readable consumption do not depend on LIS Inspect visualisation.
 
 ## LIS Inspect
 
@@ -149,6 +171,7 @@ Currently supports `run_report` JSON and optional perf stderr logs. Trace, layer
 
 ## Documentation
 
+- [Differential Verification](docs/differential_verification.md)
 - [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md)
 - [Precision Policy](docs/precision_policy.md)
 - [HuggingFace tokenizer.json Compatibility](docs/hf_tokenizer_compat.md)

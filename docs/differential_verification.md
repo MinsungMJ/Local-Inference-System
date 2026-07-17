@@ -1,40 +1,56 @@
 # Differential Verification & First-Divergence Locator — Design Contract
 
 - Contract status: Approved
-- Implementation status: Planned / Not yet implemented
+- Implemented diagnostic boundary: Pass 0 calibration, Pass 1 selected-token
+  localization, Pass 2 prefix and policy reproduction, and Pass 3
+  coverage-scoped Llama layer localization
+- Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
-This document is the approved technical design contract for LIS Differential
-Verification & First-Divergence Locator. The contract is approved and stable as
-a design specification. The feature itself is not yet implemented: no runtime,
-CLI, comparator, verification, or artifact surface described here currently
-exists. Every mechanism, command, artifact, and runtime capability below is an
-approved design requirement, a planned interface, or explicitly not yet
-implemented, as marked.
+This document combines the original differential-verification design contract
+with additive implemented diagnostic stages. The base `verification_report`,
+exhaustive tensor comparison, intra-layer localization, and confirmatory
+verdict surfaces remain unimplemented. Their approved contracts are retained
+for future work.
+
+The implemented boundary includes token mismatch localization,
+mismatch-boundary reproduction, source-bound producer artifacts, and
+coverage-scoped Llama layer-output localization. These results are bounded
+diagnostic evidence. They do not prove tensor equality or confirm the first
+numeric divergence. Qwen3 inference remains supported only within its
+documented runtime scope and does not provide the layer-output layout required
+for layer localization.
 
 ## 1. Status and Scope
 
-This document defines the approved contract for LIS differential verification.
-It specifies comparison modes, checkpoint identity, divergence semantics,
-evidence tiers, tolerance-profile structure, hash-only mode, secure
-temporary-tensor transport, and the planned `verification_report` artifact
-shape.
+This document defines the approved contracts for LIS differential verification.
+It specifies comparison modes, checkpoint identity, evidence tiers, coverage
+and divergence semantics, source binding, token localization,
+mismatch-boundary reproduction, producer checkpoint artifacts, and
+coverage-scoped layer localization.
 
-The contract is approved. The feature is planned and not yet implemented. This
-document does not implement, and the current runtime does not provide:
+Implemented capabilities are documented in the additive staged sections below.
+They include model-free compatibility calibration, selected-token mismatch
+localization, prefix and policy reproduction, the bounded C checkpoint-artifact
+producer, and coverage-scoped Llama layer-output localization.
 
-- binary checkpoint capture,
-- an exhaustive tensor comparator,
-- a differential harness,
-- new differential-verification CLI flags,
+The following base or later-stage surfaces remain outside the implemented
+boundary:
+
+- binary full-tensor checkpoint capture,
+- exhaustive tensor comparison,
+- intra-layer localization,
+- confirmatory numeric or first-divergence verdicts,
+- production of the base `verification_report` artifact,
+- new differential-verification CLI commands or confirm-checkpoint flags,
 - a `verify-diff` make target,
 - LIS Inspect verification views,
 - an external semantic adapter.
 
-Scope of the design: comparison Modes A and B are the minimum viable scope.
-Mode C (external semantic) is deferred. The contract is a design specification,
-not a current support claim, and does not change the currently documented LIS
-support envelope.
+Comparison Modes A and B remain the intended minimum scope of the original base
+contract. Mode C is deferred. Implemented localization remains bounded to
+compatible, source-bound evidence and does not expand the documented LIS
+runtime support envelope.
 
 ## 2. Authority and Fixture Role
 
@@ -44,12 +60,17 @@ machine-readable conformance oracle. Disagreement between the Markdown
 specification and the JSON fixture is a contract-validation failure; neither
 file silently overrides the other.
 
-The approved status applies to the design contract only. It is not a claim that
-any differential-verification runtime, CLI, comparator, or artifact surface is
-implemented.
+The top-level machine-readable index describes the original base
+`verification_report` contract, whose implementation remains planned. Additive
+namespaces later in the same fixture and document record the implemented staged
+contracts. Their local status fields and marker blocks are authoritative for
+those capabilities.
 
-The marker-delimited JSON block below exists only to make Markdown/fixture
-consistency checks deterministic. It is not an implementation artifact.
+The marker-delimited JSON block below must remain byte-for-value identical to
+the corresponding top-level fields in
+`tools/test_fixtures/differential_verification_contract.json`. It is not an
+implementation artifact and is unchanged by this documentation consistency
+update.
 
 <!-- CONTRACT-INDEX-BEGIN -->
 ```json
@@ -97,8 +118,12 @@ This contract is bound by the existing LIS support envelope:
 - Existing public result classes are preserved. The contract adds exactly one
   additive class, `verification_inconclusive`.
 - `llama.c` and `qwen3.c` remain architecturally parallel and independent.
-- The C runtime is the planned bounded-evidence producer; the planned Python
-  comparison code interprets evidence and writes `kind:"verification_report"`.
+- The C runtime is the implemented bounded-evidence producer for
+  source-associated execution and Llama checkpoint artifacts. Implemented
+  Python tooling interprets those artifacts for token localization, boundary
+  reproduction, and coverage-scoped layer localization. The base
+  `verification_report` producer and exhaustive comparator remain
+  unimplemented.
 
 ## 4. Comparison Modes
 
@@ -640,10 +665,12 @@ Strongest minimum-viable verdict: `confirmed_divergence_at_checkpoint`.
 
 ## 20. Compatibility and Confidentiality
 
-All surfaces in this contract are additive and planned for future
-implementation. Existing `run_report` keys, `report.perf`, existing stderr
-prefixes, LIS Inspect `run_report` support, Make targets, CI workflows, and
-README support claims are unchanged by this design contract.
+Implemented differential-verification surfaces are additive. Existing
+`run_report` keys, `report.perf`, stderr prefixes, LIS Inspect `run_report`
+support, Make targets, CI workflows, and prior artifact readers remain
+compatible. The base `verification_report`, exhaustive temporary-tensor
+transport, and later confirmatory surfaces remain governed by their approved
+but unimplemented contracts.
 
 Default reports contain bounded summaries and fingerprints only. Exhaustive
 Tier-2 uses temporary full-tensor binaries that are created securely, validated,
@@ -652,22 +679,38 @@ explicit debug option and warning.
 
 ## 21. Implementation Status
 
-The contract is approved as a design specification. The feature is planned and
-not yet implemented. The following are defined by this contract but do not
-currently exist in the runtime, CLI, build, or artifact surface:
+Implementation is staged. The original base `verification_report` and
+exhaustive-confirmation contract remains planned, while the additive diagnostic
+stages below are implemented.
 
-- binary checkpoint capture and the temporary tensor binary writer,
-- the exhaustive tensor comparator,
-- production of the `verification_report` artifact,
-- runtime support for the `verification_inconclusive` result class,
-- new differential-verification CLI flags (such as confirm-checkpoint flags),
+Implemented:
+
+- Pass 0 calibration preflight,
+- Pass 1 selected-token mismatch localization,
+- Pass 2 prefix and policy reproduction,
+- producer-vNext source-associated artifacts and the versioned Llama
+  layer-output checkpoint layout,
+- Pass 3 coverage-scoped Llama layer localization.
+
+The implemented layer-localization result identifies the earliest observed
+digest mismatch within validated common captured coverage and may report a
+sparse suspect interval. It is bounded representation evidence, not exhaustive
+numeric confirmation. Matching digests do not prove tensor equality. Qwen3 and
+legacy layer-trace layouts remain unsupported for Pass 3.
+
+Not implemented:
+
+- binary full-tensor checkpoint capture,
+- exhaustive tensor comparison,
+- intra-layer localization,
+- `confirmed_divergence_at_checkpoint` or `confirmed_first_divergence`
+  production,
+- production of the base `verification_report` artifact,
+- runtime support for the base `verification_inconclusive` result class,
+- new differential-verification CLI commands,
 - a `verify-diff` make target,
 - LIS Inspect verification views,
 - the Mode-C external semantic adapter.
-
-Pass 0 calibration preflight and Pass 1 selected-token localization are
-implemented as model-free Python tooling. Passes 2–6 and the runtime/numeric
-surfaces listed above remain planned.
 
 ## 22. Calibration Preflight (Pass 0)
 
