@@ -39,6 +39,7 @@ CORE_SRCS := \
 	srcs/core/model.c \
 	srcs/core/perf.c \
 	srcs/core/artifact.c \
+	srcs/core/checkpoint_digest.c \
 	srcs/core/cpu_features.c \
 	srcs/core/trace.c \
 	srcs/core/layer_trace.c

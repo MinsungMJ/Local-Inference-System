@@ -1,4 +1,5 @@
 #include "lis/context.h"
+#include "lis/checkpoint_digest.h"
 #include "lis/cpu_features.h"
 #include "lis/dtype.h"
 #include "lis/layer_trace.h"
@@ -8,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 static int g_failures;
 
@@ -389,6 +391,91 @@ static void test_layer_trace_record_overflow(void)
     lis_layer_trace_record_destroy(&record);
 }
 
+static void test_checkpoint_digest_vectors(void)
+{
+    static const struct {
+        const char *name;
+        const char *role;
+        size_t rank;
+        size_t shape[2];
+        size_t count;
+        uint32_t bits[3];
+        const char *expected;
+    } vectors[] = {
+        {
+            "finite", "layer_output", 1, {3, 0}, 3,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x40500000)},
+            "f63cac06920e4310fa013b38a233c88b917b7bad77720b212d444c610cb36da4"
+        },
+        {
+            "signed zero", "layer_output", 1, {2, 0}, 2,
+            {UINT32_C(0x00000000), UINT32_C(0x80000000), 0},
+            "3571b1a3c12497675f5034337d264e82d24d280fd0f93f3fa363e09e338a5a26"
+        },
+        {
+            "infinities", "layer_output", 1, {2, 0}, 2,
+            {UINT32_C(0x7f800000), UINT32_C(0xff800000), 0},
+            "29d7bbf249f921f0eac64c6a982e0cc9e27ac2f480cb3a503bf3241c40988de0"
+        },
+        {
+            "nan canonical", "layer_output", 1, {3, 0}, 3,
+            {UINT32_C(0x7fc00001), UINT32_C(0x7fa12345),
+             UINT32_C(0xffc54321)},
+            "262ca9bbf40acca6b7f0a510772fd78b1eb1d7f445f4d850135a8811f4ce3445"
+        },
+        {
+            "shape domain", "layer_output", 2, {1, 3}, 3,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x40500000)},
+            "2d77fec8148696842f00a5705b9421af62c03cb2c4365aef02bae5a09fbdc2ba"
+        },
+        {
+            "role domain", "attention_output", 1, {3, 0}, 3,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x40500000)},
+            "f6ba69456253afd7a3c610298a96fd3d597601f449486756fd73473400df6b5a"
+        }
+    };
+    size_t index;
+
+    for (index = 0; index < sizeof(vectors) / sizeof(vectors[0]); ++index) {
+        float values[3] = {0};
+        lis_checkpoint_digest digest = {{0}, 0};
+        char hex[LIS_CHECKPOINT_DIGEST_HEX_SIZE + 1U];
+        size_t value_index;
+
+        for (value_index = 0; value_index < vectors[index].count;
+             ++value_index) {
+            memcpy(values + value_index, vectors[index].bits + value_index,
+                   sizeof(values[value_index]));
+        }
+        expect_status(vectors[index].name,
+                      lis_checkpoint_digest_fp32(
+                          vectors[index].role, vectors[index].shape,
+                          vectors[index].rank, values, vectors[index].count,
+                          &digest),
+                      LIS_STATUS_OK);
+        lis_checkpoint_digest_hex(&digest, hex);
+        if (strcmp(hex, vectors[index].expected) != 0) {
+            fprintf(stderr, "%s digest: expected %s, got %s\n",
+                    vectors[index].name, vectors[index].expected, hex);
+            ++g_failures;
+        }
+    }
+    {
+        const size_t shape[] = {2};
+        const float values[] = {1.0f};
+        lis_checkpoint_digest digest = {{0}, 0};
+
+        expect_status("digest shape mismatch",
+                      lis_checkpoint_digest_fp32(
+                          LIS_CHECKPOINT_DIGEST_ROLE_LAYER_OUTPUT,
+                          shape, 1, values, 1, &digest),
+                      LIS_STATUS_SHAPE_MISMATCH);
+    }
+}
+
 int main(void)
 {
     test_dtype();
@@ -399,6 +486,7 @@ int main(void)
     test_cpu_features();
     test_layer_trace_record_growth();
     test_layer_trace_record_overflow();
+    test_checkpoint_digest_vectors();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d core test failure(s)\n", g_failures);
