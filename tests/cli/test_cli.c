@@ -4644,6 +4644,7 @@ static void test_cli_kv_cache_flag_absent_from_help(void)
 #include "test_cli_artifact_compat.c"
 #include "test_cli_artifact_regression.c"
 #include "test_cli_kv_cache_semantics.c"
+#include "test_cli_pass3_producer.c"
 
 int main(void)
 {
@@ -4775,6 +4776,8 @@ int main(void)
     test_cli_artifact_regression_runtime_fingerprint_repeatable();
     test_cli_artifact_regression_trace_determinism();
     test_cli_artifact_regression_trace_eos_stop();
+
+    test_cli_pass3_producer_contract();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d CLI test failure(s)\n", g_failures);
