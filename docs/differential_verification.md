@@ -1167,3 +1167,539 @@ The block below is byte-for-value identical to the
 }
 ```
 <!-- PREFIX-POLICY-REPRODUCTION-INDEX-END -->
+
+## 25. Producer-vNext Checkpoint Artifact Contract
+
+The producer prerequisite is frozen before C/runtime and Pass 3 core
+implementation. One CLI inference execution samples exactly 16 unmodified
+bytes from the operating-system CSPRNG before inference or related artifact
+emission and serializes them as `aset1:<32 lowercase hexadecimal
+characters>`. The value is propagated unchanged to every related artifact
+successfully emitted by that execution. Entropy failure aborts without a
+fallback.
+
+`artifact_set_id` is probabilistic same-execution association evidence only.
+Canonical SHA-256 is artifact content identity; the semantic manifest is
+execution/configuration compatibility evidence. A matching ID never bypasses
+another source-binding link, including under a forced collision. FNV-1a
+remains compatibility or bounded content-link evidence only.
+
+Producer-vNext Llama traces use the explicit
+`llama_layer_output_summary` version-1 layout. Coordinates, requested,
+captured, missing-by-state coverage, execution ordinals, observed dtype,
+element counts, available fields, and digest envelopes are serialized
+directly. Semantic coordinates are never inferred only from `name`.
+Duplicate logical coordinates fail before writing and are independently
+rejected by Pass 3.
+
+The checkpoint digest is SHA-256 over the frozen
+`lis.checkpoint.fp32le/v1` stream: domain tag and zero byte, 64-bit
+little-endian byte-length-prefixed version and role, 64-bit rank and shape,
+length-prefixed observed dtype and byte order, element count, then logical
+row-major binary32 little-endian observations. Finite and infinity bits are
+preserved, signed zero is preserved, and all NaNs normalize to `0x7fc00000`.
+It is computed only in explicit checkpoint diagnostics. Digest mismatch is
+bounded observed-representation evidence; digest match is not mathematical
+tensor equality.
+
+Legacy layer traces remain valid execution artifacts but are unsupported
+Pass 3 layouts. Qwen3 is `unsupported_checkpoint_layout`; its Q/K
+normalization summaries may not masquerade as layer output.
+
+The block below is byte-for-value identical to the
+`producer_checkpoint_artifact` namespace in the machine-readable contract.
+
+<!-- PRODUCER-CHECKPOINT-ARTIFACT-INDEX-BEGIN -->
+```json
+{
+  "status": "frozen",
+  "schema": "lis.execution_artifact/v1",
+  "contract_version": "differential_verification_contract_v1",
+  "related_artifact_kinds": [
+    "run_report",
+    "layer_trace",
+    "decode_trace"
+  ],
+  "artifact_set_id": {
+    "field": "artifact_set_id",
+    "format": "aset1:<32 lowercase hexadecimal characters>",
+    "regex": "^aset1:[0-9a-f]{32}$",
+    "random_source": "operating_system_csprng",
+    "random_bytes": 16,
+    "bytes_transformed_before_hex": false,
+    "generation_point": "once_at_cli_inference_execution_start_before_inference_or_related_artifact_emission",
+    "propagation": "unchanged_to_every_related_artifact_successfully_emitted_by_that_cli_execution",
+    "separate_execution_policy": "independently_sampled",
+    "failure_policy": "fail_closed_before_inference_and_related_artifact_emission",
+    "fallback_allowed": false,
+    "prohibited_fallbacks": [
+      "time",
+      "pid",
+      "counter",
+      "fnv1a64",
+      "settings",
+      "predictable_data"
+    ],
+    "evidence_semantics": "probabilistic_same_cli_execution_association",
+    "absolute_uniqueness_claim": false,
+    "content_identity": false,
+    "configuration_compatibility": false,
+    "matching_id_sufficient_for_source_binding": false
+  },
+  "evidence_roles": {
+    "artifact_set_id": "probabilistic_same_cli_execution_association_evidence",
+    "canonical_sha256": "artifact_content_identity",
+    "semantic_manifest": "execution_configuration_compatibility_evidence",
+    "fnv1a64": "compatibility_or_bounded_content_link_evidence_only"
+  },
+  "source_binding": {
+    "all_links_mandatory": true,
+    "chain": [
+      "supplied_canonical_pass2_artifact",
+      "canonical_pass2_artifact_sha256",
+      "typed_pass2_result_artifact_coherence",
+      "pass2_bound_role_run_report_sha256",
+      "supplied_run_report_canonical_sha256",
+      "matching_artifact_set_id",
+      "matching_semantic_manifest_identity",
+      "matching_target_runtime_checkpoint_step",
+      "canonical_layer_trace_sha256"
+    ],
+    "forced_id_collision_bypasses_other_links": false,
+    "fnv1a64_satisfies_chain": false
+  },
+  "checkpoint_layout": {
+    "outer_kind": "layer_trace",
+    "layout_name": "llama_layer_output_summary",
+    "layout_version": 1,
+    "supported_model_family": "llama3_decoder",
+    "tensor_role": "layer_output",
+    "stage_order": 0,
+    "ordering_semantics": "runtime_step_layer_stage_ordinal",
+    "duplicate_coordinate_policy": "reject_artifact_before_write",
+    "logical_coordinate_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "stage_order"
+    ],
+    "order_validation_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_order",
+      "execution_ordinal"
+    ],
+    "required_layout_fields": [
+      "layout_name",
+      "layout_version",
+      "runtime_checkpoint_step",
+      "tensor_role",
+      "stage_order",
+      "ordering_semantics",
+      "total_layer_count",
+      "requested_coordinates",
+      "captured_coordinates",
+      "missing_coordinates",
+      "available_summary_fields",
+      "digest_contract",
+      "duplicate_coordinate_policy"
+    ],
+    "required_entry_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "stage_order",
+      "execution_ordinal",
+      "observed_dtype",
+      "element_count",
+      "phase",
+      "name",
+      "shape",
+      "available_summary_fields",
+      "min",
+      "max",
+      "mean",
+      "l2",
+      "nan",
+      "inf",
+      "digest"
+    ],
+    "coverage_state_enum": [
+      "captured",
+      "not_captured",
+      "unsupported",
+      "malformed",
+      "unexpectedly_absent"
+    ],
+    "coverage_rules": {
+      "requested_is_explicit": true,
+      "captured_is_explicit": true,
+      "missing_is_explicit_and_stateful": true,
+      "dictionary_absence_is_coverage_evidence": false,
+      "captured_coordinates_equal_summary_coordinates": true,
+      "requested_partition": "captured_coordinates union missing_coordinates",
+      "requested_partition_disjoint": true,
+      "coordinates_unique": true,
+      "ordinals_strictly_increasing": true,
+      "malformed_requested_coordinate_fails_artifact": true
+    },
+    "source_name_conformity": "layer.<layer_index>.output",
+    "batch_index": 0,
+    "sequence_index": 0,
+    "observed_dtype": "fp32",
+    "full_tensor_payload_allowed": false
+  },
+  "digest_contract": {
+    "algorithm": "sha256",
+    "version": "lis.checkpoint.fp32le/v1",
+    "domain_tag_utf8": "LIS_CHECKPOINT_DIGEST",
+    "domain_terminator_hex": "00",
+    "length_prefix_encoding": "unsigned_64_bit_little_endian_byte_count",
+    "integer_encoding": "unsigned_64_bit_little_endian",
+    "stream_fields_in_order": [
+      "domain_tag_and_zero_byte",
+      "length_prefixed_digest_version_utf8",
+      "length_prefixed_tensor_role_utf8",
+      "rank",
+      "shape_dimensions",
+      "length_prefixed_observed_dtype_utf8",
+      "length_prefixed_byte_order_utf8",
+      "element_count",
+      "row_major_fp32_values"
+    ],
+    "tensor_role": "layer_output",
+    "observed_dtype": "fp32",
+    "byte_order": "little",
+    "row_order": "logical_row_major",
+    "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+    "canonical_qnan_bits_hex": "7fc00000",
+    "finite_bits": "preserved",
+    "infinity_bits": "preserved",
+    "signed_zero_bits": "preserved",
+    "nan_bits": "all_nan_encodings_normalized_to_7fc00000",
+    "digest_value_regex": "^sha256:[0-9a-f]{64}$",
+    "input_representation": "post_observation_fp32",
+    "diagnostic_mode_only": true,
+    "normal_inference_digest_work": false,
+    "failure_suppresses_partial_artifact": true,
+    "match_semantics": "no_digest_difference_observed_for_aligned_representation",
+    "mismatch_semantics": "bounded_observed_representation_digest_mismatch",
+    "mathematical_tensor_equality_claim": false,
+    "collision_free_claim": false,
+    "precision_path_policy": "underlying_precision_paths_must_match_exactly_for_mvp"
+  },
+  "compatibility": {
+    "outer_schema_additive": true,
+    "legacy_artifacts_remain_valid_execution_artifacts": true,
+    "legacy_pass3_behavior": "unsupported_checkpoint_layout",
+    "semantic_coordinates_may_be_inferred_from_name": false,
+    "unknown_layout_version_behavior": "unsupported_checkpoint_layout",
+    "qwen3_mvp_behavior": "unsupported_checkpoint_layout",
+    "qwen3_qk_norm_adaptation_allowed": false
+  },
+  "required_schema_examples": [
+    "llama_layer_trace_vnext_schema_examples.json",
+    "legacy_layer_trace_without_binding.json"
+  ],
+  "required_digest_vectors": "checkpoint_digest_test_vectors.json",
+  "dependency_gate": {
+    "p3_p1_green_unlocks": [
+      "P3-P2-through-P3-P7",
+      "P3-C1-through-P3-C8"
+    ],
+    "p3_i_requires": [
+      "full_P3-P_green",
+      "full_P3-C_green",
+      "actual_C_artifact_validation"
+    ],
+    "post_freeze_change_requires_coordinated_contract_revision": true
+  }
+}
+```
+<!-- PRODUCER-CHECKPOINT-ARTIFACT-INDEX-END -->
+
+## 26. Coverage-Scoped Layer Localization Contract
+
+Pass 3 consumes both the typed `Pass2Result` and its supplied canonical
+`prefix_policy_reproduction` artifact. The supplied artifact, rendered
+under the existing canonical JSON contract, is the only Pass 2 content
+identity used by Pass 3. Typed/artifact coherence and both complete source
+binding chains pass before any trace summary is accessed.
+
+The MVP compares only explicit producer-vNext Llama `layer_output`
+coordinates in validated common comparable coverage. SHA-256 checkpoint
+digests are bounded observed-representation evidence: mismatch localizes an
+earliest observable suspect interval, while match proves neither tensor
+equality nor whole-runtime equivalence. Sparse intervals preserve unobserved
+layers. Qwen3 and legacy layouts are unsupported.
+
+Pass 3 emits only local conservative downstream dispositions. It does not
+certify Pass 4 or Pass 5 readiness and has no automatic frozen success
+mapping.
+
+The block below is byte-for-value identical to the
+`coverage_scoped_layer_localization` namespace in the machine-readable
+contract.
+
+<!-- COVERAGE-SCOPED-LAYER-LOCALIZATION-INDEX-BEGIN -->
+```json
+{
+  "status": "frozen",
+  "schema": "lis.execution_artifact/v1",
+  "kind": "layer_localization",
+  "contract_version": "differential_verification_contract_v1",
+  "pass3_status_enum": [
+    "observable_mismatch_found",
+    "no_mismatch_in_captured_coverage",
+    "comparison_blocked_by_pass2",
+    "insufficient_common_coverage",
+    "source_binding_inconsistent",
+    "checkpoint_alignment_inconsistent",
+    "checkpoint_artifact_missing",
+    "checkpoint_summary_malformed",
+    "comparison_policy_unavailable",
+    "unsupported_checkpoint_layout",
+    "inconclusive"
+  ],
+  "pass3_reason_code_enum": [
+    "pass3.pass2_not_ready",
+    "pass3.reproduction_request_only",
+    "pass3.source_binding_inconsistent",
+    "pass3.pass2_artifact_identity_inconsistent",
+    "pass3.pass2_object_artifact_inconsistent",
+    "pass3.run_report_canonical_sha_inconsistent",
+    "pass3.artifact_set_id_inconsistent",
+    "pass3.binding_metadata_missing",
+    "pass3.runtime_checkpoint_step_mismatch",
+    "pass3.insufficient_common_coverage",
+    "pass3.reference_checkpoint_missing",
+    "pass3.candidate_checkpoint_missing",
+    "pass3.checkpoint_alignment_inconsistent",
+    "pass3.duplicate_checkpoint_coordinate",
+    "pass3.checkpoint_summary_malformed",
+    "pass3.summary_field_missing",
+    "pass3.checkpoint_digest_incompatible",
+    "pass3.comparison_policy_unavailable",
+    "pass3.unsupported_checkpoint_layout",
+    "pass3.asymmetric_coverage",
+    "pass3.observable_mismatch_found",
+    "pass3.no_mismatch_in_captured_coverage"
+  ],
+  "coverage_state_enum": [
+    "captured",
+    "not_captured",
+    "unsupported",
+    "malformed",
+    "unexpectedly_absent"
+  ],
+  "alignment_status_enum": [
+    "aligned",
+    "shape_mismatch",
+    "dtype_mismatch",
+    "precision_path_mismatch",
+    "stage_mismatch",
+    "batch_mismatch",
+    "sequence_mismatch",
+    "model_family_mismatch",
+    "duplicate_coordinate"
+  ],
+  "summary_field_disposition_enum": [
+    "exact",
+    "tolerance_aware",
+    "informational_only",
+    "unsupported"
+  ],
+  "summary_evidence_level_enum": [
+    "tier0_structural",
+    "tier1_bounded_exact",
+    "tier1_bounded_calibrated",
+    "tier1_bounded_digest",
+    "unavailable"
+  ],
+  "downstream_disposition_enum": [
+    "blocked",
+    "exploratory_localization_only",
+    "suspect_interval_available"
+  ],
+  "pass2_evidence": {
+    "required_inputs": [
+      "typed_pass2_result",
+      "supplied_canonical_pass2_artifact"
+    ],
+    "canonical_identity_field": "pass2_artifact_sha256",
+    "coherence_field": "pass2_object_artifact_coherence_verified",
+    "canonical_identity_source": "existing_pass2_artifact_serializer_and_canonical_json_contract",
+    "typed_object_has_independent_identity": false,
+    "coherence_scope": "every_pass3_relevant_serialized_field",
+    "prohibited_identity_mechanisms": [
+      "hash_repr",
+      "pickle_or_object_memory_hash",
+      "ad_hoc_pass3_serialization",
+      "selected_field_identity_hash",
+      "pass3_local_pass2_result_serializer"
+    ]
+  },
+  "gate_order": [
+    "A1_typed_pass2_readiness",
+    "A2_canonical_pass2_artifact_validation_hashing_and_coherence",
+    "B_both_complete_source_binding_chains",
+    "C_trace_headers_layout_coordinates_coverage_and_order",
+    "D_bounded_checkpoint_summaries_and_digest_evidence"
+  ],
+  "source_binding": {
+    "all_links_mandatory": true,
+    "chain": [
+      "supplied_canonical_pass2_artifact",
+      "canonical_pass2_artifact_sha256",
+      "typed_pass2_result_artifact_coherence",
+      "pass2_bound_role_run_report_sha256",
+      "supplied_run_report_canonical_sha256",
+      "matching_artifact_set_id",
+      "matching_semantic_manifest_identity",
+      "matching_target_runtime_checkpoint_step",
+      "canonical_layer_trace_sha256"
+    ],
+    "summary_access_before_complete_binding": false,
+    "matching_artifact_set_id_alone_sufficient": false,
+    "fnv1a64_satisfies_chain": false
+  },
+  "input_contract": {
+    "trace_kind": "layer_trace",
+    "layout_name": "llama_layer_output_summary",
+    "layout_version": 1,
+    "model_family": "llama3_decoder",
+    "tensor_role": "layer_output",
+    "stage_order": 0,
+    "batch_index": 0,
+    "sequence_index": 0,
+    "ordering_semantics": "runtime_step_layer_stage_ordinal",
+    "full_tensor_payload_allowed": false,
+    "legacy_layout_status": "unsupported_checkpoint_layout",
+    "qwen3_mvp_status": "unsupported_checkpoint_layout"
+  },
+  "coordinate_contract": {
+    "join_key_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "stage_order"
+    ],
+    "alignment_check_fields": [
+      "shape",
+      "element_count",
+      "observed_dtype",
+      "precision_path",
+      "model_family",
+      "source_name_conformity",
+      "execution_ordinal"
+    ],
+    "validated_order_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_order",
+      "execution_ordinal"
+    ],
+    "malformed_order_may_be_silently_sorted": false,
+    "duplicate_logical_coordinates_allowed": false,
+    "alignment_failure_is_numeric_mismatch": false
+  },
+  "coverage_contract": {
+    "sets": [
+      "reference_requested",
+      "reference_captured",
+      "candidate_requested",
+      "candidate_captured",
+      "common_captured",
+      "reference_only",
+      "candidate_only",
+      "common_comparable",
+      "missing_by_state"
+    ],
+    "asymmetric_coverage_is_mismatch": false,
+    "asymmetric_coverage_is_metadata": true,
+    "empty_common_comparable_status": "insufficient_common_coverage",
+    "dictionary_absence_is_coverage_evidence": false
+  },
+  "decision_policy": {
+    "mvp_decision_field": "checkpoint_digest",
+    "digest_algorithm": "sha256",
+    "digest_version": "lis.checkpoint.fp32le/v1",
+    "digest_canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+    "precision_path_eligibility": "exact_match_required",
+    "digest_mismatch_semantics": "observed_representation_digest_mismatch",
+    "digest_match_semantics": "no_digest_difference_observed_for_aligned_representation",
+    "digest_match_proves_tensor_equality": false,
+    "digest_collision_free_claim": false,
+    "uncalibrated_default_allowed": false,
+    "missing_compatible_decision_field_status": "comparison_policy_unavailable",
+    "decision_semantics_field": "observed_representation_digest_mismatch",
+    "evidence_level": "tier1_bounded_digest"
+  },
+  "localization_contract": {
+    "fields": [
+      "last_observed_equivalent_layer",
+      "first_observed_mismatching_layer",
+      "earliest_observable_suspect_layer",
+      "suspect_interval"
+    ],
+    "dense_example": "(7, 8]",
+    "sparse_example": "(4, 8]",
+    "entry_example": "[entry, L]",
+    "sparse_unobserved_layers_are_explicit": true,
+    "earliest_observable_is_confirmed_first_divergence": false,
+    "no_mismatch_scope": "captured_common_comparable_coverage_only"
+  },
+  "artifact_required_fields": [
+    "schema",
+    "kind",
+    "contract_version",
+    "pass2_artifact_sha256",
+    "pass2_object_artifact_coherence_verified",
+    "pass2_evidence",
+    "source_binding",
+    "checkpoint_artifact_binding_verified",
+    "target",
+    "coverage",
+    "comparisons",
+    "localization",
+    "evidence",
+    "pass3_status",
+    "downstream_disposition",
+    "reason_codes",
+    "inherited_pass2_reason_codes",
+    "inherited_pass1_reason_codes",
+    "inherited_pass0_reason_codes",
+    "warnings",
+    "semantic_limits"
+  ],
+  "downstream_boundary": {
+    "success_has_automatic_frozen_mapping": false,
+    "blocked_mapping_requires_exact_semantic_equivalence": true,
+    "pass4_or_pass5_readiness_certified": false,
+    "frozen_verification_report_enums_modified": false
+  },
+  "prohibited_claims": [
+    "confirmed_first_divergent_layer",
+    "confirmed_divergence_at_checkpoint",
+    "confirmed_first_divergence",
+    "mathematical_tensor_equality",
+    "whole_runtime_equivalence",
+    "pass4_ready",
+    "pass5_ready"
+  ],
+  "semantic_limits": {
+    "mismatch_is_bounded_localization_evidence_only": true,
+    "match_is_representation_scoped_collision_limited_evidence": true,
+    "full_tensor_comparison_performed": false,
+    "stage_localization_performed": false,
+    "numeric_confirmation_performed": false
+  }
+}
+```
+<!-- COVERAGE-SCOPED-LAYER-LOCALIZATION-INDEX-END -->

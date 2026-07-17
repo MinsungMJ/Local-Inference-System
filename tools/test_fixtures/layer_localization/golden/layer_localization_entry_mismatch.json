@@ -1,0 +1,219 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "layer_localization",
+  "contract_version": "differential_verification_contract_v1",
+  "pass2_artifact_sha256": "sha256:3486ada4339eb672a61b6dae92995b58fc13ae9c0b7081b6e09db896c5e858e7",
+  "pass2_object_artifact_coherence_verified": true,
+  "pass2_evidence": {
+    "reproduction_evidence_tier": "original_pair_boundary_consistent",
+    "generated_token_step": 17,
+    "runtime_checkpoint_step": 18,
+    "localization_ref_sha256": "sha256:6760e3379c7b0da0d8591a30efabea782b01b66b50cd19e858ea98458f7709bd",
+    "reference_original_run_report_sha256": "sha256:18d09a3d361525f96297df61590ce5533f78bc904701b5bb60e7ee2fed3e2bb0",
+    "candidate_original_run_report_sha256": "sha256:ecdf8a6802796b4479dad6afd38428c9ba7ad4eaf56c19dc9d96279444558947",
+    "reference_reproduction_sha256": null,
+    "candidate_reproduction_sha256": null,
+    "checkpoint_step_evidence": "computed_from_pass1_step_mapping",
+    "verdict_strength_limit": "checkpoint_confirmation_allowed",
+    "thread_count_caveat": false
+  },
+  "source_binding": {
+    "reference": {
+      "role": "reference_original",
+      "run_report_sha256": "sha256:18d09a3d361525f96297df61590ce5533f78bc904701b5bb60e7ee2fed3e2bb0",
+      "layer_trace_sha256": "sha256:e2c73873adf771a48d7be61904ec975da2384e8347e6b25bb15f7abd6b1e561b",
+      "artifact_set_id": "aset1:11111111111111111111111111111111",
+      "semantic_manifest_sha256": "sha256:09acba4b4bdc00ebb087914a0b4fe6575f9f7b4bdc0c530a8b7c2b45745f4a6a"
+    },
+    "candidate": {
+      "role": "candidate_original",
+      "run_report_sha256": "sha256:ecdf8a6802796b4479dad6afd38428c9ba7ad4eaf56c19dc9d96279444558947",
+      "layer_trace_sha256": "sha256:6637b526b8f3555fdf560e966875e1fbdd7b592d26e53e6ff146a41b6bb3bab7",
+      "artifact_set_id": "aset1:22222222222222222222222222222222",
+      "semantic_manifest_sha256": "sha256:6db8d224530df707fa7393567d53170f3c2c0d56637c77ee0cdd70dd0cd11348"
+    }
+  },
+  "checkpoint_artifact_binding_verified": true,
+  "target": {
+    "runtime_checkpoint_step": 18
+  },
+  "coverage": {
+    "reference_requested": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "reference_captured": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "candidate_requested": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "candidate_captured": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "common_captured": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "reference_only": [],
+    "candidate_only": [],
+    "common_comparable": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      }
+    ],
+    "reference_missing": [],
+    "candidate_missing": []
+  },
+  "comparisons": {
+    "items": [
+      {
+        "coordinate": {
+          "runtime_checkpoint_step": 18,
+          "layer_index": 0,
+          "tensor_role": "layer_output",
+          "batch_index": 0,
+          "sequence_index": 0,
+          "stage_order": 0,
+          "execution_ordinal": 0
+        },
+        "equivalent": false,
+        "mismatching_fields": [
+          "checkpoint_digest"
+        ],
+        "field_results": [
+          {
+            "field_name": "checkpoint_digest",
+            "disposition": "exact",
+            "equivalent": false,
+            "abs_diff": null,
+            "resolved_abs_floor": null,
+            "resolved_rel_band": null
+          }
+        ],
+        "evidence_level": "tier1_bounded_digest",
+        "warnings": []
+      }
+    ],
+    "total_count": 1,
+    "serialized_count": 1,
+    "truncated": false
+  },
+  "localization": {
+    "last_observed_equivalent_coordinate": null,
+    "last_observed_equivalent_layer": null,
+    "first_observed_mismatch_coordinate": {
+      "runtime_checkpoint_step": 18,
+      "layer_index": 0,
+      "tensor_role": "layer_output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "stage_order": 0,
+      "execution_ordinal": 0
+    },
+    "first_observed_mismatching_layer": 0,
+    "earliest_observable_suspect_layer": 0,
+    "suspect_interval": {
+      "start_boundary": "runtime_entry",
+      "last_observed_equivalent_coordinate": null,
+      "first_observed_mismatch_coordinate": {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 0,
+        "tensor_role": "layer_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      },
+      "start_exclusive": false,
+      "end_inclusive": true,
+      "unobserved_layer_indices": [],
+      "notation": "[entry, 0]"
+    }
+  },
+  "evidence": {
+    "decision_field": "checkpoint_digest",
+    "decision_semantics": "observed_representation_digest_mismatch",
+    "evidence_level": "tier1_bounded_digest",
+    "digest_contract_identity": "lis.checkpoint.fp32le/v1"
+  },
+  "pass3_status": "observable_mismatch_found",
+  "downstream_disposition": "suspect_interval_available",
+  "reason_codes": [
+    "pass3.observable_mismatch_found"
+  ],
+  "inherited_pass2_reason_codes": [],
+  "inherited_pass1_reason_codes": [],
+  "inherited_pass0_reason_codes": [
+    "policy_modified_greedy",
+    "decode_policy_not_raw",
+    "config_semantics_uncalibrated",
+    "rms_norm_eps_runtime_unbound",
+    "requires_fix_or_guard",
+    "numeric_policy_uncalibrated",
+    "kv_write_rounding_unverified",
+    "fma_policy_backend_defined",
+    "reduction_order_backend_defined",
+    "tolerance_caveat",
+    "external_oracle_ineligible",
+    "hf_default_greedy_ineligible",
+    "hf_forced_token_runtime_eligible",
+    "internal_lis_differential_only",
+    "oracle_scope_limited",
+    "forced_prefix_report_json_channel_missing"
+  ],
+  "warnings": [],
+  "semantic_limits": {
+    "bounded_equality_semantics": "No digest difference was observed only for aligned representations in captured common comparable coverage; this is not mathematical tensor equality or whole-runtime equivalence.",
+    "non_confirmation_semantics": "An observable digest mismatch is bounded localization evidence only; it does not confirm the first divergent layer or numeric divergence.",
+    "full_tensor_comparison_performed": false,
+    "stage_localization_performed": false,
+    "numeric_confirmation_performed": false,
+    "pass4_or_pass5_readiness_certified": false,
+    "automatic_frozen_success_mapping": false
+  }
+}
