@@ -41,4 +41,4 @@ jobs:
           python -m pip install -r tools/requirements.txt
 
       - name: LIS Inspect tests
-        run: PYTHONPATH=tools python -m unittest discover -s tools/tests -v
+        run: PYTHONPATH=tools python -m unittest discover -s tools/tests -t . -v
