@@ -1,4 +1,4 @@
-"""LIS verification core — P1 Pass 0, Pass 1, and Pass 2.
+"""LIS verification core — P1 Pass 0 through coverage-scoped Pass 3.
 
 Model-free calibration gating, exact selected-token localization, and
 source-bound mismatch-boundary reproduction. Numeric comparison and runtime
@@ -66,6 +66,21 @@ from .pass2_model import (
     ReproductionEvidenceTier,
 )
 from .pass2_report_mapping import map_pass2_reason, map_pass2_status
+from .pass3 import run_coverage_scoped_layer_localization
+from .pass3_artifact import serialize as serialize_pass3, to_json as pass3_to_json
+from .pass3_inputs import CanonicalLayerTrace, CanonicalPass2Artifact
+from .pass3_model import (
+    AlignmentStatus,
+    CheckpointCoordinate,
+    CoverageState,
+    Pass3DownstreamDisposition,
+    Pass3ReasonCode,
+    Pass3Result,
+    Pass3Status,
+    SummaryEvidenceLevel,
+    SummaryFieldDisposition,
+)
+from .pass3_report_mapping import map_pass3_reason, map_pass3_status
 from .report_mapping import map_block_reason
 
 __all__ = [
@@ -122,4 +137,20 @@ __all__ = [
     "pass2_to_json",
     "map_pass2_reason",
     "map_pass2_status",
+    "Pass3Result",
+    "Pass3Status",
+    "Pass3ReasonCode",
+    "Pass3DownstreamDisposition",
+    "CheckpointCoordinate",
+    "CoverageState",
+    "AlignmentStatus",
+    "SummaryFieldDisposition",
+    "SummaryEvidenceLevel",
+    "CanonicalPass2Artifact",
+    "CanonicalLayerTrace",
+    "run_coverage_scoped_layer_localization",
+    "serialize_pass3",
+    "pass3_to_json",
+    "map_pass3_reason",
+    "map_pass3_status",
 ]
