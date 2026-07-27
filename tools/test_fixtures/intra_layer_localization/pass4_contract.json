@@ -500,6 +500,50 @@
       "automatic_frozen_success_mapping": false
     }
   },
+  "result_model_contract": {
+    "scope": "P4-2_result_model",
+    "module": "tools/lis_verify/pass4_model.py",
+    "result_model_implemented": true,
+    "models": [
+      "Pass4ComparisonDecision",
+      "Pass4LocalCoverageOutcome",
+      "Pass4Comparison",
+      "Pass4CoverageAnalysis",
+      "Pass4SourceBinding",
+      "Pass3ParentEvidence",
+      "Pass4ClosingBoundaryDecision",
+      "Pass4EvidenceCeiling",
+      "Pass4Result"
+    ],
+    "comparison_decision_enum": [
+      "equivalent_observed_representation_digest",
+      "mismatching_observed_representation_digest"
+    ],
+    "comparison_decision_semantics": {
+      "equivalent_observed_representation_digest": "no_digest_difference_observed_for_aligned_representation",
+      "mismatching_observed_representation_digest": "observed_representation_digest_mismatch"
+    },
+    "local_coverage_outcome_enum": [
+      "local_mismatch_found",
+      "no_mismatch_in_common_intra_layer_coverage"
+    ],
+    "local_coverage_outcome_for_status": {
+      "observable_intra_layer_mismatch_found": "local_mismatch_found",
+      "mismatch_bounded_to_inherited_closing_boundary": "no_mismatch_in_common_intra_layer_coverage"
+    },
+    "later_comparisons_after_first_mismatch_retained": true,
+    "comparison_order": "declared_common_comparable_order_without_sorting",
+    "max_comparisons": 17,
+    "max_reason_codes": 32,
+    "max_warnings": 32,
+    "max_inherited_reason_codes": 32,
+    "max_detail_bytes": 256,
+    "max_identifier_bytes": 128,
+    "coverage_derived_from_artifacts": false,
+    "digest_comparison_implemented": false,
+    "localization_implemented": false,
+    "serialization_implemented": false
+  },
   "examples": {
     "file": "pass4_contract_examples.json",
     "required": [
