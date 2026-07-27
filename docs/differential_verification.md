@@ -4,6 +4,9 @@
 - Implemented diagnostic boundary: Pass 0 calibration, Pass 1 selected-token
   localization, Pass 2 prefix and policy reproduction, and Pass 3
   coverage-scoped Llama layer localization
+- Frozen later-stage boundary: Pass 4 intra-layer contract only (P4-1);
+  producer, runtime capture, parsing, localization execution, and result
+  serialization are not implemented
 - Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
@@ -20,6 +23,12 @@ diagnostic evidence. They do not prove tensor equality or confirm the first
 numeric divergence. Qwen3 inference remains supported only within its
 documented runtime scope and does not provide the layer-output layout required
 for layer localization.
+
+The Pass 4 intra-layer contract is frozen separately so later producer and
+Python work share one taxonomy, coordinate grammar, digest domain, and evidence
+ceiling. This freeze is not an implemented localization capability: no
+intra-layer producer fields are emitted, runtime capture is unavailable, and
+no Pass 4 localization can currently be executed.
 
 ## 1. Status and Scope
 
@@ -39,7 +48,8 @@ boundary:
 
 - binary full-tensor checkpoint capture,
 - exhaustive tensor comparison,
-- intra-layer localization,
+- intra-layer capture, artifact parsing, and localization execution (the P4-1
+  contract alone is frozen),
 - confirmatory numeric or first-divergence verdicts,
 - production of the base `verification_report` artifact,
 - new differential-verification CLI commands or confirm-checkpoint flags,
@@ -692,6 +702,12 @@ Implemented:
   layer-output checkpoint layout,
 - Pass 3 coverage-scoped Llama layer localization.
 
+Frozen contract only:
+
+- Pass 4 P4-1 Llama/decode intra-layer taxonomy, coordinate, coverage,
+  parent, interval, digest, artifact-identity, status/reason, and evidence
+  ceiling contracts.
+
 The implemented layer-localization result identifies the earliest observed
 digest mismatch within validated common captured coverage and may report a
 sparse suspect interval. It is bounded representation evidence, not exhaustive
@@ -702,7 +718,9 @@ Not implemented:
 
 - binary full-tensor checkpoint capture,
 - exhaustive tensor comparison,
-- intra-layer localization,
+- the Pass 4 producer, runtime intra-layer capture, runtime artifact parsing,
+  localization algorithm/execution, result serializer, or public execution
+  API,
 - `confirmed_divergence_at_checkpoint` or `confirmed_first_divergence`
   production,
 - production of the base `verification_report` artifact,
@@ -1746,3 +1764,254 @@ contract.
 }
 ```
 <!-- COVERAGE-SCOPED-LAYER-LOCALIZATION-INDEX-END -->
+
+## 27. Coverage-Scoped Intra-Layer Localization Contract Freeze
+
+Pass 4 P4-1 is frozen as a contract-only dependency for later implementation.
+It does not add an implemented producer or localization surface. In particular:
+
+- the C producer is not implemented;
+- runtime intra-layer capture is unavailable;
+- `intra_layer_checkpoint_layout` and `intra_layer_trace` are not emitted;
+- no runtime-artifact parser or localization algorithm is implemented;
+- localization execution and Pass 4 result serialization are unavailable;
+- no CLI flag or public Pass 4 execution API exists.
+
+The future outer evidence artifact retains schema
+`lis.execution_artifact/v1` and kind `layer_trace`. The additive producer-side
+field names are `intra_layer_checkpoint_layout` and `intra_layer_trace`.
+Enabled recapture manifests will conditionally bind
+`intra_layer_checkpoints_enabled`, `intra_layer_target_layer`, and capture
+profile `semantic_layer_and_intra_v1`. The future local result retains the same
+schema and uses kind `intra_layer_localization`, contract version
+`differential_verification_contract_v1`, and namespace
+`coverage_scoped_intra_layer_localization`.
+
+### Frozen Llama stage order
+
+The v1 layout identity is:
+
+```text
+layout_name = llama_intra_layer_summary
+layout_version = 1
+stage_taxonomy = lis.llama.intra_layer_stages/v1
+model_family = llama3_decoder
+phase = decode
+ordering_semantics = runtime_step_layer_stage_ordinal
+duplicate_coordinate_policy = reject_artifact_before_write
+```
+
+The exact logical stage order is:
+
+| Order | Stage ID and tensor role |
+|---:|---|
+| 0 | `layer_input` |
+| 1 | `attention_norm_output` |
+| 2 | `query_projection_output` |
+| 3 | `key_projection_output` |
+| 4 | `value_projection_output` |
+| 5 | `rope_query_output` |
+| 6 | `rope_key_output` |
+| 7 | `attention_scores` |
+| 8 | `attention_probabilities` |
+| 9 | `attention_context` |
+| 10 | `attention_output_projection` |
+| 11 | `post_attention_residual` |
+| 12 | `mlp_norm_output` |
+| 13 | `mlp_gate_projection` |
+| 14 | `mlp_up_projection` |
+| 15 | `mlp_gated_activation` |
+| 16 | `mlp_down_projection` |
+
+For v1, `stage_id == tensor_role`, `execution_ordinal == stage_order`, and
+batch and sequence indices are zero. The order is a contracted logical
+execution/dependency order, not proof of causal order among sibling Q/K/V
+branches.
+
+`layer_output` is deliberately absent from this local taxonomy. It remains the
+separate inherited boundary `parent:layer_output`, with evidence origin
+`authoritative_pass3`. It is never part of requested, captured, missing, or
+common local coverage and is never rehashed as a Pass 4 checkpoint.
+
+### Coordinates, coverage, and intervals
+
+The immutable local coordinate contains runtime checkpoint step, layer index,
+stage ID, tensor role, batch index, sequence index, token position, stage
+order, and execution ordinal. The step is at least 1; layer and token position
+are non-negative; all integers reject booleans and implicit coercion. Unknown
+stages, role/order mismatches, duplicates, and out-of-order input fail closed.
+Malformed order is never silently sorted.
+
+Each side declares the exact ordered 17-stage requested list. Captured
+coordinates are an ordered unique subset and missing coordinates are their
+stateful ordered complement, using the existing `CoverageState` values
+`captured`, `not_captured`, `unsupported`, `malformed`, and
+`unexpectedly_absent` unchanged. Common captured coverage preserves reference
+order; common comparable coverage is an aligned subset; and one-sided fields
+are exact captured-set differences. Different requested lists are
+`unsupported_intra_layer_layout`, not ordinary sparse coverage.
+
+The suspect interval is tagged. Its start is either the inclusive virtual
+`selected_layer_entry` or an exclusive local coordinate. Its inclusive end is
+either the first local mismatch with origin `pass4_local`, or the exact Pass 3B
+layer-output coordinate with origin `authoritative_pass3`. The interval lists
+every requested local stage between its bounds that is absent from common
+comparable coverage. Local and inherited endpoint fields are mutually
+exclusive.
+
+### Pass 3 parent and source identity
+
+Pass 3A is discovery provenance only and never authorizes Pass 4 evidence.
+After recapture and upstream rebuild, Pass 3B is the authoritative parent
+binding the exact extended traces. A valid observed mismatch is eligible; a
+valid no-mismatch parent is `not_applicable`; valid blocked or malformed
+parents are `comparison_blocked_by_pass3`; unsupported family, layout, or
+evidence policy is `unsupported_parent`; and Pass 3A/Pass 3B target or semantic
+drift is `parent_revalidation_inconsistent`.
+
+The future canonical Pass 3 wrapper must call the existing Pass 3 serializer,
+existing canonical JSON and SHA-256 helpers, and strict duplicate-key-rejecting
+JSON parser. It may not hash `repr` or pickle, hash selected fields, define a
+separate Pass 4 serializer for Pass 3, or rerun Pass 3 while parsing an
+artifact.
+
+`artifact_set_id` remains association evidence only. It cannot substitute for
+the canonical Pass 3 artifact, Pass 2 artifact, per-side run report, exact
+layer trace, or semantic-manifest identities.
+
+### Contextual digest domain
+
+The new frozen digest identity is:
+
+```text
+algorithm = sha256
+version = lis.checkpoint.intra_layer.fp32le/v1
+domain_tag = LIS_INTRA_LAYER_CHECKPOINT_DIGEST
+observed_dtype = fp32
+byte_order = little
+canonicalization = ieee754-binary32-le;canonical-qnan;preserve-signed-zero
+```
+
+The existing Pass 3 version `lis.checkpoint.fp32le/v1` is unchanged.
+The canonical byte stream is the domain tag followed by one zero byte, then:
+
+```text
+digest_version
+layout_name
+layout_version
+stage_taxonomy
+model_family
+precision_path
+phase
+runtime_checkpoint_step
+layer_index
+stage_id
+tensor_role
+batch_index
+sequence_index
+token_position
+stage_order
+execution_ordinal
+rank
+shape_dimensions
+observed_dtype
+byte_order
+element_count
+logical_row_major_FP32_bytes
+```
+
+Every string after the domain tag is
+`u64le(UTF-8 byte length) || UTF-8 bytes`. Every integer is unsigned 64-bit
+little-endian. Finite and infinity bits are preserved, signed zeros remain
+distinct, and all NaNs canonicalize to `0x7fc00000`. Rank zero, empty tensors,
+zero dimensions, shape overflow, element-count mismatch, and malformed
+strided views are rejected.
+
+The committed literal vectors cover finite values, signed zero, infinities,
+NaNs, shape/stage-role/layer/step/token/phase/precision domain separation,
+string framing, row-major order, strided equivalence, overflow, and malformed
+input. Their expected canonical streams and SHA-256 values are fixed fixture
+literals rather than generated approvals.
+
+### Local status algebra and evidence ceiling
+
+The frozen local statuses are:
+
+```text
+observable_intra_layer_mismatch_found
+mismatch_bounded_to_inherited_closing_boundary
+not_applicable
+comparison_blocked_by_pass3
+insufficient_common_intra_layer_coverage
+source_binding_inconsistent
+checkpoint_alignment_inconsistent
+checkpoint_summary_malformed
+comparison_policy_unavailable
+unsupported_parent
+unsupported_intra_layer_layout
+parent_revalidation_inconsistent
+```
+
+Both bounded mismatch statuses map to `suspect_interval_available`;
+`not_applicable` maps to itself; unsupported parent/layout statuses map to
+`unsupported`; parent revalidation inconsistency maps to `inconclusive`; and
+all other failures map to `blocked`. Every `pass4.*` reason code and its allowed
+status set is frozen in the authoritative P4-1 fixture and parity-tested.
+Successful Pass 4 results have no automatic mapping into frozen global
+verification success enums.
+
+Comparison evidence uses `tier1_bounded_digest`. Every result must serialize
+all of these as false:
+
+```text
+numeric_divergence_confirmed
+true_first_divergence_confirmed
+root_cause_identified
+tensor_equality_proved
+complete_intra_layer_coverage_proved
+operation_level_localization_performed
+exhaustive_confirmation_performed
+automatic_frozen_success_mapping
+```
+
+The authoritative machine-readable P4-1 contract is
+`tools/test_fixtures/intra_layer_localization/pass4_contract.json`. Its compact
+documentation index is mirrored below.
+
+<!-- COVERAGE-SCOPED-INTRA-LAYER-LOCALIZATION-INDEX-BEGIN -->
+```json
+{
+  "status": "frozen",
+  "scope": "P4-1_contract_only",
+  "layout_name": "llama_intra_layer_summary",
+  "layout_version": 1,
+  "stage_taxonomy": "lis.llama.intra_layer_stages/v1",
+  "stage_ids": [
+    "layer_input",
+    "attention_norm_output",
+    "query_projection_output",
+    "key_projection_output",
+    "value_projection_output",
+    "rope_query_output",
+    "rope_key_output",
+    "attention_scores",
+    "attention_probabilities",
+    "attention_context",
+    "attention_output_projection",
+    "post_attention_residual",
+    "mlp_norm_output",
+    "mlp_gate_projection",
+    "mlp_up_projection",
+    "mlp_gated_activation",
+    "mlp_down_projection"
+  ],
+  "inherited_boundary": "parent:layer_output",
+  "digest_version": "lis.checkpoint.intra_layer.fp32le/v1",
+  "result_kind": "intra_layer_localization",
+  "evidence_level": "tier1_bounded_digest",
+  "producer_implemented": false,
+  "runtime_capture_available": false,
+  "localization_execution_available": false
+}
+```
+<!-- COVERAGE-SCOPED-INTRA-LAYER-LOCALIZATION-INDEX-END -->

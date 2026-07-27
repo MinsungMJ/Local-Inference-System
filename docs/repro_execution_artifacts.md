@@ -355,6 +355,58 @@ Layer-trace artifact writing is fail-closed:
   artifact error explicitly. A partial file may remain on disk when the close
   fails, consistent with the other artifact writers.
 
+## Frozen Intra-Layer Artifact Extension (Not Implemented)
+
+The Pass 4 P4-1 contract freezes a future additive extension of the existing
+outer `layer_trace` artifact. The outer identity remains:
+
+```text
+schema = lis.execution_artifact/v1
+kind = layer_trace
+```
+
+The frozen producer-side field names are
+`intra_layer_checkpoint_layout` and `intra_layer_trace`. When a later producer
+is implemented and enabled, sibling manifests will conditionally bind:
+
+```text
+intra_layer_checkpoints_enabled = true
+intra_layer_target_layer = <Pass 3-selected layer>
+diagnostic_capture_profile = semantic_layer_and_intra_v1
+```
+
+These fields are absent today. The producer is not implemented, runtime
+intra-layer capture is unavailable, and no CLI flag currently requests it.
+There is also no runtime-artifact parser, localization algorithm/execution
+surface, or Pass 4 result serializer. P4-1 must therefore not be interpreted
+as an advertised runtime capability.
+
+The future layout identity is `llama_intra_layer_summary` version 1 with
+taxonomy `lis.llama.intra_layer_stages/v1`, Llama decode-only semantics, and a
+fixed 17-stage request. Entries will remain separate from `layer_trace[]`.
+The existing Pass 3 `layer_output` checkpoint stays the authoritative inherited
+boundary and is not duplicated in `intra_layer_trace[]`.
+
+The future Pass 4 result identity is:
+
+```text
+schema = lis.execution_artifact/v1
+kind = intra_layer_localization
+contract_version = differential_verification_contract_v1
+contract_namespace = coverage_scoped_intra_layer_localization
+```
+
+The frozen digest domain is `lis.checkpoint.intra_layer.fp32le/v1`; it does not
+change the existing `lis.checkpoint.fp32le/v1` layer-output digest. Both the
+future intra-layer evidence and result remain bounded diagnostic metadata.
+Full tensor payloads are prohibited, and digest equality will not prove tensor
+equality.
+
+`artifact_set_id` remains same-execution association evidence only. It cannot
+replace canonical run-report, layer-trace, Pass 2, Pass 3, or semantic-manifest
+identities. Any future evidence must be bound by the authoritative recaptured
+Pass 3B trace SHA before intra-layer summary access.
+
 ## LIS Inspect Compatibility Protection
 
 Current LIS Inspect compatibility protects supported inputs: `run_report` JSON and
