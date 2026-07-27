@@ -1,0 +1,396 @@
+{
+  "schema": "lis.pass4.contract_examples/v1",
+  "examples": [
+    {
+      "name": "local_mismatch_result",
+      "valid": true,
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "observable_intra_layer_mismatch_found",
+        "disposition": "suspect_interval_available",
+        "reason_codes": [
+          "pass4.local_digest_mismatch"
+        ],
+        "evidence_level": "tier1_bounded_digest",
+        "coverage": {
+          "common_comparable": [
+            {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "attention_output_projection",
+              "tensor_role": "attention_output_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 10,
+              "execution_ordinal": 10
+            },
+            {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_gate_projection",
+              "tensor_role": "mlp_gate_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 13,
+              "execution_ordinal": 13
+            }
+          ]
+        },
+        "localization": {
+          "first_observed_local_mismatch_coordinate": {
+            "runtime_checkpoint_step": 3,
+            "layer_index": 8,
+            "stage_id": "mlp_gate_projection",
+            "tensor_role": "mlp_gate_projection",
+            "batch_index": 0,
+            "sequence_index": 0,
+            "token_position": 11,
+            "stage_order": 13,
+            "execution_ordinal": 13
+          },
+          "authoritative_parent_coordinate": {
+            "runtime_checkpoint_step": 3,
+            "layer_index": 8,
+            "tensor_role": "layer_output",
+            "batch_index": 0,
+            "sequence_index": 0,
+            "stage_order": 0,
+            "execution_ordinal": 8
+          },
+          "suspect_interval": {
+            "start_kind": "local_coordinate",
+            "start_local_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "attention_output_projection",
+              "tensor_role": "attention_output_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 10,
+              "execution_ordinal": 10
+            },
+            "start_inclusive": false,
+            "end_kind": "local_coordinate",
+            "end_local_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_gate_projection",
+              "tensor_role": "mlp_gate_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 13,
+              "execution_ordinal": 13
+            },
+            "end_parent_coordinate": null,
+            "end_evidence_origin": "pass4_local",
+            "end_inclusive": true,
+            "missing_local_stage_ids": [
+              "post_attention_residual",
+              "mlp_norm_output"
+            ],
+            "notation": "(attention_output_projection, mlp_gate_projection]"
+          }
+        },
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    },
+    {
+      "name": "inherited_closing_boundary_result",
+      "valid": true,
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "mismatch_bounded_to_inherited_closing_boundary",
+        "disposition": "suspect_interval_available",
+        "reason_codes": [
+          "pass4.no_local_mismatch_before_inherited_boundary"
+        ],
+        "evidence_level": "tier1_bounded_digest",
+        "coverage": {
+          "common_comparable": [
+            {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_down_projection",
+              "tensor_role": "mlp_down_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 16,
+              "execution_ordinal": 16
+            }
+          ]
+        },
+        "localization": {
+          "first_observed_local_mismatch_coordinate": null,
+          "authoritative_parent_coordinate": {
+            "runtime_checkpoint_step": 3,
+            "layer_index": 8,
+            "tensor_role": "layer_output",
+            "batch_index": 0,
+            "sequence_index": 0,
+            "stage_order": 0,
+            "execution_ordinal": 8
+          },
+          "suspect_interval": {
+            "start_kind": "local_coordinate",
+            "start_local_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_down_projection",
+              "tensor_role": "mlp_down_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 16,
+              "execution_ordinal": 16
+            },
+            "start_inclusive": false,
+            "end_kind": "inherited_parent_boundary",
+            "end_local_coordinate": null,
+            "end_parent_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "tensor_role": "layer_output",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "stage_order": 0,
+              "execution_ordinal": 8
+            },
+            "end_evidence_origin": "authoritative_pass3",
+            "end_inclusive": true,
+            "missing_local_stage_ids": [],
+            "notation": "(mlp_down_projection, parent:layer_output]"
+          }
+        },
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    },
+    {
+      "name": "not_applicable_result",
+      "valid": true,
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "not_applicable",
+        "disposition": "not_applicable",
+        "reason_codes": [
+          "pass4.parent_has_no_observed_mismatch"
+        ],
+        "evidence_level": null,
+        "coverage": {
+          "common_comparable": []
+        },
+        "localization": null,
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    },
+    {
+      "name": "blocked_result",
+      "valid": true,
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "checkpoint_summary_malformed",
+        "disposition": "blocked",
+        "reason_codes": [
+          "pass4.digest_field_malformed"
+        ],
+        "evidence_level": null,
+        "coverage": {
+          "common_comparable": []
+        },
+        "localization": null,
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    },
+    {
+      "name": "invalid_coordinate",
+      "valid": false,
+      "expected_error": "stage_id and tensor_role violate the taxonomy",
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "observable_intra_layer_mismatch_found",
+        "disposition": "suspect_interval_available",
+        "reason_codes": [
+          "pass4.local_digest_mismatch"
+        ],
+        "evidence_level": "tier1_bounded_digest",
+        "coverage": {
+          "common_comparable": []
+        },
+        "localization": {
+          "first_observed_local_mismatch_coordinate": {
+            "runtime_checkpoint_step": 3,
+            "layer_index": 8,
+            "stage_id": "mlp_gate_projection",
+            "tensor_role": "mlp_up_projection",
+            "batch_index": 0,
+            "sequence_index": 0,
+            "token_position": 11,
+            "stage_order": 13,
+            "execution_ordinal": 13
+          },
+          "authoritative_parent_coordinate": null,
+          "suspect_interval": null
+        },
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    },
+    {
+      "name": "invalid_interval",
+      "valid": false,
+      "expected_error": "inherited interval end is incoherent",
+      "result": {
+        "schema": "lis.execution_artifact/v1",
+        "kind": "intra_layer_localization",
+        "contract_version": "differential_verification_contract_v1",
+        "contract_namespace": "coverage_scoped_intra_layer_localization",
+        "status": "mismatch_bounded_to_inherited_closing_boundary",
+        "disposition": "suspect_interval_available",
+        "reason_codes": [
+          "pass4.no_local_mismatch_before_inherited_boundary"
+        ],
+        "evidence_level": "tier1_bounded_digest",
+        "coverage": {
+          "common_comparable": [
+            {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_down_projection",
+              "tensor_role": "mlp_down_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 16,
+              "execution_ordinal": 16
+            }
+          ]
+        },
+        "localization": {
+          "first_observed_local_mismatch_coordinate": null,
+          "authoritative_parent_coordinate": {
+            "runtime_checkpoint_step": 3,
+            "layer_index": 8,
+            "tensor_role": "layer_output",
+            "batch_index": 0,
+            "sequence_index": 0,
+            "stage_order": 0,
+            "execution_ordinal": 8
+          },
+          "suspect_interval": {
+            "start_kind": "local_coordinate",
+            "start_local_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_down_projection",
+              "tensor_role": "mlp_down_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 16,
+              "execution_ordinal": 16
+            },
+            "start_inclusive": false,
+            "end_kind": "inherited_parent_boundary",
+            "end_local_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "stage_id": "mlp_down_projection",
+              "tensor_role": "mlp_down_projection",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "token_position": 11,
+              "stage_order": 16,
+              "execution_ordinal": 16
+            },
+            "end_parent_coordinate": {
+              "runtime_checkpoint_step": 3,
+              "layer_index": 8,
+              "tensor_role": "layer_output",
+              "batch_index": 0,
+              "sequence_index": 0,
+              "stage_order": 0,
+              "execution_ordinal": 8
+            },
+            "end_evidence_origin": "authoritative_pass3",
+            "end_inclusive": true,
+            "missing_local_stage_ids": [],
+            "notation": "(mlp_down_projection, parent:layer_output]"
+          }
+        },
+        "nonclaims": {
+          "numeric_divergence_confirmed": false,
+          "true_first_divergence_confirmed": false,
+          "root_cause_identified": false,
+          "tensor_equality_proved": false,
+          "complete_intra_layer_coverage_proved": false,
+          "operation_level_localization_performed": false,
+          "exhaustive_confirmation_performed": false,
+          "automatic_frozen_success_mapping": false
+        }
+      }
+    }
+  ]
+}

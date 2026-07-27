@@ -1,0 +1,557 @@
+{
+  "status": "frozen",
+  "scope": "P4-1_contract_only",
+  "schema": "lis.execution_artifact/v1",
+  "contract_version": "differential_verification_contract_v1",
+  "contract_namespace": "coverage_scoped_intra_layer_localization",
+  "prior_contract": {
+    "path": "tools/test_fixtures/differential_verification_contract.json",
+    "canonical_sha256": "sha256:9f467c7ed31df9feea4a0757bb76faa91b11f4a17d24c89c09b60040ef8e021b",
+    "all_pass0_through_pass3_serialized_values_unchanged": true
+  },
+  "artifact_identities": {
+    "outer_trace": {
+      "schema": "lis.execution_artifact/v1",
+      "kind": "layer_trace",
+      "additive_layout_field": "intra_layer_checkpoint_layout",
+      "additive_trace_field": "intra_layer_trace"
+    },
+    "conditional_manifest_fields": {
+      "intra_layer_checkpoints_enabled": true,
+      "intra_layer_target_layer": "parent_selected_layer",
+      "diagnostic_capture_profile": "semantic_layer_and_intra_v1"
+    },
+    "result": {
+      "schema": "lis.execution_artifact/v1",
+      "kind": "intra_layer_localization",
+      "contract_version": "differential_verification_contract_v1",
+      "contract_namespace": "coverage_scoped_intra_layer_localization"
+    }
+  },
+  "layout": {
+    "layout_name": "llama_intra_layer_summary",
+    "layout_version": 1,
+    "stage_taxonomy": "lis.llama.intra_layer_stages/v1",
+    "model_family": "llama3_decoder",
+    "phase": "decode",
+    "ordering_semantics": "runtime_step_layer_stage_ordinal",
+    "duplicate_coordinate_policy": "reject_artifact_before_write",
+    "batch_index": 0,
+    "sequence_index": 0,
+    "stage_id_equals_tensor_role": true,
+    "execution_ordinal_equals_stage_order": true,
+    "requested_stage_count": 17,
+    "full_tensor_payload_allowed": false
+  },
+  "stage_taxonomy": [
+    {
+      "order": 0,
+      "stage_id": "layer_input",
+      "tensor_role": "layer_input"
+    },
+    {
+      "order": 1,
+      "stage_id": "attention_norm_output",
+      "tensor_role": "attention_norm_output"
+    },
+    {
+      "order": 2,
+      "stage_id": "query_projection_output",
+      "tensor_role": "query_projection_output"
+    },
+    {
+      "order": 3,
+      "stage_id": "key_projection_output",
+      "tensor_role": "key_projection_output"
+    },
+    {
+      "order": 4,
+      "stage_id": "value_projection_output",
+      "tensor_role": "value_projection_output"
+    },
+    {
+      "order": 5,
+      "stage_id": "rope_query_output",
+      "tensor_role": "rope_query_output"
+    },
+    {
+      "order": 6,
+      "stage_id": "rope_key_output",
+      "tensor_role": "rope_key_output"
+    },
+    {
+      "order": 7,
+      "stage_id": "attention_scores",
+      "tensor_role": "attention_scores"
+    },
+    {
+      "order": 8,
+      "stage_id": "attention_probabilities",
+      "tensor_role": "attention_probabilities"
+    },
+    {
+      "order": 9,
+      "stage_id": "attention_context",
+      "tensor_role": "attention_context"
+    },
+    {
+      "order": 10,
+      "stage_id": "attention_output_projection",
+      "tensor_role": "attention_output_projection"
+    },
+    {
+      "order": 11,
+      "stage_id": "post_attention_residual",
+      "tensor_role": "post_attention_residual"
+    },
+    {
+      "order": 12,
+      "stage_id": "mlp_norm_output",
+      "tensor_role": "mlp_norm_output"
+    },
+    {
+      "order": 13,
+      "stage_id": "mlp_gate_projection",
+      "tensor_role": "mlp_gate_projection"
+    },
+    {
+      "order": 14,
+      "stage_id": "mlp_up_projection",
+      "tensor_role": "mlp_up_projection"
+    },
+    {
+      "order": 15,
+      "stage_id": "mlp_gated_activation",
+      "tensor_role": "mlp_gated_activation"
+    },
+    {
+      "order": 16,
+      "stage_id": "mlp_down_projection",
+      "tensor_role": "mlp_down_projection"
+    }
+  ],
+  "inherited_boundary": {
+    "boundary_id": "parent:layer_output",
+    "evidence_origin": "authoritative_pass3",
+    "tensor_role": "layer_output",
+    "local_stage": false,
+    "part_of_requested_coverage": false,
+    "part_of_captured_coverage": false,
+    "part_of_missing_coverage": false,
+    "part_of_common_coverage": false,
+    "rehashed_by_pass4": false
+  },
+  "coordinate_contract": {
+    "fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_id",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "token_position",
+      "stage_order",
+      "execution_ordinal"
+    ],
+    "logical_duplicate_key_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_id",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "token_position",
+      "stage_order"
+    ],
+    "order_key_fields": [
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_order",
+      "execution_ordinal"
+    ],
+    "runtime_checkpoint_step_minimum": 1,
+    "layer_index_minimum": 0,
+    "token_position_minimum": 0,
+    "bool_is_integer": false,
+    "implicit_coercion_allowed": false,
+    "silent_sorting_allowed": false,
+    "duplicates_allowed": false
+  },
+  "coverage_contract": {
+    "coverage_state_enum_source": "lis_verify.pass3_model.CoverageState",
+    "coverage_state_enum": [
+      "captured",
+      "not_captured",
+      "unsupported",
+      "malformed",
+      "unexpectedly_absent"
+    ],
+    "fields": [
+      "requested_coordinates",
+      "captured_coordinates",
+      "missing_coordinates",
+      "common_captured",
+      "common_comparable",
+      "reference_only",
+      "candidate_only",
+      "reference_missing",
+      "candidate_missing"
+    ],
+    "requested": "exact_ordered_17_stage_list",
+    "captured": "ordered_unique_subset_of_requested",
+    "missing": "ordered_complement_of_captured",
+    "captured_missing_disjoint": true,
+    "captured_missing_union_is_requested": true,
+    "common_captured_order": "preserve_reference_order",
+    "common_comparable": "aligned_subset_of_common_captured",
+    "one_sided_sets": "exact_captured_set_differences",
+    "requested_list_difference_status": "unsupported_intra_layer_layout",
+    "requested_list_difference_is_sparse_coverage": false
+  },
+  "suspect_interval_contract": {
+    "fields": [
+      "start_kind",
+      "start_local_coordinate",
+      "start_inclusive",
+      "end_kind",
+      "end_local_coordinate",
+      "end_parent_coordinate",
+      "end_evidence_origin",
+      "end_inclusive",
+      "missing_local_stage_ids",
+      "notation"
+    ],
+    "start_kind_enum": [
+      "selected_layer_entry",
+      "local_coordinate"
+    ],
+    "end_kind_enum": [
+      "local_coordinate",
+      "inherited_parent_boundary"
+    ],
+    "local_end_evidence_origin": "pass4_local",
+    "inherited_end_evidence_origin": "authoritative_pass3",
+    "end_inclusive": true,
+    "missing_stage_list": "exact_requested_but_not_common_comparable_stages_between_boundaries"
+  },
+  "pass3_parent_contract": {
+    "roles": {
+      "pass3a": {
+        "role": "pass3a_discovery_provenance",
+        "authorizes_pass4_evidence": false
+      },
+      "pass3b": {
+        "role": "pass3b_authoritative_parent",
+        "authorizes_pass4_evidence": true
+      }
+    },
+    "canonical_wrapper": {
+      "serializer": "existing_pass3_serializer",
+      "canonical_json": "existing_canonical_json_helper",
+      "hash": "existing_sha256_helper",
+      "json_parser": "strict_duplicate_key_rejecting",
+      "rerun_pass3_while_parsing": false,
+      "repr_hashing": false,
+      "pickle_hashing": false,
+      "selected_field_identity_hashing": false,
+      "separate_pass4_serializer_for_pass3": false
+    },
+    "classifications": {
+      "valid_observed_mismatch": "eligible",
+      "valid_no_mismatch": "not_applicable",
+      "valid_blocked_or_malformed": "comparison_blocked_by_pass3",
+      "unsupported_family_layout_or_evidence_policy": "unsupported_parent",
+      "pass3a_pass3b_target_or_semantic_drift": "parent_revalidation_inconsistent"
+    },
+    "required_identity_evidence": [
+      "canonical_pass3_artifact_sha256",
+      "pass2_artifact_sha256",
+      "run_report_sha256",
+      "layer_trace_sha256",
+      "semantic_manifest_sha256",
+      "artifact_set_id"
+    ],
+    "artifact_set_id_role": "probabilistic_same_execution_association_evidence_only",
+    "artifact_set_id_substitutes_for_other_identity": false
+  },
+  "status_algebra": {
+    "statuses": [
+      "observable_intra_layer_mismatch_found",
+      "mismatch_bounded_to_inherited_closing_boundary",
+      "not_applicable",
+      "comparison_blocked_by_pass3",
+      "insufficient_common_intra_layer_coverage",
+      "source_binding_inconsistent",
+      "checkpoint_alignment_inconsistent",
+      "checkpoint_summary_malformed",
+      "comparison_policy_unavailable",
+      "unsupported_parent",
+      "unsupported_intra_layer_layout",
+      "parent_revalidation_inconsistent"
+    ],
+    "dispositions": [
+      "blocked",
+      "not_applicable",
+      "unsupported",
+      "suspect_interval_available",
+      "inconclusive"
+    ],
+    "status_to_disposition": {
+      "observable_intra_layer_mismatch_found": "suspect_interval_available",
+      "mismatch_bounded_to_inherited_closing_boundary": "suspect_interval_available",
+      "not_applicable": "not_applicable",
+      "comparison_blocked_by_pass3": "blocked",
+      "insufficient_common_intra_layer_coverage": "blocked",
+      "source_binding_inconsistent": "blocked",
+      "checkpoint_alignment_inconsistent": "blocked",
+      "checkpoint_summary_malformed": "blocked",
+      "comparison_policy_unavailable": "blocked",
+      "unsupported_parent": "unsupported",
+      "unsupported_intra_layer_layout": "unsupported",
+      "parent_revalidation_inconsistent": "inconclusive"
+    },
+    "reason_allowed_statuses": {
+      "pass4.local_digest_mismatch": [
+        "observable_intra_layer_mismatch_found"
+      ],
+      "pass4.no_local_mismatch_before_inherited_boundary": [
+        "mismatch_bounded_to_inherited_closing_boundary"
+      ],
+      "pass4.asymmetric_coverage_retained": [
+        "observable_intra_layer_mismatch_found",
+        "mismatch_bounded_to_inherited_closing_boundary"
+      ],
+      "pass4.parent_has_no_observed_mismatch": [
+        "not_applicable"
+      ],
+      "pass4.parent_status_blocked": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.parent_artifact_malformed": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.parent_typed_artifact_incoherent": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.parent_comparisons_truncated": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.parent_localization_incoherent": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.parent_upstream_evidence_incoherent": [
+        "comparison_blocked_by_pass3"
+      ],
+      "pass4.discovery_rebound_layer_changed": [
+        "parent_revalidation_inconsistent"
+      ],
+      "pass4.discovery_rebound_semantics_changed": [
+        "parent_revalidation_inconsistent"
+      ],
+      "pass4.trace_sha_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.source_role_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.run_report_binding_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.artifact_set_binding_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.semantic_manifest_binding_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.runtime_capture_identity_mismatch": [
+        "source_binding_inconsistent"
+      ],
+      "pass4.no_common_captured_coordinates": [
+        "insufficient_common_intra_layer_coverage"
+      ],
+      "pass4.step_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.layer_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.phase_or_position_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.shape_or_count_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.dtype_or_precision_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.stage_role_or_order_alignment_mismatch": [
+        "checkpoint_alignment_inconsistent"
+      ],
+      "pass4.coverage_partition_malformed": [
+        "checkpoint_summary_malformed"
+      ],
+      "pass4.duplicate_or_out_of_order_coordinate": [
+        "checkpoint_summary_malformed"
+      ],
+      "pass4.summary_field_malformed": [
+        "checkpoint_summary_malformed"
+      ],
+      "pass4.digest_field_malformed": [
+        "checkpoint_summary_malformed"
+      ],
+      "pass4.prohibited_payload_present": [
+        "checkpoint_summary_malformed"
+      ],
+      "pass4.digest_contract_unknown": [
+        "comparison_policy_unavailable"
+      ],
+      "pass4.parent_contract_or_family_unsupported": [
+        "unsupported_parent"
+      ],
+      "pass4.parent_phase_unsupported": [
+        "unsupported_parent"
+      ],
+      "pass4.parent_digest_policy_unsupported": [
+        "unsupported_parent"
+      ],
+      "pass4.intra_layout_or_taxonomy_unsupported": [
+        "unsupported_intra_layer_layout"
+      ],
+      "pass4.requested_stage_set_unsupported": [
+        "unsupported_intra_layer_layout"
+      ]
+    },
+    "secondary_only_reasons": [
+      "pass4.asymmetric_coverage_retained"
+    ],
+    "failure_precedence": [
+      "wrong_api_type_raises_type_error",
+      "parent_canonical_and_typed_artifact_coherence",
+      "fully_validated_parent_terminal_classification",
+      "discovery_rebound_semantic_or_layer_drift",
+      "source_binding",
+      "support_and_layout",
+      "summary_and_coverage_structure",
+      "common_coverage_sufficiency",
+      "shared_entry_alignment",
+      "digest_policy_availability",
+      "digest_decisions"
+    ],
+    "successful_results_map_to_frozen_global_success_enums": false
+  },
+  "digest_contract": {
+    "algorithm": "sha256",
+    "version": "lis.checkpoint.intra_layer.fp32le/v1",
+    "domain_tag": "LIS_INTRA_LAYER_CHECKPOINT_DIGEST",
+    "domain_terminator_hex": "00",
+    "observed_dtype": "fp32",
+    "byte_order": "little",
+    "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+    "canonical_qnan_bits_hex": "7fc00000",
+    "string_encoding": "u64le_byte_length_then_utf8",
+    "integer_encoding": "unsigned_64_bit_little_endian",
+    "stream_fields_in_order": [
+      "domain_tag_and_zero_byte",
+      "digest_version",
+      "layout_name",
+      "layout_version",
+      "stage_taxonomy",
+      "model_family",
+      "precision_path",
+      "phase",
+      "runtime_checkpoint_step",
+      "layer_index",
+      "stage_id",
+      "tensor_role",
+      "batch_index",
+      "sequence_index",
+      "token_position",
+      "stage_order",
+      "execution_ordinal",
+      "rank",
+      "shape_dimensions",
+      "observed_dtype",
+      "byte_order",
+      "element_count",
+      "logical_row_major_fp32_bytes"
+    ],
+    "finite_bits": "preserved",
+    "infinity_bits": "preserved",
+    "signed_zero_bits": "preserved",
+    "nan_bits": "canonicalized_to_7fc00000",
+    "empty_tensor_rejected": true,
+    "rank_zero_rejected": true,
+    "zero_dimension_rejected": true,
+    "shape_overflow_rejected": true,
+    "element_count_mismatch_rejected": true,
+    "pass3_digest_version_unchanged": "lis.checkpoint.fp32le/v1",
+    "vectors_file": "intra_layer_checkpoint_digest_vectors.json"
+  },
+  "evidence_ceiling": {
+    "evidence_level": "tier1_bounded_digest",
+    "nonclaims": {
+      "numeric_divergence_confirmed": false,
+      "true_first_divergence_confirmed": false,
+      "root_cause_identified": false,
+      "tensor_equality_proved": false,
+      "complete_intra_layer_coverage_proved": false,
+      "operation_level_localization_performed": false,
+      "exhaustive_confirmation_performed": false,
+      "automatic_frozen_success_mapping": false
+    }
+  },
+  "examples": {
+    "file": "pass4_contract_examples.json",
+    "required": [
+      "local_mismatch_result",
+      "inherited_closing_boundary_result",
+      "not_applicable_result",
+      "blocked_result",
+      "invalid_coordinate",
+      "invalid_interval"
+    ]
+  },
+  "implementation_boundary": {
+    "contract_frozen": true,
+    "producer_implemented": false,
+    "runtime_capture_available": false,
+    "runtime_artifact_parser_implemented": false,
+    "localization_algorithm_implemented": false,
+    "localization_execution_available": false,
+    "pass4_result_serializer_implemented": false,
+    "production_api_added": false
+  },
+  "documentation_index": {
+    "status": "frozen",
+    "scope": "P4-1_contract_only",
+    "layout_name": "llama_intra_layer_summary",
+    "layout_version": 1,
+    "stage_taxonomy": "lis.llama.intra_layer_stages/v1",
+    "stage_ids": [
+      "layer_input",
+      "attention_norm_output",
+      "query_projection_output",
+      "key_projection_output",
+      "value_projection_output",
+      "rope_query_output",
+      "rope_key_output",
+      "attention_scores",
+      "attention_probabilities",
+      "attention_context",
+      "attention_output_projection",
+      "post_attention_residual",
+      "mlp_norm_output",
+      "mlp_gate_projection",
+      "mlp_up_projection",
+      "mlp_gated_activation",
+      "mlp_down_projection"
+    ],
+    "inherited_boundary": "parent:layer_output",
+    "digest_version": "lis.checkpoint.intra_layer.fp32le/v1",
+    "result_kind": "intra_layer_localization",
+    "evidence_level": "tier1_bounded_digest",
+    "producer_implemented": false,
+    "runtime_capture_available": false,
+    "localization_execution_available": false
+  }
+}
