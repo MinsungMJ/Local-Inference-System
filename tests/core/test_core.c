@@ -2,11 +2,13 @@
 #include "lis/checkpoint_digest.h"
 #include "lis/cpu_features.h"
 #include "lis/dtype.h"
+#include "lis/intra_layer_trace.h"
 #include "lis/layer_trace.h"
 #include "lis/model.h"
 #include "lis/status.h"
 #include "lis/tensor.h"
 
+#include <float.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -611,6 +613,2053 @@ static void test_layer_trace_coordinate_guards(void)
     lis_layer_trace_record_destroy(&nonmonotonic);
 }
 
+/* ---------------------------------------------------------------------------
+ * P4-4 intra-layer producer layout tests.
+ *
+ * All helpers in this section are prefixed `intra_` and all test entry points
+ * `test_intra_layer_*`. They exercise the module's authoritative stage table
+ * rather than any second in-test taxonomy: the golden arrays below are literals
+ * transcribed from the frozen external authority
+ * tools/test_fixtures/intra_layer_localization/pass4_contract.json, in the same
+ * spirit as the golden digest vectors above, so that an accidental edit to the
+ * C table fails here.
+ * ------------------------------------------------------------------------- */
+
+static const char *const intra_frozen_stage_ids[] = {
+    "layer_input",
+    "attention_norm_output",
+    "query_projection_output",
+    "key_projection_output",
+    "value_projection_output",
+    "rope_query_output",
+    "rope_key_output",
+    "attention_scores",
+    "attention_probabilities",
+    "attention_context",
+    "attention_output_projection",
+    "post_attention_residual",
+    "mlp_norm_output",
+    "mlp_gate_projection",
+    "mlp_up_projection",
+    "mlp_gated_activation",
+    "mlp_down_projection"
+};
+
+static void intra_expect_string(const char *name, const char *actual,
+                                const char *expected)
+{
+    if (actual == NULL || expected == NULL || strcmp(actual, expected) != 0) {
+        fprintf(stderr, "%s: expected \"%s\", got \"%s\"\n", name,
+                expected != NULL ? expected : "(null)",
+                actual != NULL ? actual : "(null)");
+        ++g_failures;
+    }
+}
+
+static void intra_expect_null(const char *name, const void *pointer)
+{
+    if (pointer != NULL) {
+        fprintf(stderr, "%s: expected NULL pointer\n", name);
+        ++g_failures;
+    }
+}
+
+static void intra_expect_state(const char *name,
+                               const lis_intra_layer_trace_record *record,
+                               lis_intra_layer_record_state expected)
+{
+    lis_intra_layer_record_state actual =
+        lis_intra_layer_record_get_state(record);
+
+    if (actual != expected) {
+        fprintf(stderr, "%s: expected state %d, got %d\n", name,
+                (int)expected, (int)actual);
+        ++g_failures;
+    }
+}
+
+static void test_intra_layer_stage_taxonomy(void)
+{
+    size_t index;
+
+    expect_size("intra frozen id count",
+                sizeof(intra_frozen_stage_ids) /
+                    sizeof(intra_frozen_stage_ids[0]),
+                LIS_INTRA_LAYER_STAGE_COUNT);
+    expect_size("intra stage count", (size_t)LIS_INTRA_LAYER_STAGE_COUNT, 17U);
+
+    for (index = 0; index < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        const lis_intra_layer_stage_info *info =
+            lis_intra_layer_stage_lookup(index);
+
+        if (info == NULL) {
+            fprintf(stderr, "intra stage %zu: unexpected NULL\n", index);
+            ++g_failures;
+            continue;
+        }
+        expect_size("intra stage order", info->stage_order, index);
+        intra_expect_string("intra stage id", info->stage_id,
+                            intra_frozen_stage_ids[index]);
+        /* stage_id == tensor_role is a frozen v1 identity. */
+        intra_expect_string("intra tensor role", info->tensor_role,
+                            intra_frozen_stage_ids[index]);
+        if (info->public_name == NULL || info->public_name[0] == '\0') {
+            fprintf(stderr, "intra stage %zu: empty public name\n", index);
+            ++g_failures;
+        }
+        /* layer_output is the inherited parent boundary, not a local stage. */
+        if (strcmp(info->stage_id, "layer_output") == 0 ||
+            strcmp(info->tensor_role, "layer_output") == 0) {
+            fprintf(stderr, "intra stage %zu: layer_output is not a local "
+                            "stage\n", index);
+            ++g_failures;
+        }
+    }
+
+    /* Enum identifiers agree with the table order they index. */
+    expect_size("intra enum layer_input",
+                (size_t)LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 0U);
+    expect_size("intra enum attention_scores",
+                (size_t)LIS_INTRA_LAYER_STAGE_ATTENTION_SCORES, 7U);
+    expect_size("intra enum mlp_down_projection",
+                (size_t)LIS_INTRA_LAYER_STAGE_MLP_DOWN_PROJECTION, 16U);
+}
+
+static void test_intra_layer_stage_lookup_rejects_unknown(void)
+{
+    intra_expect_null("intra lookup 17",
+                      lis_intra_layer_stage_lookup(LIS_INTRA_LAYER_STAGE_COUNT));
+    intra_expect_null("intra lookup size max",
+                      lis_intra_layer_stage_lookup(SIZE_MAX));
+    intra_expect_null("intra lookup wrapped negative",
+                      lis_intra_layer_stage_lookup((size_t)-1));
+    intra_expect_null(
+        "intra lookup cast enum overflow",
+        lis_intra_layer_stage_lookup(
+            (size_t)(lis_intra_layer_stage)LIS_INTRA_LAYER_STAGE_COUNT));
+}
+
+static void test_intra_layer_record_configure_guards(void)
+{
+    lis_intra_layer_trace_record record;
+    char oversized[LIS_INTRA_LAYER_IDENTIFIER_MAX + 2U];
+    char control[8];
+
+    memset(oversized, 'a', sizeof(oversized) - 1U);
+    oversized[sizeof(oversized) - 1U] = '\0';
+    memcpy(control, "bf16\tx", 7U);
+
+    expect_status("intra configure init",
+                  lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+    intra_expect_state("intra configure initial state", &record,
+                       LIS_INTRA_LAYER_RECORD_UNINITIALIZED);
+
+    expect_status("intra configure step zero",
+                  lis_intra_layer_record_configure(&record, 0U, 1U, 4U, 0U,
+                                                   "bf16"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure layer out of range",
+                  lis_intra_layer_record_configure(&record, 3U, 4U, 4U, 0U,
+                                                   "bf16"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure zero layer count",
+                  lis_intra_layer_record_configure(&record, 3U, 0U, 0U, 0U,
+                                                   "bf16"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure null precision path",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 0U,
+                                                   NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure empty precision path",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 0U,
+                                                   ""),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure oversized precision path",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 0U,
+                                                   oversized),
+                  LIS_STATUS_FORMAT);
+    expect_status("intra configure control byte precision path",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 0U,
+                                                   control),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra configure stays uninitialized", &record,
+                       LIS_INTRA_LAYER_RECORD_UNINITIALIZED);
+
+    expect_status("intra configure accepted",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    intra_expect_state("intra configure active", &record,
+                       LIS_INTRA_LAYER_RECORD_ACTIVE);
+    expect_status("intra configure twice",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_BAD_STATE);
+    expect_size("intra configure step", record.runtime_checkpoint_step, 3U);
+    expect_size("intra configure target layer", record.target_layer, 1U);
+    expect_size("intra configure total layers", record.total_layer_count, 4U);
+    expect_size("intra configure token position", record.token_position, 5U);
+    intra_expect_string("intra configure precision path",
+                        record.precision_path, "bf16");
+
+    /* A boundary-length identifier is accepted, not truncated. */
+    expect_status("intra configure boundary init",
+                  lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+    oversized[LIS_INTRA_LAYER_IDENTIFIER_MAX] = '\0';
+    expect_status("intra configure boundary length",
+                  lis_intra_layer_record_configure(&record, 1U, 0U, 1U, 0U,
+                                                   oversized),
+                  LIS_STATUS_OK);
+    expect_size("intra configure boundary stored",
+                strlen(record.precision_path),
+                (size_t)LIS_INTRA_LAYER_IDENTIFIER_MAX);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_fp32_view_validation(void)
+{
+    static const float storage[64] = {0.0f};
+    lis_intra_layer_fp32_view view;
+
+    /* Valid contiguous [2,3] view. */
+    memset(&view, 0, sizeof(view));
+    view.data = storage;
+    view.rank = 2U;
+    view.shape[0] = 2U;
+    view.shape[1] = 3U;
+    view.element_strides[0] = 3U;
+    view.element_strides[1] = 1U;
+    view.logical_element_count = 6U;
+    view.physical_element_count = 6U;
+    expect_status("intra view contiguous",
+                  lis_intra_layer_fp32_view_validate(&view), LIS_STATUS_OK);
+
+    /* Valid strided [A,S] view over a larger physical span. */
+    view.shape[0] = 4U;
+    view.shape[1] = 3U;
+    view.element_strides[0] = 16U;
+    view.element_strides[1] = 1U;
+    view.logical_element_count = 12U;
+    view.physical_element_count = 64U;
+    expect_status("intra view strided",
+                  lis_intra_layer_fp32_view_validate(&view), LIS_STATUS_OK);
+
+    /* max_offset == physical_element_count - 1 is the inclusive boundary. */
+    view.physical_element_count = 51U;
+    expect_status("intra view span boundary inclusive",
+                  lis_intra_layer_fp32_view_validate(&view), LIS_STATUS_OK);
+    /* One-past-span is rejected. */
+    view.physical_element_count = 50U;
+    expect_status("intra view span one past",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    view.physical_element_count = 8U;
+    expect_status("intra view span exceeded",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    view.physical_element_count = 64U;
+
+    expect_status("intra view null",
+                  lis_intra_layer_fp32_view_validate(NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    view.data = NULL;
+    expect_status("intra view null data",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    view.data = storage;
+
+    view.rank = 0U;
+    expect_status("intra view rank zero",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+    view.rank = LIS_INTRA_LAYER_MAX_RANK + 1U;
+    expect_status("intra view rank too large",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+    view.rank = 2U;
+
+    view.shape[1] = 0U;
+    expect_status("intra view zero dimension",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+    view.shape[1] = 3U;
+
+    view.logical_element_count = 11U;
+    expect_status("intra view element count mismatch",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_SHAPE_MISMATCH);
+    view.logical_element_count = 12U;
+
+    view.element_strides[1] = 0U;
+    expect_status("intra view zero stride",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    view.element_strides[1] = 1U;
+
+    /* Shape product overflow is detected before any span arithmetic. */
+    view.shape[0] = SIZE_MAX;
+    view.shape[1] = 2U;
+    expect_status("intra view shape product overflow",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_OVERFLOW);
+    view.shape[0] = 4U;
+    view.shape[1] = 3U;
+
+    /* Stride span overflow. */
+    view.element_strides[0] = SIZE_MAX;
+    expect_status("intra view span overflow",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_OVERFLOW);
+    view.element_strides[0] = 16U;
+
+    view.physical_element_count = 0U;
+    expect_status("intra view empty physical span",
+                  lis_intra_layer_fp32_view_validate(&view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+}
+
+static lis_intra_layer_observation intra_make_observation(
+    lis_intra_layer_stage stage,
+    size_t step,
+    size_t layer,
+    size_t token)
+{
+    lis_intra_layer_observation observation;
+    size_t index;
+
+    memset(&observation, 0, sizeof(observation));
+    observation.stage = stage;
+    observation.phase = LIS_INTRA_LAYER_PHASE_DECODE;
+    observation.runtime_checkpoint_step = step;
+    observation.layer_index = layer;
+    observation.token_position = token;
+    observation.batch_index = 0U;
+    observation.sequence_index = 0U;
+    observation.stage_order = (size_t)stage;
+    observation.execution_ordinal = (size_t)stage;
+    observation.rank = 1U;
+    observation.shape[0] = 4U;
+    observation.element_count = 4U;
+    observation.min = -1.0f;
+    observation.max = 2.0f;
+    observation.mean = 0.5f;
+    observation.l2 = 2.5f;
+    observation.nan = 0;
+    observation.inf = 0;
+    /* A distinctive caller-supplied digest. P4-4 carries these bytes; it never
+     * derives them from any payload. */
+    observation.digest.valid = 1;
+    for (index = 0; index < LIS_CHECKPOINT_DIGEST_SIZE; ++index) {
+        observation.digest.bytes[index] =
+            (unsigned char)(index + (size_t)stage);
+    }
+    return observation;
+}
+
+/*
+ * Behaviourally identical to the layer-trace writer's own escaper and
+ * %.6g-or-null float writer, expressed without <math.h> so the core suite keeps
+ * linking without libm.
+ */
+static void intra_test_write_string(FILE *fp, const char *text)
+{
+    const unsigned char *cursor = (const unsigned char *)text;
+
+    if (fp == NULL || text == NULL) {
+        return;
+    }
+    fputc('"', fp);
+    while (*cursor != '\0') {
+        unsigned char ch = *cursor++;
+
+        switch (ch) {
+        case '\\':
+            fputs("\\\\", fp);
+            break;
+        case '"':
+            fputs("\\\"", fp);
+            break;
+        case '\b':
+            fputs("\\b", fp);
+            break;
+        case '\f':
+            fputs("\\f", fp);
+            break;
+        case '\n':
+            fputs("\\n", fp);
+            break;
+        case '\r':
+            fputs("\\r", fp);
+            break;
+        case '\t':
+            fputs("\\t", fp);
+            break;
+        default:
+            if (ch < 0x20U) {
+                fprintf(fp, "\\u%04x", (unsigned int)ch);
+            } else {
+                fputc((int)ch, fp);
+            }
+            break;
+        }
+    }
+    fputc('"', fp);
+}
+
+static void intra_test_write_float(FILE *fp, float value)
+{
+    if (value != value || value > FLT_MAX || value < -FLT_MAX) {
+        fputs("null", fp);
+    } else {
+        fprintf(fp, "%.6g", (double)value);
+    }
+}
+
+static const lis_intra_layer_json_hooks intra_test_hooks = {
+    intra_test_write_string,
+    intra_test_write_float
+};
+
+static char intra_json_buffer[131072];
+
+static size_t intra_capture_json(const char *name,
+                                 const lis_intra_layer_trace_record *record,
+                                 lis_status expected)
+{
+    FILE *fp = tmpfile();
+    lis_status status;
+    long emitted;
+    size_t read_bytes;
+
+    intra_json_buffer[0] = '\0';
+    if (fp == NULL) {
+        fprintf(stderr, "%s: tmpfile() unavailable\n", name);
+        ++g_failures;
+        return 0;
+    }
+    status = lis_intra_layer_record_write_json(fp, record, &intra_test_hooks);
+    expect_status(name, status, expected);
+    emitted = ftell(fp);
+    if (emitted < 0) {
+        fprintf(stderr, "%s: ftell failed\n", name);
+        ++g_failures;
+        (void)fclose(fp);
+        return 0;
+    }
+    rewind(fp);
+    read_bytes = fread(intra_json_buffer, 1U,
+                       sizeof(intra_json_buffer) - 1U, fp);
+    intra_json_buffer[read_bytes] = '\0';
+    (void)fclose(fp);
+    expect_size(name, read_bytes, (size_t)emitted);
+    return read_bytes;
+}
+
+static void intra_expect_contains(const char *name, const char *haystack,
+                                  const char *needle)
+{
+    if (strstr(haystack, needle) == NULL) {
+        fprintf(stderr, "%s: missing expected fragment \"%s\"\n", name,
+                needle);
+        ++g_failures;
+    }
+}
+
+static void intra_expect_absent(const char *name, const char *haystack,
+                                const char *needle)
+{
+    if (strstr(haystack, needle) != NULL) {
+        fprintf(stderr, "%s: forbidden fragment \"%s\" present\n", name,
+                needle);
+        ++g_failures;
+    }
+}
+
+static void intra_expect_prefix(const char *name, const char *haystack,
+                                const char *prefix)
+{
+    if (strncmp(haystack, prefix, strlen(prefix)) != 0) {
+        fprintf(stderr, "%s: output does not begin with \"%s\"\n", name,
+                prefix);
+        ++g_failures;
+    }
+}
+
+/*
+ * Requires `expected` to appear immediately after `anchor`, not merely
+ * somewhere in the document. This is what pins the *first* element of an
+ * emitted list to its position; a containment check cannot, because every
+ * fragment of a reordered list is still present.
+ */
+static void intra_expect_after(const char *name, const char *haystack,
+                               const char *anchor, const char *expected)
+{
+    const char *found = strstr(haystack, anchor);
+
+    if (found == NULL) {
+        fprintf(stderr, "%s: anchor \"%s\" not found\n", name, anchor);
+        ++g_failures;
+        return;
+    }
+    found += strlen(anchor);
+    if (strncmp(found, expected, strlen(expected)) != 0) {
+        fprintf(stderr, "%s: expected \"%s\" immediately after the anchor\n",
+                name, expected);
+        ++g_failures;
+    }
+}
+
+/*
+ * Asserts that the JSON array starting at `list_key` — and ending before
+ * `end_key`, or at the end of the buffer when `end_key` is NULL — carries
+ * exactly `expected_count` "stage_order" values, each inside the frozen
+ * taxonomy and each strictly greater than its predecessor.
+ *
+ * Strict ascent is the frozen ordering rule itself ("malformed order is never
+ * silently sorted"), and for a full 17-element list it is also exact: 17
+ * strictly increasing values all below 17 can only be 0..16. Cardinality
+ * checks and containment checks are both order-invariant, so this is the
+ * assertion that actually fails when an emission loop is reversed.
+ */
+static void intra_expect_stage_order_sequence(const char *name,
+                                              const char *haystack,
+                                              const char *list_key,
+                                              const char *end_key,
+                                              size_t expected_count)
+{
+    static const char field[] = "\"stage_order\":";
+    const char *cursor = strstr(haystack, list_key);
+    const char *end;
+    size_t found = 0;
+    size_t previous = 0;
+
+    if (cursor == NULL) {
+        fprintf(stderr, "%s: list key \"%s\" not found\n", name, list_key);
+        ++g_failures;
+        return;
+    }
+    cursor += strlen(list_key);
+    if (end_key != NULL) {
+        end = strstr(cursor, end_key);
+        if (end == NULL) {
+            fprintf(stderr, "%s: end key \"%s\" not found\n", name, end_key);
+            ++g_failures;
+            return;
+        }
+    } else {
+        end = cursor + strlen(cursor);
+    }
+    while ((cursor = strstr(cursor, field)) != NULL && cursor < end) {
+        size_t value = 0;
+        size_t digits = 0;
+
+        cursor += sizeof(field) - 1U;
+        while (*cursor >= '0' && *cursor <= '9') {
+            value = value * 10U + (size_t)(*cursor - '0');
+            ++cursor;
+            ++digits;
+        }
+        if (digits == 0U) {
+            fprintf(stderr, "%s: malformed stage_order at element %zu\n",
+                    name, found);
+            ++g_failures;
+            return;
+        }
+        if (value >= LIS_INTRA_LAYER_STAGE_COUNT) {
+            fprintf(stderr, "%s: stage_order %zu outside the taxonomy\n",
+                    name, value);
+            ++g_failures;
+            return;
+        }
+        if (found > 0U && value <= previous) {
+            fprintf(stderr,
+                    "%s: stage_order %zu does not follow %zu; emitted order is "
+                    "never sorted or repaired\n", name, value, previous);
+            ++g_failures;
+            return;
+        }
+        previous = value;
+        ++found;
+    }
+    expect_size(name, found, expected_count);
+}
+
+static size_t intra_count_occurrences(const char *haystack,
+                                      const char *needle)
+{
+    size_t count = 0;
+    size_t step = strlen(needle);
+    const char *cursor = haystack;
+
+    if (step == 0U) {
+        return 0;
+    }
+    while ((cursor = strstr(cursor, needle)) != NULL) {
+        ++count;
+        cursor += step;
+    }
+    return count;
+}
+
+/*
+ * Configures a record and resolves every stage in canonical order: stages
+ * before `unavailable_stage` and after it are captured, that one is declared
+ * unavailable. Pass LIS_INTRA_LAYER_STAGE_COUNT to capture all 17.
+ */
+static void intra_fill_record(const char *name,
+                              lis_intra_layer_trace_record *record,
+                              size_t unavailable_stage)
+{
+    size_t index;
+
+    expect_status("intra fill init", lis_intra_layer_record_init(record),
+                  LIS_STATUS_OK);
+    expect_status("intra fill configure",
+                  lis_intra_layer_record_configure(record, 3U, 1U, 8U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    for (index = 0; index < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        if (index == unavailable_stage) {
+            expect_status(name,
+                          lis_intra_layer_record_mark_unavailable(
+                              record, (lis_intra_layer_stage)index,
+                              LIS_INTRA_LAYER_MISSING_UNSUPPORTED,
+                              "observation_unavailable"),
+                          LIS_STATUS_OK);
+        } else {
+            lis_intra_layer_observation observation =
+                intra_make_observation((lis_intra_layer_stage)index, 3U, 1U,
+                                       5U);
+
+            expect_status(name,
+                          lis_intra_layer_record_append_observation(
+                              record, &observation),
+                          LIS_STATUS_OK);
+        }
+    }
+    expect_status(name, lis_intra_layer_record_finalize(record),
+                  LIS_STATUS_OK);
+}
+
+static void test_intra_layer_append_ordering_and_duplicates(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+
+    /* Valid ordered append. */
+    expect_status("intra order init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra order configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    observation = intra_make_observation(LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                                         3U, 1U, 5U);
+    expect_status("intra order first append",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_size("intra order captured count", record.captured_count, 1U);
+    expect_size("intra order element visits", record.digest_element_visits,
+                4U);
+    observation = intra_make_observation(
+        LIS_INTRA_LAYER_STAGE_QUERY_PROJECTION_OUTPUT, 3U, 1U, 5U);
+    expect_status("intra order second append",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_size("intra order captured count 2", record.captured_count, 2U);
+
+    /* Out-of-order arrival is rejected, never sorted. */
+    observation = intra_make_observation(
+        LIS_INTRA_LAYER_STAGE_ATTENTION_NORM_OUTPUT, 3U, 1U, 5U);
+    expect_status("intra order backwards rejected",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra order sticky invalid", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    expect_size("intra order counters untouched", record.captured_count, 2U);
+    expect_size("intra order visits untouched", record.digest_element_visits,
+                8U);
+    expect_status("intra order finalize after reject",
+                  lis_intra_layer_record_finalize(&record),
+                  LIS_STATUS_BAD_STATE);
+
+    /* Duplicate stage rejection. */
+    expect_status("intra duplicate init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra duplicate configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    observation = intra_make_observation(LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                                         3U, 1U, 5U);
+    expect_status("intra duplicate first",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_status("intra duplicate second",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra duplicate sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    expect_size("intra duplicate captured unchanged", record.captured_count,
+                1U);
+    expect_size("intra duplicate visits unchanged",
+                record.digest_element_visits, 4U);
+
+    /* Duplicate coordinate across the captured/unavailable boundary. */
+    expect_status("intra cross init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra cross configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    expect_status("intra cross append",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_status("intra cross mark same stage",
+                  lis_intra_layer_record_mark_unavailable(
+                      &record, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "already_present"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra cross sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+    expect_status("intra cross2 init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra cross2 configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    expect_status("intra cross2 mark",
+                  lis_intra_layer_record_mark_unavailable(
+                      &record, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "unavailable"),
+                  LIS_STATUS_OK);
+    expect_status("intra cross2 append same stage",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra cross2 sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_append_coordinate_guards(void)
+{
+    static const struct {
+        const char *name;
+        size_t      step;
+        size_t      layer;
+        size_t      token;
+        size_t      batch;
+        size_t      sequence;
+        size_t      stage_order_override;
+        int         override_stage_order;
+        size_t      execution_ordinal_override;
+        int         override_execution_ordinal;
+    } cases[] = {
+        { "intra coord step mismatch", 4U, 1U, 5U, 0U, 0U, 0U, 0, 0U, 0 },
+        { "intra coord layer mismatch", 3U, 2U, 5U, 0U, 0U, 0U, 0, 0U, 0 },
+        { "intra coord token mismatch", 3U, 1U, 6U, 0U, 0U, 0U, 0, 0U, 0 },
+        { "intra coord batch nonzero", 3U, 1U, 5U, 1U, 0U, 0U, 0, 0U, 0 },
+        { "intra coord sequence nonzero", 3U, 1U, 5U, 0U, 1U, 0U, 0, 0U, 0 },
+        { "intra coord stage order mismatch", 3U, 1U, 5U, 0U, 0U, 9U, 1, 0U,
+          0 },
+        { "intra coord execution ordinal mismatch", 3U, 1U, 5U, 0U, 0U, 0U, 0,
+          9U, 1 }
+    };
+    size_t index;
+
+    for (index = 0; index < sizeof(cases) / sizeof(cases[0]); ++index) {
+        lis_intra_layer_trace_record record;
+        lis_intra_layer_observation observation;
+
+        expect_status("intra coord init",
+                      lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+        expect_status("intra coord configure",
+                      lis_intra_layer_record_configure(&record, 3U, 1U, 4U,
+                                                       5U, "bf16"),
+                      LIS_STATUS_OK);
+        observation = intra_make_observation(
+            LIS_INTRA_LAYER_STAGE_LAYER_INPUT, cases[index].step,
+            cases[index].layer, cases[index].token);
+        observation.batch_index = cases[index].batch;
+        observation.sequence_index = cases[index].sequence;
+        if (cases[index].override_stage_order) {
+            observation.stage_order = cases[index].stage_order_override;
+            observation.execution_ordinal = cases[index].stage_order_override;
+        }
+        if (cases[index].override_execution_ordinal) {
+            observation.execution_ordinal =
+                cases[index].execution_ordinal_override;
+        }
+        expect_status(cases[index].name,
+                      lis_intra_layer_record_append_observation(&record,
+                                                                &observation),
+                      LIS_STATUS_INVALID_ARGUMENT);
+        intra_expect_state(cases[index].name, &record,
+                           LIS_INTRA_LAYER_RECORD_INVALID);
+        lis_intra_layer_record_destroy(&record);
+    }
+}
+
+static void test_intra_layer_append_payload_guards(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+    lis_intra_layer_observation zeroed;
+
+    memset(&zeroed, 0, sizeof(zeroed));
+
+#define INTRA_RESET_RECORD()                                                 \
+    do {                                                                     \
+        expect_status("intra payload init",                                  \
+                      lis_intra_layer_record_init(&record), LIS_STATUS_OK);  \
+        expect_status("intra payload configure",                             \
+                      lis_intra_layer_record_configure(&record, 3U, 1U, 4U,  \
+                                                       5U, "bf16"),          \
+                      LIS_STATUS_OK);                                        \
+        observation = intra_make_observation(                                \
+            LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 3U, 1U, 5U);                  \
+    } while (0)
+
+    /* Unknown stage identifiers. */
+    INTRA_RESET_RECORD();
+    observation.stage = (lis_intra_layer_stage)LIS_INTRA_LAYER_STAGE_COUNT;
+    observation.stage_order = LIS_INTRA_LAYER_STAGE_COUNT;
+    observation.execution_ordinal = LIS_INTRA_LAYER_STAGE_COUNT;
+    expect_status("intra unknown stage 17",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra unknown stage 17 sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+    INTRA_RESET_RECORD();
+    observation.stage =
+        (lis_intra_layer_stage)(LIS_INTRA_LAYER_STAGE_COUNT + 4096U);
+    expect_status("intra unknown stage far",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+    /* Phase gating: a zeroed observation is invalid, not decode. */
+    INTRA_RESET_RECORD();
+    expect_status("intra phase zeroed",
+                  lis_intra_layer_record_append_observation(&record, &zeroed),
+                  LIS_STATUS_UNSUPPORTED);
+    intra_expect_state("intra phase sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+    /* Shape, rank, and element-count coherence. */
+    INTRA_RESET_RECORD();
+    observation.rank = 0U;
+    expect_status("intra rank zero",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+
+    INTRA_RESET_RECORD();
+    observation.rank = LIS_INTRA_LAYER_MAX_RANK + 1U;
+    expect_status("intra rank too large",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+
+    INTRA_RESET_RECORD();
+    observation.rank = 2U;
+    observation.shape[0] = 4U;
+    observation.shape[1] = 0U;
+    expect_status("intra zero dimension",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+
+    INTRA_RESET_RECORD();
+    observation.element_count = 5U;
+    expect_status("intra element count mismatch",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_SHAPE_MISMATCH);
+
+    INTRA_RESET_RECORD();
+    observation.rank = 1U;
+    observation.shape[0] = 0U;
+    observation.element_count = 0U;
+    expect_status("intra empty tensor",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_UNSUPPORTED_SHAPE);
+
+    INTRA_RESET_RECORD();
+    observation.rank = 2U;
+    observation.shape[0] = SIZE_MAX;
+    observation.shape[1] = 2U;
+    observation.element_count = 2U;
+    expect_status("intra shape product overflow",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OVERFLOW);
+
+    /* Contract integer flags. */
+    INTRA_RESET_RECORD();
+    observation.nan = 2;
+    expect_status("intra nan flag out of range",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+    INTRA_RESET_RECORD();
+    observation.inf = -1;
+    expect_status("intra inf flag out of range",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+    /* The digest is required evidence, never derived here. */
+    INTRA_RESET_RECORD();
+    observation.digest.valid = 0;
+    expect_status("intra digest not valid",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+    /* Element-visit accumulation overflow. */
+    INTRA_RESET_RECORD();
+    record.digest_element_visits = SIZE_MAX - 3U;
+    expect_status("intra visit accumulation overflow",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OVERFLOW);
+    expect_size("intra visit unchanged after overflow",
+                record.digest_element_visits, SIZE_MAX - 3U);
+
+    /* The inclusive boundary still succeeds. */
+    INTRA_RESET_RECORD();
+    record.digest_element_visits = SIZE_MAX - 4U;
+    expect_status("intra visit accumulation boundary",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_size("intra visit saturated", record.digest_element_visits,
+                SIZE_MAX);
+
+    /* NULL observation. */
+    INTRA_RESET_RECORD();
+    expect_status("intra null observation",
+                  lis_intra_layer_record_append_observation(&record, NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra null observation sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    expect_status("intra append null record",
+                  lis_intra_layer_record_append_observation(NULL,
+                                                            &observation),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+#undef INTRA_RESET_RECORD
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_mark_unavailable_guards(void)
+{
+    static const lis_intra_layer_missing_state legal[] = {
+        LIS_INTRA_LAYER_MISSING_NOT_CAPTURED,
+        LIS_INTRA_LAYER_MISSING_UNSUPPORTED,
+        LIS_INTRA_LAYER_MISSING_MALFORMED,
+        LIS_INTRA_LAYER_MISSING_UNEXPECTEDLY_ABSENT
+    };
+    lis_intra_layer_trace_record record;
+    char oversized[LIS_INTRA_LAYER_DETAIL_MAX + 2U];
+    size_t index;
+
+    memset(oversized, 'd', sizeof(oversized) - 1U);
+    oversized[sizeof(oversized) - 1U] = '\0';
+
+    for (index = 0; index < sizeof(legal) / sizeof(legal[0]); ++index) {
+        expect_status("intra missing legal init",
+                      lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+        expect_status("intra missing legal configure",
+                      lis_intra_layer_record_configure(&record, 3U, 1U, 4U,
+                                                       5U, "bf16"),
+                      LIS_STATUS_OK);
+        expect_status("intra missing legal state",
+                      lis_intra_layer_record_mark_unavailable(
+                          &record, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                          legal[index], "reason"),
+                      LIS_STATUS_OK);
+        expect_size("intra missing count", record.missing_count, 1U);
+        expect_size("intra missing adds no visits",
+                    record.digest_element_visits, 0U);
+    }
+
+    expect_status("intra missing invalid init",
+                  lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+    expect_status("intra missing invalid configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    expect_status("intra missing invalid sentinel",
+                  lis_intra_layer_record_mark_unavailable(
+                      &record, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      LIS_INTRA_LAYER_MISSING_INVALID, "reason"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_state("intra missing invalid sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+#define INTRA_MARK_CASE(label, stage, state, detail, expected)               \
+    do {                                                                     \
+        expect_status("intra mark init",                                     \
+                      lis_intra_layer_record_init(&record), LIS_STATUS_OK);  \
+        expect_status("intra mark configure",                                \
+                      lis_intra_layer_record_configure(&record, 3U, 1U, 4U,  \
+                                                       5U, "bf16"),          \
+                      LIS_STATUS_OK);                                        \
+        expect_status((label),                                               \
+                      lis_intra_layer_record_mark_unavailable(               \
+                          &record, (stage), (state), (detail)),              \
+                      (expected));                                           \
+    } while (0)
+
+    INTRA_MARK_CASE("intra mark null detail",
+                    LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, NULL,
+                    LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_MARK_CASE("intra mark empty detail",
+                    LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "",
+                    LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_MARK_CASE("intra mark oversized detail",
+                    LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, oversized,
+                    LIS_STATUS_FORMAT);
+    INTRA_MARK_CASE("intra mark control byte detail",
+                    LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "bad\ndetail",
+                    LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_MARK_CASE("intra mark unknown stage",
+                    (lis_intra_layer_stage)LIS_INTRA_LAYER_STAGE_COUNT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "reason",
+                    LIS_STATUS_INVALID_ARGUMENT);
+
+    /* Boundary-length detail is accepted, not truncated. */
+    oversized[LIS_INTRA_LAYER_DETAIL_MAX] = '\0';
+    INTRA_MARK_CASE("intra mark boundary detail",
+                    LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                    LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, oversized,
+                    LIS_STATUS_OK);
+    expect_size("intra mark boundary stored",
+                strlen(record.slots[0].detail),
+                (size_t)LIS_INTRA_LAYER_DETAIL_MAX);
+
+#undef INTRA_MARK_CASE
+
+    expect_status("intra mark null record",
+                  lis_intra_layer_record_mark_unavailable(
+                      NULL, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "reason"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_finalize_partition(void)
+{
+    lis_intra_layer_trace_record record;
+    size_t index;
+
+    /* 16 resolved of 17 must not finalize. */
+    expect_status("intra partial init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra partial configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    for (index = 0; index + 1U < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        lis_intra_layer_observation observation =
+            intra_make_observation((lis_intra_layer_stage)index, 3U, 1U, 5U);
+
+        expect_status("intra partial append",
+                      lis_intra_layer_record_append_observation(&record,
+                                                                &observation),
+                      LIS_STATUS_OK);
+    }
+    expect_status("intra partial finalize",
+                  lis_intra_layer_record_finalize(&record),
+                  LIS_STATUS_BAD_STATE);
+    intra_expect_state("intra partial sticky", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+    /* 16 captured + 1 unavailable is READY. */
+    intra_fill_record("intra mixed fill", &record, 3U);
+    intra_expect_state("intra mixed ready", &record,
+                       LIS_INTRA_LAYER_RECORD_READY);
+    expect_size("intra mixed captured", record.captured_count, 16U);
+    expect_size("intra mixed missing", record.missing_count, 1U);
+    expect_size("intra mixed union", record.captured_count +
+                                         record.missing_count,
+                (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    expect_size("intra mixed is_ready",
+                (size_t)lis_intra_layer_record_is_ready(&record), 1U);
+    /* Finalize is idempotent once READY, and the record is sealed. */
+    expect_status("intra mixed finalize idempotent",
+                  lis_intra_layer_record_finalize(&record), LIS_STATUS_OK);
+    {
+        lis_intra_layer_observation observation = intra_make_observation(
+            LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 3U, 1U, 5U);
+
+        expect_status("intra ready append rejected",
+                      lis_intra_layer_record_append_observation(&record,
+                                                                &observation),
+                      LIS_STATUS_BAD_STATE);
+        intra_expect_state("intra ready append invalidates", &record,
+                           LIS_INTRA_LAYER_RECORD_INVALID);
+    }
+
+    /* 17 captured is READY. */
+    intra_fill_record("intra full fill", &record,
+                      LIS_INTRA_LAYER_STAGE_COUNT);
+    intra_expect_state("intra full ready", &record,
+                       LIS_INTRA_LAYER_RECORD_READY);
+    expect_size("intra full captured", record.captured_count,
+                (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    expect_size("intra full missing", record.missing_count, 0U);
+    expect_size("intra full visits", record.digest_element_visits, 68U);
+
+    expect_status("intra finalize null",
+                  lis_intra_layer_record_finalize(NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_sticky_invalidity(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation =
+        intra_make_observation(LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 3U, 1U, 5U);
+
+    expect_status("intra sticky init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra sticky configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    lis_intra_layer_record_invalidate(&record);
+    intra_expect_state("intra sticky invalid", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    lis_intra_layer_record_invalidate(&record);
+    intra_expect_state("intra sticky idempotent", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+
+    expect_status("intra sticky configure rejected",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_BAD_STATE);
+    expect_status("intra sticky append rejected",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_BAD_STATE);
+    expect_status("intra sticky mark rejected",
+                  lis_intra_layer_record_mark_unavailable(
+                      &record, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      LIS_INTRA_LAYER_MISSING_NOT_CAPTURED, "reason"),
+                  LIS_STATUS_BAD_STATE);
+    expect_status("intra sticky finalize rejected",
+                  lis_intra_layer_record_finalize(&record),
+                  LIS_STATUS_BAD_STATE);
+    intra_expect_state("intra sticky never cleared", &record,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    expect_size("intra sticky not ready",
+                (size_t)lis_intra_layer_record_is_ready(&record), 0U);
+
+    /* init is the only recovery. */
+    expect_status("intra sticky reinit", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    intra_expect_state("intra sticky reinit state", &record,
+                       LIS_INTRA_LAYER_RECORD_UNINITIALIZED);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_json_serialization(void)
+{
+    static const char expected_layout_head[] =
+        ",\"intra_layer_checkpoint_layout\":{"
+        "\"layout_name\":\"llama_intra_layer_summary\","
+        "\"layout_version\":1,"
+        "\"model_family\":\"llama3_decoder\","
+        "\"stage_taxonomy\":\"lis.llama.intra_layer_stages/v1\","
+        "\"runtime_checkpoint_step\":3,"
+        "\"phase\":\"decode\","
+        "\"target_layer\":1,"
+        "\"batch_index\":0,"
+        "\"sequence_index\":0,"
+        "\"token_position\":5,"
+        "\"ordering_semantics\":\"runtime_step_layer_stage_ordinal\","
+        "\"duplicate_coordinate_policy\":\"reject_artifact_before_write\","
+        "\"requested_coordinates\":[";
+    static const char expected_first_coordinate[] =
+        "{\"runtime_checkpoint_step\":3,\"layer_index\":1,"
+        "\"stage_id\":\"layer_input\",\"tensor_role\":\"layer_input\","
+        "\"batch_index\":0,\"sequence_index\":0,\"token_position\":5,"
+        "\"stage_order\":0,\"execution_ordinal\":0}";
+    static const char expected_last_coordinate[] =
+        "{\"runtime_checkpoint_step\":3,\"layer_index\":1,"
+        "\"stage_id\":\"mlp_down_projection\","
+        "\"tensor_role\":\"mlp_down_projection\","
+        "\"batch_index\":0,\"sequence_index\":0,\"token_position\":5,"
+        "\"stage_order\":16,\"execution_ordinal\":16}";
+    static const char expected_layout_tail[] =
+        "],\"available_summary_fields\":[\"min\",\"max\",\"mean\",\"l2\","
+        "\"nan\",\"inf\",\"digest\"],"
+        "\"digest_contract\":{\"algorithm\":\"sha256\","
+        "\"version\":\"lis.checkpoint.intra_layer.fp32le/v1\","
+        "\"observed_dtype\":\"fp32\",\"byte_order\":\"little\","
+        "\"canonicalization\":"
+        "\"ieee754-binary32-le;canonical-qnan;preserve-signed-zero\"},"
+        "\"full_tensor_payload_allowed\":false},\"intra_layer_trace\":[";
+    static const char expected_first_entry[] =
+        "{\"runtime_checkpoint_step\":3,\"phase\":\"decode\","
+        "\"layer_index\":1,\"stage_id\":\"layer_input\","
+        "\"tensor_role\":\"layer_input\",\"public_name\":\"Layer input\","
+        "\"batch_index\":0,\"sequence_index\":0,\"token_position\":5,"
+        "\"stage_order\":0,\"execution_ordinal\":0,\"shape\":[4],"
+        "\"observed_dtype\":\"fp32\",\"precision_path\":\"bf16\","
+        "\"element_count\":4,"
+        "\"available_summary_fields\":[\"min\",\"max\",\"mean\",\"l2\","
+        "\"nan\",\"inf\",\"digest\"],"
+        "\"min\":-1,\"max\":2,\"mean\":0.5,\"l2\":2.5,\"nan\":0,\"inf\":0,"
+        "\"digest\":{\"algorithm\":\"sha256\","
+        "\"version\":\"lis.checkpoint.intra_layer.fp32le/v1\","
+        "\"tensor_role\":\"layer_input\",\"shape\":[4],"
+        "\"observed_dtype\":\"fp32\",\"byte_order\":\"little\","
+        "\"canonicalization\":"
+        "\"ieee754-binary32-le;canonical-qnan;preserve-signed-zero\","
+        "\"value\":\"sha256:"
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\"}}";
+    lis_intra_layer_trace_record record;
+    size_t size;
+
+    intra_fill_record("intra json fill", &record,
+                      LIS_INTRA_LAYER_STAGE_COUNT);
+    size = intra_capture_json("intra json full", &record, LIS_STATUS_OK);
+    if (size == 0U) {
+        lis_intra_layer_record_destroy(&record);
+        return;
+    }
+
+    intra_expect_prefix("intra json layout head", intra_json_buffer,
+                        expected_layout_head);
+    intra_expect_contains("intra json last coordinate", intra_json_buffer,
+                          expected_last_coordinate);
+    intra_expect_contains("intra json layout tail", intra_json_buffer,
+                          expected_layout_tail);
+    intra_expect_contains("intra json empty missing list", intra_json_buffer,
+                          "\"missing_coordinates\":[],");
+
+    /*
+     * Each list must BEGIN with its stage-0 element, anchored to the byte that
+     * opens the list, and must then ascend through the canonical order. The
+     * head anchors and the sequence walks together pin every element position;
+     * containment and cardinality alone are order-invariant.
+     */
+    intra_expect_after("intra json requested head", intra_json_buffer,
+                       expected_layout_head, expected_first_coordinate);
+    intra_expect_after("intra json captured head", intra_json_buffer,
+                       "],\"captured_coordinates\":[",
+                       expected_first_coordinate);
+    intra_expect_after("intra json entry head", intra_json_buffer,
+                       expected_layout_tail, expected_first_entry);
+    intra_expect_stage_order_sequence("intra json requested order",
+                                      intra_json_buffer,
+                                      "\"requested_coordinates\":[",
+                                      "\"captured_coordinates\":[",
+                                      (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    intra_expect_stage_order_sequence("intra json captured order",
+                                      intra_json_buffer,
+                                      "\"captured_coordinates\":[",
+                                      "\"missing_coordinates\":[",
+                                      (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    intra_expect_stage_order_sequence("intra json entry order",
+                                      intra_json_buffer,
+                                      "\"intra_layer_trace\":[", NULL,
+                                      (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+
+    /* 17 requested + 17 captured + 0 missing + 17 entries. */
+    expect_size("intra json coordinate objects",
+                intra_count_occurrences(intra_json_buffer,
+                                        "\"execution_ordinal\":"),
+                51U);
+    expect_size("intra json entries",
+                intra_count_occurrences(intra_json_buffer, "\"public_name\":"),
+                (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    expect_size("intra json digest values",
+                intra_count_occurrences(intra_json_buffer, "\"value\":\"sha256:"),
+                (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    /* The parent boundary role is never emitted as an intra entry. */
+    intra_expect_absent("intra json no layer_output", intra_json_buffer,
+                        "layer_output");
+    /* No tensor payload field exists in any P4-4 structure. */
+    intra_expect_absent("intra json no payload", intra_json_buffer,
+                        "\"values\"");
+    if (intra_json_buffer[size - 1U] != ']') {
+        fprintf(stderr, "intra json terminator: expected ']', got '%c'\n",
+                intra_json_buffer[size - 1U]);
+        ++g_failures;
+    }
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_json_mixed_and_discipline(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+    uint32_t nan_bits = UINT32_C(0x7fc00000);
+    float nan_value;
+    size_t index;
+
+    intra_fill_record("intra mixed json fill", &record, 3U);
+    if (intra_capture_json("intra mixed json", &record, LIS_STATUS_OK) == 0U) {
+        lis_intra_layer_record_destroy(&record);
+        return;
+    }
+    intra_expect_contains(
+        "intra mixed missing entry", intra_json_buffer,
+        "\"missing_coordinates\":[{\"coordinate\":"
+        "{\"runtime_checkpoint_step\":3,\"layer_index\":1,"
+        "\"stage_id\":\"key_projection_output\","
+        "\"tensor_role\":\"key_projection_output\","
+        "\"batch_index\":0,\"sequence_index\":0,\"token_position\":5,"
+        "\"stage_order\":3,\"execution_ordinal\":3},"
+        "\"state\":\"unsupported\","
+        "\"detail\":\"observation_unavailable\"}],");
+    /* The unavailable stage has no trace entry (public_name is entry-only). */
+    intra_expect_absent("intra mixed no entry for missing", intra_json_buffer,
+                        "\"public_name\":\"K projection output\"");
+    expect_size("intra mixed entry count",
+                intra_count_occurrences(intra_json_buffer, "\"public_name\":"),
+                16U);
+    /*
+     * With stage 3 unavailable, captured and entry lists are the ordered
+     * 16-element complement and missing is the ordered 1-element remainder.
+     * Ascent must hold across the gap, not merely the counts.
+     */
+    intra_expect_stage_order_sequence("intra mixed requested order",
+                                      intra_json_buffer,
+                                      "\"requested_coordinates\":[",
+                                      "\"captured_coordinates\":[",
+                                      (size_t)LIS_INTRA_LAYER_STAGE_COUNT);
+    intra_expect_stage_order_sequence("intra mixed captured order",
+                                      intra_json_buffer,
+                                      "\"captured_coordinates\":[",
+                                      "\"missing_coordinates\":[", 16U);
+    intra_expect_stage_order_sequence("intra mixed missing order",
+                                      intra_json_buffer,
+                                      "\"missing_coordinates\":[",
+                                      "\"available_summary_fields\":", 1U);
+    intra_expect_stage_order_sequence("intra mixed entry order",
+                                      intra_json_buffer,
+                                      "\"intra_layer_trace\":[", NULL, 16U);
+    /* 17 requested + 16 captured + 1 missing + 16 entries. */
+    expect_size("intra mixed coordinate objects",
+                intra_count_occurrences(intra_json_buffer,
+                                        "\"execution_ordinal\":"),
+                50U);
+
+    /* Contract booleans are JSON literals; contract integer flags are bare
+     * integers. Neither is coerced into the other. */
+    intra_expect_contains("intra boolean literal", intra_json_buffer,
+                          "\"full_tensor_payload_allowed\":false}");
+    intra_expect_absent("intra boolean not integer", intra_json_buffer,
+                        "\"full_tensor_payload_allowed\":0");
+    intra_expect_absent("intra boolean not one", intra_json_buffer,
+                        "\"full_tensor_payload_allowed\":1");
+    intra_expect_absent("intra nan flag not boolean", intra_json_buffer,
+                        "\"nan\":false");
+    intra_expect_absent("intra inf flag not boolean", intra_json_buffer,
+                        "\"inf\":true");
+    intra_expect_contains("intra layout version unquoted", intra_json_buffer,
+                          "\"layout_version\":1,");
+
+    /* Non-finite summaries render as JSON null, matching the Pass 3 writer. */
+    memcpy(&nan_value, &nan_bits, sizeof(nan_value));
+    expect_status("intra nonfinite init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra nonfinite configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    for (index = 0; index < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        observation = intra_make_observation((lis_intra_layer_stage)index, 3U,
+                                             1U, 5U);
+        if (index == 0U) {
+            observation.mean = nan_value;
+            observation.nan = 1;
+            observation.inf = 1;
+        }
+        expect_status("intra nonfinite append",
+                      lis_intra_layer_record_append_observation(&record,
+                                                                &observation),
+                      LIS_STATUS_OK);
+    }
+    expect_status("intra nonfinite finalize",
+                  lis_intra_layer_record_finalize(&record), LIS_STATUS_OK);
+    if (intra_capture_json("intra nonfinite json", &record,
+                           LIS_STATUS_OK) != 0U) {
+        intra_expect_contains("intra nonfinite null", intra_json_buffer,
+                              "\"mean\":null,");
+        intra_expect_contains("intra nonfinite flags", intra_json_buffer,
+                              "\"nan\":1,\"inf\":1,");
+    }
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_json_rejects_unready(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+    lis_intra_layer_json_hooks broken;
+
+    expect_status("intra unready init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_size("intra unready uninitialized bytes",
+                intra_capture_json("intra json uninitialized", &record,
+                                   LIS_STATUS_BAD_STATE),
+                0U);
+
+    expect_status("intra unready configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    observation = intra_make_observation(LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                                         3U, 1U, 5U);
+    expect_status("intra unready append",
+                  lis_intra_layer_record_append_observation(&record,
+                                                            &observation),
+                  LIS_STATUS_OK);
+    expect_size("intra unready active bytes",
+                intra_capture_json("intra json active", &record,
+                                   LIS_STATUS_BAD_STATE),
+                0U);
+
+    lis_intra_layer_record_invalidate(&record);
+    expect_size("intra unready invalid bytes",
+                intra_capture_json("intra json invalid", &record,
+                                   LIS_STATUS_BAD_STATE),
+                0U);
+
+    /* Null and incomplete hook arguments. */
+    intra_fill_record("intra hook fill", &record,
+                      LIS_INTRA_LAYER_STAGE_COUNT);
+    expect_status("intra json null fp",
+                  lis_intra_layer_record_write_json(NULL, &record,
+                                                    &intra_test_hooks),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra json null record",
+                  lis_intra_layer_record_write_json(stdout, NULL,
+                                                    &intra_test_hooks),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra json null hooks",
+                  lis_intra_layer_record_write_json(stdout, &record, NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    broken.write_string = NULL;
+    broken.write_float = intra_test_write_float;
+    expect_status("intra json null string hook",
+                  lis_intra_layer_record_write_json(stdout, &record, &broken),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    broken.write_string = intra_test_write_string;
+    broken.write_float = NULL;
+    expect_status("intra json null float hook",
+                  lis_intra_layer_record_write_json(stdout, &record, &broken),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_digest_is_carried_not_computed(void)
+{
+    static const char distinctive[] =
+        "\"value\":\"sha256:"
+        "0f0e0d0c0b0a09080706050403020100"
+        "f0e0d0c0b0a090807060504030201000\"";
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+    size_t index;
+
+    expect_status("intra carry init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra carry configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    for (index = 0; index < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        observation = intra_make_observation((lis_intra_layer_stage)index, 3U,
+                                             1U, 5U);
+        if (index == 0U) {
+            size_t byte;
+
+            /* A pattern no digest function would produce from this payload. */
+            for (byte = 0; byte < 16U; ++byte) {
+                observation.digest.bytes[byte] = (unsigned char)(0x0FU - byte);
+            }
+            for (byte = 16U; byte < LIS_CHECKPOINT_DIGEST_SIZE; ++byte) {
+                observation.digest.bytes[byte] =
+                    (unsigned char)((0xFU - (byte - 16U)) << 4);
+            }
+        }
+        expect_status("intra carry append",
+                      lis_intra_layer_record_append_observation(&record,
+                                                                &observation),
+                      LIS_STATUS_OK);
+    }
+    expect_status("intra carry finalize",
+                  lis_intra_layer_record_finalize(&record), LIS_STATUS_OK);
+    /* The stored observation is a verbatim copy of what the caller supplied. */
+    expect_size("intra carry digest byte 0",
+                (size_t)record.slots[0].observation.digest.bytes[0], 0x0FU);
+    expect_size("intra carry digest byte 31",
+                (size_t)record.slots[0].observation.digest.bytes[31], 0x00U);
+    if (intra_capture_json("intra carry json", &record, LIS_STATUS_OK) != 0U) {
+        intra_expect_contains("intra carry digest hex", intra_json_buffer,
+                              distinctive);
+    }
+    lis_intra_layer_record_destroy(&record);
+}
+
+/*
+ * Writer-integration fixture. Every value is fixed so the emitted artifact is
+ * byte-deterministic and the additive-insertion relation can be compared
+ * exactly.
+ */
+typedef struct {
+    lis_cli_options       options;
+    lis_loaded_model      model;
+    lis_artifact_set_id   set_id;
+    lis_layer_trace_record record;
+    lis_layer_trace_artifact artifact;
+} intra_writer_fixture;
+
+static void intra_writer_fixture_init(intra_writer_fixture *fixture,
+                                      const char *path)
+{
+    lis_layer_trace_step step;
+
+    memset(&fixture->options, 0, sizeof(fixture->options));
+    memset(&fixture->model, 0, sizeof(fixture->model));
+    memset(&fixture->set_id, 0, sizeof(fixture->set_id));
+    memset(&fixture->record, 0, sizeof(fixture->record));
+    memset(&fixture->artifact, 0, sizeof(fixture->artifact));
+
+    fixture->options.context_length = 128U;
+    fixture->options.batch_size = 1U;
+    fixture->options.generation_limit = 4U;
+    fixture->options.thread_count = 1U;
+    fixture->options.layer_checkpoints_enabled = 1;
+    fixture->options.layer_checkpoints_step = 3U;
+
+    /*
+     * Eight layers so the frozen Pass 3 selected subset is a proper subset:
+     * {0,1,2,4,6,7} are selected, 3 and 5 are not.
+     */
+    fixture->model.metadata.config = valid_llama3_config();
+    fixture->model.metadata.config.layer_count = 8U;
+
+    expect_status("intra writer set id",
+                  lis_artifact_set_id_generate_with_source(
+                      &fixture->set_id, deterministic_random_source, NULL),
+                  LIS_STATUS_OK);
+
+    expect_status("intra writer record init",
+                  lis_layer_trace_record_init(&fixture->record, 4),
+                  LIS_STATUS_OK);
+    expect_status("intra writer layout",
+                  lis_layer_trace_record_configure_llama_layout(
+                      &fixture->record, 3U, 8U),
+                  LIS_STATUS_OK);
+    step = make_layer_output_step(3U, 0U, 1.0f);
+    expect_status("intra writer append",
+                  lis_layer_trace_record_append(&fixture->record, &step),
+                  LIS_STATUS_OK);
+
+    fixture->artifact.path = path;
+    fixture->artifact.artifact_set_id = &fixture->set_id;
+    fixture->artifact.model_format_name = "safetensors";
+    fixture->artifact.model_family_name = "llama3_decoder";
+    fixture->artifact.backend_name = "cpu_reference";
+    fixture->artifact.precision_path = "bf16";
+    fixture->artifact.options = &fixture->options;
+    fixture->artifact.model = &fixture->model;
+    fixture->artifact.input_mode = LIS_ARTIFACT_INPUT_MODE_TOKENS;
+    fixture->artifact.output_mode = LIS_ARTIFACT_OUTPUT_MODE_TOKEN_IDS;
+    fixture->artifact.binary_fingerprint.valid = 1;
+    fixture->artifact.binary_fingerprint.digest = UINT64_C(1);
+    fixture->artifact.binary_fingerprint.size_bytes = 1U;
+    fixture->artifact.model_fingerprint = fixture->artifact.binary_fingerprint;
+    fixture->artifact.config_fingerprint = fixture->artifact.binary_fingerprint;
+    fixture->artifact.input_fingerprint = fixture->artifact.binary_fingerprint;
+    fixture->artifact.runtime_fingerprint = fixture->artifact.binary_fingerprint;
+    fixture->artifact.backend_fingerprint = fixture->artifact.binary_fingerprint;
+    fixture->artifact.intra_layer_record = NULL;
+}
+
+static void intra_writer_fixture_destroy(intra_writer_fixture *fixture)
+{
+    lis_layer_trace_record_destroy(&fixture->record);
+}
+
+static size_t intra_read_file(const char *name, const char *path,
+                              char *buffer, size_t buffer_size)
+{
+    FILE *fp = fopen(path, "rb");
+    size_t read_bytes;
+
+    buffer[0] = '\0';
+    if (fp == NULL) {
+        fprintf(stderr, "%s: cannot open %s\n", name, path);
+        ++g_failures;
+        return 0;
+    }
+    read_bytes = fread(buffer, 1U, buffer_size - 1U, fp);
+    buffer[read_bytes] = '\0';
+    (void)fclose(fp);
+    return read_bytes;
+}
+
+/*
+ * Compares a captured artifact against a chunked golden byte sequence. The
+ * chunking is purely an ISO C string-literal length concession; the comparison
+ * is over the concatenation, byte for byte.
+ */
+static void intra_expect_golden(const char *name, const char *actual,
+                                size_t actual_size,
+                                const char *const *chunks,
+                                size_t chunk_count)
+{
+    size_t expected_size = 0;
+    size_t offset = 0;
+    size_t index;
+
+    for (index = 0; index < chunk_count; ++index) {
+        expected_size += strlen(chunks[index]);
+    }
+    expect_size(name, actual_size, expected_size);
+    for (index = 0; index < chunk_count; ++index) {
+        size_t length = strlen(chunks[index]);
+
+        if (offset + length > actual_size ||
+            memcmp(actual + offset, chunks[index], length) != 0) {
+            fprintf(stderr,
+                    "%s: diverges at offset %zu; expected \"%s\"\n",
+                    name, offset, chunks[index]);
+            ++g_failures;
+            return;
+        }
+        offset += length;
+    }
+}
+
+static int intra_path_exists(const char *path)
+{
+    FILE *fp = fopen(path, "rb");
+
+    if (fp == NULL) {
+        return 0;
+    }
+    (void)fclose(fp);
+    return 1;
+}
+
+static char intra_absent_buffer[131072];
+static char intra_present_buffer[131072];
+
+static void test_intra_layer_writer_rejects_invalid_record(void)
+{
+    static const char path[] = "test_intra_writer_reject.json";
+    intra_writer_fixture fixture;
+    lis_intra_layer_trace_record intra;
+
+    /* Not-ready records: nothing may be created on the target path. */
+    expect_status("intra writer reject init",
+                  lis_intra_layer_record_init(&intra), LIS_STATUS_OK);
+    expect_status("intra writer reject configure",
+                  lis_intra_layer_record_configure(&intra, 3U, 1U, 4U, 5U,
+                                                   "bf16"),
+                  LIS_STATUS_OK);
+    intra_writer_fixture_init(&fixture, path);
+    (void)remove(path);
+    fixture.artifact.intra_layer_record = &intra;
+    expect_status("intra writer active record",
+                  lis_layer_trace_artifact_write(&fixture.artifact,
+                                                 &fixture.record),
+                  LIS_STATUS_BAD_STATE);
+    expect_size("intra writer active no file",
+                (size_t)intra_path_exists(path), 0U);
+
+    lis_intra_layer_record_invalidate(&intra);
+    expect_status("intra writer invalid record",
+                  lis_layer_trace_artifact_write(&fixture.artifact,
+                                                 &fixture.record),
+                  LIS_STATUS_BAD_STATE);
+    expect_size("intra writer invalid no file",
+                (size_t)intra_path_exists(path), 0U);
+    intra_writer_fixture_destroy(&fixture);
+
+    /* Cross-object coherence failures, each leaving no file behind. */
+#define INTRA_WRITER_INCOHERENT(label, mutate, expected)                     \
+    do {                                                                     \
+        intra_writer_fixture_init(&fixture, path);                           \
+        intra_fill_record("intra writer coherence fill", &intra,             \
+                          LIS_INTRA_LAYER_STAGE_COUNT);                      \
+        fixture.artifact.intra_layer_record = &intra;                        \
+        (void)remove(path);                                                  \
+        mutate;                                                              \
+        expect_status((label),                                               \
+                      lis_layer_trace_artifact_write(&fixture.artifact,      \
+                                                     &fixture.record),       \
+                      (expected));                                           \
+        expect_size((label),(size_t)intra_path_exists(path), 0U);            \
+        intra_writer_fixture_destroy(&fixture);                              \
+    } while (0)
+
+    INTRA_WRITER_INCOHERENT("intra writer step mismatch",
+                            fixture.record.layout_runtime_checkpoint_step = 4U,
+                            LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_WRITER_INCOHERENT("intra writer layer count mismatch",
+                            intra.total_layer_count = 4U,
+                            LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_WRITER_INCOHERENT("intra writer layout unsupported",
+                            fixture.record.checkpoint_layout_supported = 0,
+                            LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_WRITER_INCOHERENT("intra writer unselected layer",
+                            intra.target_layer = 3U,
+                            LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_WRITER_INCOHERENT("intra writer precision mismatch",
+                            fixture.artifact.precision_path = "f32",
+                            LIS_STATUS_INVALID_ARGUMENT);
+    INTRA_WRITER_INCOHERENT("intra writer precision null",
+                            fixture.artifact.precision_path = NULL,
+                            LIS_STATUS_INVALID_ARGUMENT);
+
+#undef INTRA_WRITER_INCOHERENT
+    (void)remove(path);
+}
+
+static void test_intra_layer_writer_absent_bytes_unchanged(void)
+{
+    /*
+     * Golden bytes captured from the pre-P4-4 writer for this exact
+     * fixture, chunked only because ISO C limits a single string
+     * literal to 4095 bytes. Any perturbation of the existing artifact
+     * body -- including the split of the "]}" terminator -- fails here.
+     */
+    static const char *const expected_absent[] = {
+        "{\"schema\":\"lis.execution_artifact/v1\",",
+        "\"kind\":\"layer_trace\",\"artifact_set_id\":\"aset1:0001020",
+        "30405060708090a0b0c0d0e0f\",\"manifest\":{\"retention_policy",
+        "\":{\"absolute_paths\":\"omitted\",\"raw_prompt_text\":\"omi",
+        "tted\",\"generated_text\":\"omitted\"},",
+        "\"binary\":{\"fingerprint\":{\"algorithm\":\"fnv1a64\",",
+        "\"hex\":\"0000000000000001\",\"size_bytes\":1}},",
+        "\"model\":{\"format\":\"safetensors\",",
+        "\"family\":\"llama3_decoder\",\"fingerprint\":{\"algorithm\"",
+        ":\"fnv1a64\",\"hex\":\"0000000000000001\",",
+        "\"size_bytes\":1}},\"config\":{\"fingerprint\":{\"algorithm",
+        "\":\"fnv1a64\",\"hex\":\"0000000000000001\",",
+        "\"size_bytes\":1}},\"input\":{\"mode\":\"tokens\",",
+        "\"fingerprint\":{\"algorithm\":\"fnv1a64\",",
+        "\"hex\":\"0000000000000001\",\"size_bytes\":1}},",
+        "\"runtime\":{\"configured_context\":128,",
+        "\"batch_size\":1,\"generation_limit\":4,",
+        "\"thread_count\":1,\"layer_checkpoints_enabled\":true,",
+        "\"layer_checkpoint_step\":3,\"diagnostics_enabled\":false,",
+        "\"perf_enabled\":false,\"perf_per_token_enabled\":false,",
+        "\"precision_path\":\"bf16\",\"fingerprint\":{\"algorithm\":",
+        "\"fnv1a64\",\"hex\":\"0000000000000001\",",
+        "\"size_bytes\":1}},\"backend\":{\"name\":\"cpu_reference\",",
+        "\"fingerprint\":{\"algorithm\":\"fnv1a64\",",
+        "\"hex\":\"0000000000000001\",\"size_bytes\":1}}},",
+        "\"checkpoint_layout\":{\"layout_name\":\"llama_layer_output_",
+        "summary\",\"layout_version\":1,\"runtime_checkpoint_step\":3",
+        ",\"tensor_role\":\"layer_output\",\"stage_order\":0,",
+        "\"ordering_semantics\":\"runtime_step_layer_stage_ordinal\",",
+        "\"total_layer_count\":8,\"requested_coordinates\":[{\"runtim",
+        "e_checkpoint_step\":3,\"layer_index\":0,",
+        "\"tensor_role\":\"layer_output\",\"batch_index\":0,",
+        "\"sequence_index\":0,\"stage_order\":0,",
+        "\"execution_ordinal\":0},{\"runtime_checkpoint_step\":3,",
+        "\"layer_index\":1,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":1},{\"runtime_checkp",
+        "oint_step\":3,\"layer_index\":2,\"tensor_role\":\"layer_outp",
+        "ut\",\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":2},{\"runtime_checkp",
+        "oint_step\":3,\"layer_index\":4,\"tensor_role\":\"layer_outp",
+        "ut\",\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":3},{\"runtime_checkp",
+        "oint_step\":3,\"layer_index\":6,\"tensor_role\":\"layer_outp",
+        "ut\",\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":4},{\"runtime_checkp",
+        "oint_step\":3,\"layer_index\":7,\"tensor_role\":\"layer_outp",
+        "ut\",\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":5}],",
+        "\"captured_coordinates\":[{\"runtime_checkpoint_step\":3,",
+        "\"layer_index\":0,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":0}],",
+        "\"missing_coordinates\":[{\"coordinate\":{\"runtime_checkpoi",
+        "nt_step\":3,\"layer_index\":1,\"tensor_role\":\"layer_output",
+        "\",\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":1},",
+        "\"state\":\"not_captured\",\"detail\":\"target_checkpoint_no",
+        "t_observed\"},{\"coordinate\":{\"runtime_checkpoint_step\":3",
+        ",\"layer_index\":2,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":2},",
+        "\"state\":\"not_captured\",\"detail\":\"target_checkpoint_no",
+        "t_observed\"},{\"coordinate\":{\"runtime_checkpoint_step\":3",
+        ",\"layer_index\":4,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":3},",
+        "\"state\":\"not_captured\",\"detail\":\"target_checkpoint_no",
+        "t_observed\"},{\"coordinate\":{\"runtime_checkpoint_step\":3",
+        ",\"layer_index\":6,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":4},",
+        "\"state\":\"not_captured\",\"detail\":\"target_checkpoint_no",
+        "t_observed\"},{\"coordinate\":{\"runtime_checkpoint_step\":3",
+        ",\"layer_index\":7,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":5},",
+        "\"state\":\"not_captured\",\"detail\":\"target_checkpoint_no",
+        "t_observed\"}],\"available_summary_fields\":[\"min\",",
+        "\"max\",\"mean\",\"l2\",\"nan\",\"inf\",",
+        "\"digest\"],\"digest_contract\":{\"algorithm\":\"sha256\",",
+        "\"version\":\"lis.checkpoint.fp32le/v1\",",
+        "\"observed_dtype\":\"fp32\",\"byte_order\":\"little\",",
+        "\"canonicalization\":\"ieee754-binary32-le;canonical-qnan;pr",
+        "eserve-signed-zero\"},\"duplicate_coordinate_policy\":\"reje",
+        "ct_artifact_before_write\"},\"layer_trace\":[{\"step\":3,",
+        "\"phase\":\"decode\",\"name\":\"layer.0.output\",",
+        "\"shape\":[1],\"min\":1,\"max\":1,\"mean\":1,",
+        "\"l2\":1,\"nan\":0,\"inf\":0,\"runtime_checkpoint_step\":3,",
+        "\"layer_index\":0,\"tensor_role\":\"layer_output\",",
+        "\"batch_index\":0,\"sequence_index\":0,",
+        "\"stage_order\":0,\"execution_ordinal\":0,",
+        "\"observed_dtype\":\"fp32\",\"element_count\":1,",
+        "\"available_summary_fields\":[\"min\",",
+        "\"max\",\"mean\",\"l2\",\"nan\",\"inf\",",
+        "\"digest\"],\"digest\":{\"algorithm\":\"sha256\",",
+        "\"version\":\"lis.checkpoint.fp32le/v1\",",
+        "\"tensor_role\":\"layer_output\",\"shape\":[1],",
+        "\"observed_dtype\":\"fp32\",\"byte_order\":\"little\",",
+        "\"canonicalization\":\"ieee754-binary32-le;canonical-qnan;pr",
+        "eserve-signed-zero\",\"value\":\"sha256:cdaac9a2e6cc308d7cc2",
+        "564d24086969b6e791408406c048f2e6fccd38543d2e\"}}]}"
+    };
+
+    static const char path[] = "test_intra_writer_absent.json";
+    intra_writer_fixture fixture;
+    size_t absent_size;
+
+    intra_writer_fixture_init(&fixture, path);
+    (void)remove(path);
+    expect_status("intra absent write",
+                  lis_layer_trace_artifact_write(&fixture.artifact,
+                                                 &fixture.record),
+                  LIS_STATUS_OK);
+    absent_size = intra_read_file("intra absent read", path,
+                                  intra_absent_buffer,
+                                  sizeof(intra_absent_buffer));
+    intra_writer_fixture_destroy(&fixture);
+    (void)remove(path);
+
+    /* No new key appears anywhere in absent mode. */
+    intra_expect_absent("intra absent no new keys", intra_absent_buffer,
+                        "intra_layer");
+    intra_expect_golden("intra absent golden", intra_absent_buffer,
+                        absent_size, expected_absent,
+                        sizeof(expected_absent) /
+                            sizeof(expected_absent[0]));
+}
+
+static void test_intra_layer_writer_additive_insertion(void)
+{
+    static const char path[] = "test_intra_writer_present.json";
+    intra_writer_fixture fixture;
+    lis_intra_layer_trace_record intra;
+    size_t absent_size;
+    size_t present_size;
+    size_t blocks_size;
+
+    absent_size = strlen(intra_absent_buffer);
+    if (absent_size == 0U) {
+        fprintf(stderr, "intra additive: absent reference missing\n");
+        ++g_failures;
+        return;
+    }
+
+    intra_fill_record("intra additive fill", &intra,
+                      LIS_INTRA_LAYER_STAGE_COUNT);
+    intra_writer_fixture_init(&fixture, path);
+    fixture.artifact.intra_layer_record = &intra;
+    (void)remove(path);
+    expect_status("intra additive write",
+                  lis_layer_trace_artifact_write(&fixture.artifact,
+                                                 &fixture.record),
+                  LIS_STATUS_OK);
+    present_size = intra_read_file("intra additive read", path,
+                                   intra_present_buffer,
+                                   sizeof(intra_present_buffer));
+    intra_writer_fixture_destroy(&fixture);
+    (void)remove(path);
+    if (present_size == 0U) {
+        return;
+    }
+
+    /* Capture the module's own blocks for the exact insertion comparison. */
+    blocks_size = intra_capture_json("intra additive blocks", &intra,
+                                     LIS_STATUS_OK);
+    lis_intra_layer_record_destroy(&intra);
+    if (blocks_size == 0U) {
+        return;
+    }
+
+    /*
+     * with_record == absent_without_final_brace + blocks + final_brace
+     */
+    expect_size("intra additive size", present_size,
+                absent_size - 1U + blocks_size + 1U);
+    if (intra_absent_buffer[absent_size - 1U] != '}' ||
+        intra_present_buffer[present_size - 1U] != '}') {
+        fprintf(stderr, "intra additive: artifact does not end with '}'\n");
+        ++g_failures;
+        return;
+    }
+    if (strncmp(intra_present_buffer, intra_absent_buffer,
+                absent_size - 1U) != 0) {
+        fprintf(stderr, "intra additive: pre-existing bytes were perturbed\n");
+        ++g_failures;
+    }
+    if (strncmp(intra_present_buffer + (absent_size - 1U), intra_json_buffer,
+                blocks_size) != 0) {
+        fprintf(stderr, "intra additive: inserted blocks differ from the "
+                        "module output\n");
+        ++g_failures;
+    }
+    /* The new content is strictly appended after layer_trace[]. */
+    intra_expect_contains("intra additive junction", intra_present_buffer,
+                          "\"}}],\"intra_layer_checkpoint_layout\":{");
+}
+
+/*
+ * The validator accepts every byte >= 0x20 except DEL, so '"' and '\\' are
+ * legal in caller-supplied identifiers and details and must be JSON-escaped on
+ * output.
+ *
+ * This is asserted on BOTH paths deliberately. The module-level tests inject
+ * their own hook pair, so without a production-writer leg the real escaper's
+ * quote and backslash branches are never executed by any P4-4 test, and a
+ * regression in either escaper — or a divergence between them — would go
+ * unnoticed. Running one record through both and demanding the same escaped
+ * bytes is what makes this test resistant to that.
+ */
+static void test_intra_layer_json_escapes_caller_strings(void)
+{
+    static const char quoted_path[] = "a\"b\\c";
+    static const char quoted_detail[] = "unavailable:\"quoted\"\\path";
+    static const char expected_path_bytes[] =
+        "\"precision_path\":\"a\\\"b\\\\c\"";
+    static const char expected_detail_bytes[] =
+        "\"detail\":\"unavailable:\\\"quoted\\\"\\\\path\"";
+    static const char unescaped_path_bytes[] = "\"precision_path\":\"a\"b";
+    static const char path[] = "test_intra_writer_escape.json";
+    lis_intra_layer_trace_record record;
+    intra_writer_fixture fixture;
+    size_t index;
+
+    expect_status("intra escape init", lis_intra_layer_record_init(&record),
+                  LIS_STATUS_OK);
+    expect_status("intra escape configure",
+                  lis_intra_layer_record_configure(&record, 3U, 1U, 8U, 5U,
+                                                   quoted_path),
+                  LIS_STATUS_OK);
+    intra_expect_string("intra escape stored path", record.precision_path,
+                        quoted_path);
+    for (index = 0; index < LIS_INTRA_LAYER_STAGE_COUNT; ++index) {
+        if (index == 3U) {
+            expect_status("intra escape mark",
+                          lis_intra_layer_record_mark_unavailable(
+                              &record, (lis_intra_layer_stage)index,
+                              LIS_INTRA_LAYER_MISSING_UNSUPPORTED,
+                              quoted_detail),
+                          LIS_STATUS_OK);
+        } else {
+            lis_intra_layer_observation observation =
+                intra_make_observation((lis_intra_layer_stage)index, 3U, 1U,
+                                       5U);
+
+            expect_status("intra escape append",
+                          lis_intra_layer_record_append_observation(&record,
+                                                                    &observation),
+                          LIS_STATUS_OK);
+        }
+    }
+    expect_status("intra escape finalize",
+                  lis_intra_layer_record_finalize(&record), LIS_STATUS_OK);
+
+    /* Leg 1: the module writer, through the injected test hooks. */
+    if (intra_capture_json("intra escape module json", &record,
+                           LIS_STATUS_OK) != 0U) {
+        intra_expect_contains("intra escape module path", intra_json_buffer,
+                              expected_path_bytes);
+        intra_expect_contains("intra escape module detail", intra_json_buffer,
+                              expected_detail_bytes);
+        intra_expect_absent("intra escape module raw quote", intra_json_buffer,
+                            unescaped_path_bytes);
+    }
+
+    /* Leg 2: the production layer-trace writer, through its own escaper. */
+    intra_writer_fixture_init(&fixture, path);
+    fixture.artifact.precision_path = quoted_path;
+    fixture.artifact.intra_layer_record = &record;
+    (void)remove(path);
+    expect_status("intra escape write",
+                  lis_layer_trace_artifact_write(&fixture.artifact,
+                                                 &fixture.record),
+                  LIS_STATUS_OK);
+    if (intra_read_file("intra escape read", path, intra_json_buffer,
+                        sizeof(intra_json_buffer)) != 0U) {
+        intra_expect_contains("intra escape writer path", intra_json_buffer,
+                              expected_path_bytes);
+        intra_expect_contains("intra escape writer detail", intra_json_buffer,
+                              expected_detail_bytes);
+        intra_expect_absent("intra escape writer raw quote", intra_json_buffer,
+                            unescaped_path_bytes);
+    }
+    intra_writer_fixture_destroy(&fixture);
+    (void)remove(path);
+    lis_intra_layer_record_destroy(&record);
+}
+
+static void test_intra_layer_null_handling(void)
+{
+    expect_status("intra init null",
+                  lis_intra_layer_record_init(NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_status("intra configure null record",
+                  lis_intra_layer_record_configure(NULL, 1U, 0U, 1U, 0U,
+                                                   "bf16"),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_size("intra is_ready null",
+                (size_t)lis_intra_layer_record_is_ready(NULL), 0U);
+    intra_expect_state("intra get_state null", NULL,
+                       LIS_INTRA_LAYER_RECORD_INVALID);
+    /* Safe no-ops. */
+    lis_intra_layer_record_invalidate(NULL);
+    lis_intra_layer_record_destroy(NULL);
+}
+
 int main(void)
 {
     test_dtype();
@@ -624,6 +2673,25 @@ int main(void)
     test_checkpoint_digest_vectors();
     test_artifact_set_id_lifecycle();
     test_layer_trace_coordinate_guards();
+    test_intra_layer_stage_taxonomy();
+    test_intra_layer_stage_lookup_rejects_unknown();
+    test_intra_layer_record_configure_guards();
+    test_intra_layer_fp32_view_validation();
+    test_intra_layer_append_ordering_and_duplicates();
+    test_intra_layer_append_coordinate_guards();
+    test_intra_layer_append_payload_guards();
+    test_intra_layer_mark_unavailable_guards();
+    test_intra_layer_finalize_partition();
+    test_intra_layer_sticky_invalidity();
+    test_intra_layer_json_serialization();
+    test_intra_layer_json_mixed_and_discipline();
+    test_intra_layer_json_rejects_unready();
+    test_intra_layer_digest_is_carried_not_computed();
+    test_intra_layer_writer_rejects_invalid_record();
+    test_intra_layer_writer_absent_bytes_unchanged();
+    test_intra_layer_writer_additive_insertion();
+    test_intra_layer_json_escapes_caller_strings();
+    test_intra_layer_null_handling();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d core test failure(s)\n", g_failures);
