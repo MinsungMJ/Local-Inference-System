@@ -1,5 +1,7 @@
 #include "lis/layer_trace.h"
 
+#include "lis/intra_layer_trace.h"
+
 #include <errno.h>
 #include <float.h>
 #include <inttypes.h>
@@ -435,6 +437,30 @@ lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifa
         !artifact->backend_fingerprint.valid) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
+    /*
+     * Optional intra-layer record. Every check runs before fopen, so a
+     * rejected record leaves the caller's target path untouched: an invalid
+     * record suppresses the whole requested artifact rather than silently
+     * degrading it to a Pass-3-only file.
+     */
+    if (artifact->intra_layer_record != NULL) {
+        const lis_intra_layer_trace_record *intra =
+            artifact->intra_layer_record;
+
+        if (!lis_intra_layer_record_is_ready(intra)) {
+            return LIS_STATUS_BAD_STATE;
+        }
+        if (!record->checkpoint_layout_supported ||
+            intra->runtime_checkpoint_step !=
+                record->layout_runtime_checkpoint_step ||
+            intra->total_layer_count != record->total_layer_count ||
+            !lis_layer_trace_layout_selects_layer(intra->target_layer,
+                                                  intra->total_layer_count) ||
+            artifact->precision_path == NULL ||
+            strcmp(artifact->precision_path, intra->precision_path) != 0) {
+            return LIS_STATUS_INVALID_ARGUMENT;
+        }
+    }
 
     fp = fopen(artifact->path, "wb");
     if (fp == NULL) {
@@ -571,7 +597,22 @@ lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifa
         }
         fputc('}', fp);
     }
-    fputs("]}", fp);
+    fputs("]", fp);
+
+    if (artifact->intra_layer_record != NULL) {
+        static const lis_intra_layer_json_hooks hooks = {
+            lis_layer_trace_write_json_string,
+            lis_layer_trace_write_g6
+        };
+        lis_status intra_status = lis_intra_layer_record_write_json(
+            fp, artifact->intra_layer_record, &hooks);
+
+        if (intra_status != LIS_STATUS_OK) {
+            (void)fclose(fp);
+            return intra_status;
+        }
+    }
+    fputs("}", fp);
 
     if (fclose(fp) != 0) {
         return LIS_STATUS_IO;

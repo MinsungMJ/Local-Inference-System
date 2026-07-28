@@ -60,6 +60,9 @@ typedef struct {
     int    test_observation_perturbation_applied;
 } lis_layer_trace_record;
 
+/* Optional Pass 4 producer record; declared, never dereferenced, here. */
+struct lis_intra_layer_trace_record;
+
 typedef struct {
     const char *path;
     const lis_artifact_set_id *artifact_set_id;
@@ -77,6 +80,13 @@ typedef struct {
     lis_artifact_fingerprint input_fingerprint;
     lis_artifact_fingerprint runtime_fingerprint;
     lis_artifact_fingerprint backend_fingerprint;
+    /*
+     * Optional, borrowed, and NULL by default. When NULL the emitted artifact
+     * bytes are identical to a build without this field. The record's storage,
+     * lifetime, and lifecycle belong entirely to the caller; the writer never
+     * mutates or frees it.
+     */
+    const struct lis_intra_layer_trace_record *intra_layer_record;
 } lis_layer_trace_artifact;
 
 lis_status lis_layer_trace_record_init(lis_layer_trace_record *record,
