@@ -11,10 +11,10 @@
  * emission of the two additive blocks "intra_layer_checkpoint_layout" and
  * "intra_layer_trace".
  *
- * It carries a caller-supplied checkpoint digest and never computes one: no
- * entry point reads tensor elements, and lis_intra_layer_fp32_view is validated
- * for declared span coherence without ever dereferencing its data pointer. The
- * intra-layer digest stream and its computation are a separate work package.
+ * The record module carries a caller-supplied checkpoint digest and never
+ * computes one while appending or emitting a record. The additive digest entry
+ * point declared below is the sole operation that traverses an FP32 view; the
+ * structural view validator itself never dereferences the data pointer.
  *
  * The include list below is deliberately minimal: it is the mechanism that
  * keeps runtime, loader, and CLI state out of this module.
@@ -197,6 +197,17 @@ typedef struct lis_intra_layer_trace_record {
 
 _Static_assert(sizeof(lis_intra_layer_trace_record) <= 16384U,
                "intra-layer record must stay a small fixed-size object");
+
+/*
+ * Computes the frozen contextual/strided P4 digest for one observation. The
+ * record must be ACTIVE and the observation coordinate must match its target.
+ * On every failure, a non-NULL output is left invalid and zero-filled.
+ */
+lis_status lis_intra_layer_checkpoint_digest_fp32(
+    const lis_intra_layer_trace_record *record,
+    const lis_intra_layer_observation *observation,
+    const lis_intra_layer_fp32_view *view,
+    lis_checkpoint_digest *out);
 
 /*
  * JSON primitives injected by the caller. The layer-trace writer passes its own

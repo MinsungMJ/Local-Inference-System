@@ -956,6 +956,523 @@ static lis_intra_layer_observation intra_make_observation(
     return observation;
 }
 
+/* ---------------------------------------------------------------------------
+ * P4-5 contextual/strided digest tests.
+ *
+ * The literals below are transcribed from the frozen P4-1 JSON fixture. Three
+ * of its 16 positive encoder vectors use non-producer phases ("prefill", "bc",
+ * and "c"); the P4-4 C producer deliberately cannot represent those as valid
+ * observations. The 13 decode vectors are therefore the complete positive C
+ * API parity set, while the Python contract suite retains all 16 encoder
+ * vectors and this suite separately pins non-decode rejection.
+ * ------------------------------------------------------------------------- */
+
+static void intra_expect_digest_invalid_zero(const char *name,
+                                             const lis_checkpoint_digest *digest)
+{
+    static const unsigned char zero[LIS_CHECKPOINT_DIGEST_SIZE] = {0U};
+
+    if (digest->valid != 0 ||
+        memcmp(digest->bytes, zero, sizeof(digest->bytes)) != 0) {
+        fprintf(stderr, "%s: failed digest output was not zero/invalid\n",
+                name);
+        ++g_failures;
+    }
+}
+
+static void intra_expect_digest_status(
+    const char *name,
+    const lis_intra_layer_trace_record *record,
+    const lis_intra_layer_observation *observation,
+    const lis_intra_layer_fp32_view *view,
+    lis_status expected)
+{
+    lis_checkpoint_digest digest;
+    lis_status status;
+
+    memset(&digest, 0xa5, sizeof(digest));
+    status = lis_intra_layer_checkpoint_digest_fp32(
+        record, observation, view, &digest);
+    expect_status(name, status, expected);
+    if (expected != LIS_STATUS_OK) {
+        intra_expect_digest_invalid_zero(name, &digest);
+    }
+}
+
+static void intra_digest_setup_base(
+    lis_intra_layer_trace_record *record,
+    lis_intra_layer_observation *observation,
+    lis_intra_layer_fp32_view *view,
+    float storage[6])
+{
+    static const uint32_t bits[4] = {
+        UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+        UINT32_C(0x00000001), UINT32_C(0x7f7fffff)
+    };
+    size_t index;
+
+    expect_status("intra digest base init",
+                  lis_intra_layer_record_init(record), LIS_STATUS_OK);
+    expect_status("intra digest base configure",
+                  lis_intra_layer_record_configure(record, 3U, 8U, 9U, 11U,
+                                                   "f32"),
+                  LIS_STATUS_OK);
+    *observation = intra_make_observation(
+        LIS_INTRA_LAYER_STAGE_MLP_GATE_PROJECTION, 3U, 8U, 11U);
+    observation->rank = 2U;
+    observation->shape[0] = 2U;
+    observation->shape[1] = 2U;
+    observation->element_count = 4U;
+    memset(storage, 0, sizeof(float) * 6U);
+    for (index = 0U; index < 4U; ++index) {
+        memcpy(storage + index, bits + index, sizeof(storage[index]));
+    }
+    memset(view, 0, sizeof(*view));
+    view->data = storage;
+    view->rank = 2U;
+    view->shape[0] = 2U;
+    view->shape[1] = 2U;
+    view->element_strides[0] = 2U;
+    view->element_strides[1] = 1U;
+    view->logical_element_count = 4U;
+    view->physical_element_count = 4U;
+}
+
+static void test_intra_layer_checkpoint_digest_vectors(void)
+{
+    static const struct {
+        const char *name;
+        size_t step;
+        size_t layer;
+        size_t stage_order;
+        size_t token;
+        const char *precision_path;
+        size_t rank;
+        size_t shape[LIS_INTRA_LAYER_MAX_RANK];
+        size_t strides[LIS_INTRA_LAYER_MAX_RANK];
+        size_t physical_count;
+        uint32_t physical_bits[6];
+        const char *expected;
+    } vectors[] = {
+        {
+            "finite_row_major_base", 3U, 8U, 13U, 11U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "b87b96f63353fb16d193180220f2cca8e7c906f7cb88ff90bd82e09984f8f2fd"
+        },
+        {
+            "positive_zero", 3U, 8U, 13U, 11U, "f32", 1U,
+            {1U}, {1U}, 1U, {UINT32_C(0x00000000)},
+            "8bac4d9995a4fdf2671675161ee440bea5bbfb10f0af175735e1b74a61a08b5e"
+        },
+        {
+            "negative_zero", 3U, 8U, 13U, 11U, "f32", 1U,
+            {1U}, {1U}, 1U, {UINT32_C(0x80000000)},
+            "d6b7b9a12888541a3754318df1e23c4d2535e701167e8bf49788a378e29075bc"
+        },
+        {
+            "infinities", 3U, 8U, 13U, 11U, "f32", 1U,
+            {2U}, {1U}, 2U,
+            {UINT32_C(0x7f800000), UINT32_C(0xff800000)},
+            "8b28af0d4e191488f74223c251b89beceb94995c5d382862bad5649358aaef14"
+        },
+        {
+            "canonical_nans", 3U, 8U, 13U, 11U, "f32", 1U,
+            {4U}, {1U}, 4U,
+            {UINT32_C(0x7fc00001), UINT32_C(0xffc12345),
+             UINT32_C(0x7fffffff), UINT32_C(0x7f800001)},
+            "b3297b811f9c0d8c9601152e2ff9f933e982274dc4942e5547232521a68a53c3"
+        },
+        {
+            "shape_flat", 3U, 8U, 13U, 11U, "f32", 1U,
+            {4U}, {1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "0d0d459aea4398cbebc045e118813f32e08c2b39c166aa297e7fdbbae114e682"
+        },
+        {
+            "stage_and_role_changed", 3U, 8U, 1U, 11U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "c8cc44cf90c8003d1d031c4e896a7878b133ff6a87a510935229ee7b784f0e70"
+        },
+        {
+            "layer_changed", 3U, 9U, 13U, 11U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "8ffde18efea277b64a305797d1e28ea8760335ef41d54f4c112d11091ad1bec3"
+        },
+        {
+            "step_changed", 4U, 8U, 13U, 11U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "4887ed77898f20c1bf95b05301b6022c72e79984c8694588092ac404366d5d58"
+        },
+        {
+            "token_position_changed", 3U, 8U, 13U, 12U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "b746e5293168f5723238a7a0a9754f7fe7d874a08c5b171c3feea7e24c73764a"
+        },
+        {
+            "precision_path_changed", 3U, 8U, 13U, 11U, "bf16", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0x00000001), UINT32_C(0x7f7fffff)},
+            "4c6c99a3ecadaff8fafa6f93f06ef2518811fdd48a18aba8096412471f3d4a9f"
+        },
+        {
+            "logical_order_changed", 3U, 8U, 13U, 11U, "f32", 2U,
+            {2U, 2U}, {2U, 1U}, 4U,
+            {UINT32_C(0x3f800000), UINT32_C(0x00000001),
+             UINT32_C(0xc0200000), UINT32_C(0x7f7fffff)},
+            "a1bdac70f42b0d255608b2ddba9fcab7436a1acbc879d70eb9fe68a5fc041831"
+        },
+        {
+            "strided_logical_equivalent", 3U, 8U, 13U, 11U, "f32", 2U,
+            {2U, 2U}, {3U, 1U}, 6U,
+            {UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+             UINT32_C(0xdeadbeef), UINT32_C(0x00000001),
+             UINT32_C(0x7f7fffff), UINT32_C(0xdeadbeef)},
+            "b87b96f63353fb16d193180220f2cca8e7c906f7cb88ff90bd82e09984f8f2fd"
+        }
+    };
+    size_t vector_index;
+
+    expect_size("intra digest C vector count",
+                sizeof(vectors) / sizeof(vectors[0]), 13U);
+    for (vector_index = 0U;
+         vector_index < sizeof(vectors) / sizeof(vectors[0]);
+         ++vector_index) {
+        lis_intra_layer_trace_record record;
+        lis_intra_layer_trace_record record_before;
+        lis_intra_layer_observation observation;
+        lis_intra_layer_observation observation_before;
+        lis_intra_layer_fp32_view view;
+        lis_intra_layer_fp32_view view_before;
+        lis_checkpoint_digest digest;
+        float storage[6] = {0.0f};
+        float storage_before[6];
+        char hex[LIS_CHECKPOINT_DIGEST_HEX_SIZE + 1U];
+        size_t logical_count = 1U;
+        size_t index;
+
+        expect_status(vectors[vector_index].name,
+                      lis_intra_layer_record_init(&record), LIS_STATUS_OK);
+        expect_status(vectors[vector_index].name,
+                      lis_intra_layer_record_configure(
+                          &record, vectors[vector_index].step,
+                          vectors[vector_index].layer,
+                          vectors[vector_index].layer + 1U,
+                          vectors[vector_index].token,
+                          vectors[vector_index].precision_path),
+                      LIS_STATUS_OK);
+        observation = intra_make_observation(
+            (lis_intra_layer_stage)vectors[vector_index].stage_order,
+            vectors[vector_index].step, vectors[vector_index].layer,
+            vectors[vector_index].token);
+        observation.rank = vectors[vector_index].rank;
+        memset(observation.shape, 0, sizeof(observation.shape));
+        for (index = 0U; index < observation.rank; ++index) {
+            observation.shape[index] = vectors[vector_index].shape[index];
+            logical_count *= observation.shape[index];
+        }
+        observation.element_count = logical_count;
+        for (index = 0U; index < vectors[vector_index].physical_count;
+             ++index) {
+            memcpy(storage + index,
+                   vectors[vector_index].physical_bits + index,
+                   sizeof(storage[index]));
+        }
+        memset(&view, 0, sizeof(view));
+        view.data = storage;
+        view.rank = observation.rank;
+        memcpy(view.shape, observation.shape, sizeof(view.shape));
+        memcpy(view.element_strides, vectors[vector_index].strides,
+               sizeof(view.element_strides));
+        view.logical_element_count = logical_count;
+        view.physical_element_count = vectors[vector_index].physical_count;
+
+        record_before = record;
+        observation_before = observation;
+        view_before = view;
+        memcpy(storage_before, storage, sizeof(storage));
+        memset(&digest, 0xa5, sizeof(digest));
+        expect_status(vectors[vector_index].name,
+                      lis_intra_layer_checkpoint_digest_fp32(
+                          &record, &observation, &view, &digest),
+                      LIS_STATUS_OK);
+        expect_size(vectors[vector_index].name, (size_t)digest.valid, 1U);
+        lis_checkpoint_digest_hex(&digest, hex);
+        intra_expect_string(vectors[vector_index].name, hex,
+                            vectors[vector_index].expected);
+        if (memcmp(&record, &record_before, sizeof(record)) != 0 ||
+            memcmp(&observation, &observation_before,
+                   sizeof(observation)) != 0 ||
+            memcmp(&view, &view_before, sizeof(view)) != 0 ||
+            memcmp(storage, storage_before, sizeof(storage)) != 0) {
+            fprintf(stderr, "%s: digest mutated an input\n",
+                    vectors[vector_index].name);
+            ++g_failures;
+        }
+    }
+}
+
+static void test_intra_layer_checkpoint_digest_guards(void)
+{
+    static const struct {
+        const char *name;
+        const unsigned char bytes[5];
+        size_t length;
+    } invalid_utf8[] = {
+        {"intra digest utf8 overlong", {0xe0U, 0x80U, 0x80U}, 3U},
+        {"intra digest utf8 surrogate", {0xedU, 0xa0U, 0x80U}, 3U},
+        {"intra digest utf8 above max", {0xf4U, 0x90U, 0x80U, 0x80U}, 4U},
+        {"intra digest utf8 truncated", {0xe2U, 0x82U}, 2U},
+        {"intra digest utf8 bad continuation", {0xe2U, 0x28U, 0xa1U}, 3U},
+        {"intra digest utf8 invalid lead", {0xf5U, 0x80U, 0x80U, 0x80U}, 4U}
+    };
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_trace_record record_before;
+    lis_intra_layer_observation observation;
+    lis_intra_layer_fp32_view view;
+    float storage[6];
+    size_t utf8_index;
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    expect_status("intra digest null output",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &view, NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_digest_status("intra digest null record", NULL,
+                               &observation, &view,
+                               LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_digest_status("intra digest null observation", &record,
+                               NULL, &view, LIS_STATUS_INVALID_ARGUMENT);
+    intra_expect_digest_status("intra digest null view", &record,
+                               &observation, NULL,
+                               LIS_STATUS_INVALID_ARGUMENT);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    record.state = LIS_INTRA_LAYER_RECORD_READY;
+    intra_expect_digest_status("intra digest requires active", &record,
+                               &observation, &view, LIS_STATUS_BAD_STATE);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    record_before = record;
+    observation.phase = (lis_intra_layer_phase)2;
+    intra_expect_digest_status("intra digest prefill rejected", &record,
+                               &observation, &view, LIS_STATUS_UNSUPPORTED);
+    if (memcmp(&record, &record_before, sizeof(record)) != 0) {
+        fprintf(stderr, "intra digest failure mutated record\n");
+        ++g_failures;
+    }
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.stage = (lis_intra_layer_stage)LIS_INTRA_LAYER_STAGE_COUNT;
+    intra_expect_digest_status("intra digest unknown stage", &record,
+                               &observation, &view,
+                               LIS_STATUS_INVALID_ARGUMENT);
+
+#define INTRA_DIGEST_COORDINATE_FAILURE(field, value, label)                 \
+    do {                                                                     \
+        intra_digest_setup_base(&record, &observation, &view, storage);      \
+        observation.field = (value);                                         \
+        intra_expect_digest_status((label), &record, &observation, &view,    \
+                                   LIS_STATUS_INVALID_ARGUMENT);             \
+    } while (0)
+
+    INTRA_DIGEST_COORDINATE_FAILURE(runtime_checkpoint_step, 4U,
+                                    "intra digest step mismatch");
+    INTRA_DIGEST_COORDINATE_FAILURE(layer_index, 7U,
+                                    "intra digest layer mismatch");
+    INTRA_DIGEST_COORDINATE_FAILURE(token_position, 12U,
+                                    "intra digest token mismatch");
+    INTRA_DIGEST_COORDINATE_FAILURE(batch_index, 1U,
+                                    "intra digest batch nonzero");
+    INTRA_DIGEST_COORDINATE_FAILURE(sequence_index, 1U,
+                                    "intra digest sequence nonzero");
+    INTRA_DIGEST_COORDINATE_FAILURE(stage_order, 12U,
+                                    "intra digest stage order mismatch");
+    INTRA_DIGEST_COORDINATE_FAILURE(execution_ordinal, 12U,
+                                    "intra digest ordinal mismatch");
+#undef INTRA_DIGEST_COORDINATE_FAILURE
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.rank = 0U;
+    intra_expect_digest_status("intra digest rank zero", &record,
+                               &observation, &view,
+                               LIS_STATUS_UNSUPPORTED_SHAPE);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.rank = LIS_INTRA_LAYER_MAX_RANK + 1U;
+    intra_expect_digest_status("intra digest rank too large", &record,
+                               &observation, &view,
+                               LIS_STATUS_UNSUPPORTED_SHAPE);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.shape[1] = 0U;
+    intra_expect_digest_status("intra digest zero dimension", &record,
+                               &observation, &view,
+                               LIS_STATUS_UNSUPPORTED_SHAPE);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.shape[0] = SIZE_MAX;
+    observation.shape[1] = 2U;
+    intra_expect_digest_status("intra digest shape overflow", &record,
+                               &observation, &view, LIS_STATUS_OVERFLOW);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    observation.element_count = 3U;
+    intra_expect_digest_status("intra digest element count mismatch", &record,
+                               &observation, &view,
+                               LIS_STATUS_SHAPE_MISMATCH);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    view.data = NULL;
+    intra_expect_digest_status("intra digest null view data", &record,
+                               &observation, &view,
+                               LIS_STATUS_INVALID_ARGUMENT);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    view.element_strides[0] = 0U;
+    intra_expect_digest_status("intra digest zero stride", &record,
+                               &observation, &view,
+                               LIS_STATUS_INVALID_ARGUMENT);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    view.element_strides[0] = 4U;
+    intra_expect_digest_status("intra digest view exceeds span", &record,
+                               &observation, &view,
+                               LIS_STATUS_INVALID_ARGUMENT);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    view.element_strides[0] = SIZE_MAX;
+    intra_expect_digest_status("intra digest view offset overflow", &record,
+                               &observation, &view, LIS_STATUS_OVERFLOW);
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    view.shape[0] = 1U;
+    view.shape[1] = 4U;
+    view.element_strides[0] = 4U;
+    view.physical_element_count = 4U;
+    intra_expect_digest_status("intra digest observation view shape mismatch",
+                               &record, &observation, &view,
+                               LIS_STATUS_SHAPE_MISMATCH);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    record.precision_path[0] = (char)0xc0;
+    record.precision_path[1] = (char)0x80;
+    record.precision_path[2] = '\0';
+    intra_expect_digest_status("intra digest invalid utf8", &record,
+                               &observation, &view, LIS_STATUS_FORMAT);
+    for (utf8_index = 0U;
+         utf8_index < sizeof(invalid_utf8) / sizeof(invalid_utf8[0]);
+         ++utf8_index) {
+        intra_digest_setup_base(&record, &observation, &view, storage);
+        memcpy(record.precision_path, invalid_utf8[utf8_index].bytes,
+               invalid_utf8[utf8_index].length);
+        record.precision_path[invalid_utf8[utf8_index].length] = '\0';
+        intra_expect_digest_status(invalid_utf8[utf8_index].name, &record,
+                                   &observation, &view, LIS_STATUS_FORMAT);
+    }
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    memset(record.precision_path, 'x', sizeof(record.precision_path));
+    intra_expect_digest_status("intra digest unterminated precision", &record,
+                               &observation, &view, LIS_STATUS_FORMAT);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    memcpy(record.precision_path,
+           "f32-\xc2\xa2-\xe2\x82\xac-\xf0\x90\x8d\x88", 15U);
+    record.precision_path[15] = '\0';
+    intra_expect_digest_status("intra digest valid multibyte utf8", &record,
+                               &observation, &view, LIS_STATUS_OK);
+
+    intra_digest_setup_base(&record, &observation, &view, storage);
+    memset(&observation.digest, 0xa5, sizeof(observation.digest));
+    expect_status("intra digest append integration",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &view, &observation.digest),
+                  LIS_STATUS_OK);
+    expect_status("intra digest accepted by append",
+                  lis_intra_layer_record_append_observation(
+                      &record, &observation),
+                  LIS_STATUS_OK);
+}
+
+static void test_intra_layer_checkpoint_digest_striding(void)
+{
+    lis_intra_layer_trace_record record;
+    lis_intra_layer_observation observation;
+    lis_intra_layer_fp32_view contiguous_view;
+    lis_intra_layer_fp32_view strided_view;
+    lis_checkpoint_digest contiguous_digest;
+    lis_checkpoint_digest strided_digest;
+    lis_checkpoint_digest changed_digest;
+    float contiguous[4];
+    float strided[6];
+    static const uint32_t logical_bits[4] = {
+        UINT32_C(0x3f800000), UINT32_C(0xc0200000),
+        UINT32_C(0x00000001), UINT32_C(0x7f7fffff)
+    };
+    static const uint32_t padding_a = UINT32_C(0xdeadbeef);
+    static const uint32_t padding_b = UINT32_C(0x01234567);
+    static const uint32_t changed = UINT32_C(0x40000000);
+    size_t index;
+
+    intra_digest_setup_base(&record, &observation, &contiguous_view,
+                            strided);
+    for (index = 0U; index < 4U; ++index) {
+        memcpy(contiguous + index, logical_bits + index,
+               sizeof(contiguous[index]));
+    }
+    contiguous_view.data = contiguous;
+
+    memcpy(strided, logical_bits, sizeof(float) * 2U);
+    memcpy(strided + 2U, &padding_a, sizeof(strided[2]));
+    memcpy(strided + 3U, logical_bits + 2U, sizeof(float) * 2U);
+    memcpy(strided + 5U, &padding_a, sizeof(strided[5]));
+    strided_view = contiguous_view;
+    strided_view.data = strided;
+    strided_view.element_strides[0] = 3U;
+    strided_view.physical_element_count = 6U;
+
+    expect_status("intra digest contiguous logical view",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &contiguous_view,
+                      &contiguous_digest),
+                  LIS_STATUS_OK);
+    expect_status("intra digest strided logical view",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &strided_view, &strided_digest),
+                  LIS_STATUS_OK);
+    if (memcmp(contiguous_digest.bytes, strided_digest.bytes,
+               sizeof(contiguous_digest.bytes)) != 0) {
+        fprintf(stderr, "intra digest strided logical equivalence failed\n");
+        ++g_failures;
+    }
+
+    memcpy(strided + 2U, &padding_b, sizeof(strided[2]));
+    memcpy(strided + 5U, &padding_b, sizeof(strided[5]));
+    expect_status("intra digest ignores physical padding",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &strided_view, &changed_digest),
+                  LIS_STATUS_OK);
+    if (memcmp(strided_digest.bytes, changed_digest.bytes,
+               sizeof(strided_digest.bytes)) != 0) {
+        fprintf(stderr, "intra digest included physical padding\n");
+        ++g_failures;
+    }
+
+    memcpy(strided + 3U, &changed, sizeof(strided[3]));
+    expect_status("intra digest logical value change",
+                  lis_intra_layer_checkpoint_digest_fp32(
+                      &record, &observation, &strided_view, &changed_digest),
+                  LIS_STATUS_OK);
+    if (memcmp(strided_digest.bytes, changed_digest.bytes,
+               sizeof(strided_digest.bytes)) == 0) {
+        fprintf(stderr, "intra digest ignored a logical value change\n");
+        ++g_failures;
+    }
+}
+
 /*
  * Behaviourally identical to the layer-trace writer's own escaper and
  * %.6g-or-null float writer, expressed without <math.h> so the core suite keeps
@@ -2677,6 +3194,9 @@ int main(void)
     test_intra_layer_stage_lookup_rejects_unknown();
     test_intra_layer_record_configure_guards();
     test_intra_layer_fp32_view_validation();
+    test_intra_layer_checkpoint_digest_vectors();
+    test_intra_layer_checkpoint_digest_guards();
+    test_intra_layer_checkpoint_digest_striding();
     test_intra_layer_append_ordering_and_duplicates();
     test_intra_layer_append_coordinate_guards();
     test_intra_layer_append_payload_guards();
