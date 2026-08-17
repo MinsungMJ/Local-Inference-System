@@ -445,6 +445,14 @@ lis_status lis_artifact_fingerprint_runtime(
                              (uint64_t)options->layer_checkpoints_enabled);
     lis_artifact_hash_u64_le(&digest,
                              (uint64_t)options->layer_checkpoints_step);
+    if (options->intra_layer_checkpoints_enabled) {
+        lis_artifact_hash_u64_le(
+            &digest, (uint64_t)options->intra_layer_checkpoints_enabled);
+        lis_artifact_hash_u64_le(
+            &digest, (uint64_t)options->intra_layer_target_layer);
+        lis_artifact_hash_cstr(
+            &digest, LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE);
+    }
     lis_artifact_hash_u64_le(&digest,
                              (uint64_t)(options->forced_prefix_text != NULL));
     /*
@@ -454,16 +462,18 @@ lis_status lis_artifact_fingerprint_runtime(
     lis_artifact_hash_cstr(&digest, "repetition_penalty=1.2");
     {
         size_t sz = 0;
-        /* 11 uint64_t fields: model_format, family, input_mode, backend_name,
-         * context_length, batch_size, generation_limit, thread_count,
-         * diagnostics_enabled, perf_enabled, perf_per_token_enabled,
-         * layer_checkpoints_enabled, layer_checkpoints_step,
-         * forced_prefix_text != NULL, repetition_penalty string */
+        /* Four strings, ten numeric/boolean fields, and the repetition-penalty
+         * string form the legacy stream. The three intra-layer values are
+         * appended only for the enabled semantic profile. */
         sz += strlen(lis_artifact_model_format_name(model_format)) + 1;
         sz += strlen(lis_model_family_name(family)) + 1;
         sz += strlen(lis_artifact_input_mode_name(input_mode)) + 1;
         sz += strlen(backend_name) + 1;
         sz += sizeof(uint64_t) * 10U; /* numeric/boolean fields */
+        if (options->intra_layer_checkpoints_enabled) {
+            sz += sizeof(uint64_t) * 2U;
+            sz += strlen(LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE) + 1U;
+        }
         sz += strlen("repetition_penalty=1.2") + 1;
         out->digest = digest;
         out->size_bytes = sz;
@@ -815,8 +825,19 @@ lis_status lis_artifact_write_run_report(
             report->options->generation_limit,
             report->options->thread_count);
     lis_artifact_write_bool(fp, report->options->layer_checkpoints_enabled);
-    fprintf(fp, ",\"layer_checkpoint_step\":%zu,\"diagnostics_enabled\":",
+    fprintf(fp, ",\"layer_checkpoint_step\":%zu",
             report->options->layer_checkpoints_step);
+    if (report->options->intra_layer_checkpoints_enabled) {
+        fputs(",\"intra_layer_checkpoints_enabled\":", fp);
+        lis_artifact_write_bool(
+            fp, report->options->intra_layer_checkpoints_enabled);
+        fprintf(fp, ",\"intra_layer_target_layer\":%zu",
+                report->options->intra_layer_target_layer);
+        fputs(",\"diagnostic_capture_profile\":", fp);
+        lis_artifact_write_json_string(
+            fp, LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE);
+    }
+    fputs(",\"diagnostics_enabled\":", fp);
     lis_artifact_write_bool(fp, report->options->diagnostics_enabled);
     fputs(",\"perf_enabled\":", fp);
     lis_artifact_write_bool(fp, report->options->perf_enabled);

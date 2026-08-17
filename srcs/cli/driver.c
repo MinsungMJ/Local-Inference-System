@@ -1450,7 +1450,8 @@ static lis_status lis_cli_write_layer_trace_artifact(
     const char *backend_name,
     const char *precision_path,
     const lis_artifact_set_id *artifact_set_id,
-    const lis_layer_trace_record *layer_trace_record)
+    const lis_layer_trace_record *layer_trace_record,
+    const lis_intra_layer_trace_record *intra_layer_record)
 {
     lis_layer_trace_artifact artifact = { 0 };
     char model_path_buffer[1024];
@@ -1487,6 +1488,7 @@ static lis_status lis_cli_write_layer_trace_artifact(
     artifact.model = model;
     artifact.input_mode = lis_cli_artifact_input_mode(options);
     artifact.output_mode = lis_cli_artifact_output_mode(has_tokenizer);
+    artifact.intra_layer_record = intra_layer_record;
 
     status = lis_artifact_fingerprint_current_binary(&artifact.binary_fingerprint);
     if (status != LIS_STATUS_OK) {
@@ -2102,6 +2104,8 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     lis_perf_report perf = { 0 };
     lis_layer_trace_record layer_trace_record_data = { 0 };
     lis_layer_trace_record *layer_trace_record = NULL;
+    lis_intra_layer_trace_record intra_layer_record_data = { 0 };
+    lis_intra_layer_trace_record *intra_layer_record = NULL;
     lis_artifact_set_id artifact_set_id = {{0}, 0};
     const char *backend_name = NULL;
     char precision_path[64];
@@ -2125,6 +2129,17 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
         fprintf(stderr,
                 "lis: artifact error: --layer-trace-json requires "
                 "--layer-checkpoints\n");
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    if (options->intra_layer_checkpoints_enabled &&
+        (!options->layer_checkpoints_enabled ||
+         options->layer_checkpoints_step == 0U ||
+         options->layer_trace_json_path == NULL ||
+         options->batch_size != 1U)) {
+        fprintf(stderr,
+                "lis: artifact error: --intra-layer-checkpoints requires "
+                "--layer-checkpoints STEP with STEP > 0, "
+                "--layer-trace-json PATH, and --batch 1\n");
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 
@@ -2214,6 +2229,33 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     if (status != LIS_STATUS_OK) {
         fprintf(stderr, "lis: config error: could not attach metadata: %s\n",
                 lis_status_name(status));
+        goto out;
+    }
+    if (options->intra_layer_checkpoints_enabled &&
+        model.metadata.config.family != LIS_MODEL_FAMILY_LLAMA3_DECODER) {
+        fprintf(stderr,
+                "lis: artifact error: --intra-layer-checkpoints requires "
+                "the Llama decoder family\n");
+        status = LIS_STATUS_UNSUPPORTED;
+        goto out;
+    }
+    if (options->intra_layer_checkpoints_enabled &&
+        options->intra_layer_target_layer >=
+            model.metadata.config.layer_count) {
+        fprintf(stderr,
+                "lis: artifact error: intra-layer target is outside the "
+                "model layer range\n");
+        status = LIS_STATUS_INVALID_ARGUMENT;
+        goto out;
+    }
+    if (options->intra_layer_checkpoints_enabled &&
+        !lis_layer_trace_layout_selects_layer(
+            options->intra_layer_target_layer,
+            model.metadata.config.layer_count)) {
+        fprintf(stderr,
+                "lis: artifact error: intra-layer target is not selected "
+                "by the frozen Pass 3 checkpoint layout\n");
+        status = LIS_STATUS_INVALID_ARGUMENT;
         goto out;
     }
     if (layer_trace_record != NULL &&
@@ -2404,6 +2446,63 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
         goto out;
     }
 
+    if (options->intra_layer_checkpoints_enabled) {
+        const char *weight_dtype_name = lis_dtype_name(
+            model.metadata.config.weight_dtype);
+
+        if (snprintf(precision_path, sizeof(precision_path),
+                     "f32_accum;weights=%s;kv=%s",
+                     weight_dtype_name, weight_dtype_name) >=
+                (int)sizeof(precision_path)) {
+            fprintf(stderr,
+                    "lis: artifact error: precision path exceeded its "
+                    "bounded representation\n");
+            status = LIS_STATUS_FORMAT;
+            goto out;
+        }
+    }
+    if (options->intra_layer_checkpoints_enabled) {
+        size_t token_position;
+        const size_t step_offset = options->layer_checkpoints_step - 1U;
+
+        if (batch.lengths == NULL || batch.batch_size != 1U ||
+            batch.lengths[0] > SIZE_MAX - step_offset) {
+            fprintf(stderr,
+                    "lis: artifact error: intra-layer token position "
+                    "overflow\n");
+            status = LIS_STATUS_OVERFLOW;
+            goto out;
+        }
+        token_position = batch.lengths[0] + step_offset;
+        if (token_position >=
+                model.metadata.config.context.configured_max_tokens) {
+            fprintf(stderr,
+                    "lis: artifact error: intra-layer token position is "
+                    "outside the configured context\n");
+            status = LIS_STATUS_INVALID_ARGUMENT;
+            goto out;
+        }
+        status = lis_intra_layer_record_init(&intra_layer_record_data);
+        if (status != LIS_STATUS_OK) {
+            fprintf(stderr,
+                    "lis: artifact error: intra-layer record init failed: "
+                    "%s\n", lis_status_name(status));
+            goto out;
+        }
+        intra_layer_record = &intra_layer_record_data;
+        status = lis_intra_layer_record_configure(
+            intra_layer_record, options->layer_checkpoints_step,
+            options->intra_layer_target_layer,
+            model.metadata.config.layer_count, token_position,
+            precision_path);
+        if (status != LIS_STATUS_OK) {
+            fprintf(stderr,
+                    "lis: artifact error: intra-layer record configure "
+                    "failed: %s\n", lis_status_name(status));
+            goto out;
+        }
+    }
+
     status = lis_runtime_options_init(&runtime_options, &model.metadata,
                                       lis_backend_cpu_reference(),
                                       options->batch_size);
@@ -2416,6 +2515,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     runtime_options.layer_checkpoints_enabled = options->layer_checkpoints_enabled;
     runtime_options.layer_checkpoints_target_step = options->layer_checkpoints_step;
     runtime_options.layer_trace_record = layer_trace_record;
+    runtime_options.intra_layer_record = intra_layer_record;
     lis_perf_stage_begin(&perf, LIS_PERF_STAGE_RUNTIME_INIT);
     status = lis_runtime_init(&runtime, &runtime_options);
     lis_perf_stage_end(&perf, LIS_PERF_STAGE_RUNTIME_INIT, 0);
@@ -2426,7 +2526,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     }
     backend_name = lis_cpu_dispatch_backend_name();
     artifact_ready = artifact_requested;
-    {
+    if (intra_layer_record == NULL) {
         const char *weight_dtype_name = lis_dtype_name(
             model.metadata.config.weight_dtype);
         const char *kv_dtype_name = lis_dtype_name(
@@ -2434,10 +2534,17 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
 
         if (snprintf(precision_path, sizeof(precision_path),
                      "f32_accum;weights=%s;kv=%s",
-                     weight_dtype_name, kv_dtype_name)
-            >= (int)sizeof(precision_path)) {
+                     weight_dtype_name, kv_dtype_name) >=
+                (int)sizeof(precision_path)) {
             precision_path[0] = '\0';
         }
+    } else if (runtime.kv_cache.layout.dtype !=
+                   model.metadata.config.weight_dtype) {
+        fprintf(stderr,
+                "lis: artifact error: runtime KV precision disagrees with "
+                "the configured intra-layer precision path\n");
+        status = LIS_STATUS_BAD_STATE;
+        goto out;
     }
     if (options->diagnostics_enabled || perf.enabled) {
         fprintf(stderr, "lis: simd backend=%s\n",
@@ -2498,6 +2605,20 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
         fprintf(stderr, "lis: runtime error: decode/output failed: %s\n",
                 lis_status_name(status));
         goto out;
+    }
+    if (intra_layer_record != NULL) {
+        status = lis_intra_layer_record_finalize(intra_layer_record);
+        if (status != LIS_STATUS_OK ||
+            !lis_intra_layer_record_is_ready(intra_layer_record)) {
+            if (status == LIS_STATUS_OK) {
+                status = LIS_STATUS_BAD_STATE;
+            }
+            fprintf(stderr,
+                    "lis: artifact error: intra-layer capture incomplete; "
+                    "layer-trace artifact suppressed: %s\n",
+                    lis_status_name(status));
+            goto out;
+        }
     }
 
     if (perf.enabled) {
@@ -2586,7 +2707,8 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                 options, &model, &batch, has_tokenizer, backend_name,
                 precision_path,
                 &artifact_set_id,
-                layer_trace_record);
+                layer_trace_record,
+                intra_layer_record);
             if (layer_trace_status != LIS_STATUS_OK) {
                 fprintf(stderr,
                         "lis: artifact error: layer-trace emission failed: %s\n",
@@ -2639,6 +2761,9 @@ out:
     lis_trace_record_destroy(&trace_record_data);
     if (layer_trace_record != NULL) {
         lis_layer_trace_record_destroy(layer_trace_record);
+    }
+    if (intra_layer_record != NULL) {
+        lis_intra_layer_record_destroy(intra_layer_record);
     }
     return status;
 }

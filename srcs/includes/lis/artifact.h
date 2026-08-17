@@ -16,6 +16,8 @@
 #define LIS_ARTIFACT_SET_ID_HEX_LEN 32
 #define LIS_ARTIFACT_SET_ID_PREFIX "aset1:"
 #define LIS_ARTIFACT_SET_ID_LEN 38
+#define LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE \
+    "semantic_layer_and_intra_v1"
 
 typedef struct {
     char value[LIS_ARTIFACT_SET_ID_LEN + 1U];

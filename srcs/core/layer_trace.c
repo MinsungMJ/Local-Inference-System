@@ -504,8 +504,19 @@ lis_status lis_layer_trace_artifact_write(const lis_layer_trace_artifact *artifa
             artifact->options->generation_limit,
             artifact->options->thread_count);
     lis_layer_trace_write_bool(fp, artifact->options->layer_checkpoints_enabled);
-    fprintf(fp, ",\"layer_checkpoint_step\":%zu,\"diagnostics_enabled\":",
+    fprintf(fp, ",\"layer_checkpoint_step\":%zu",
             artifact->options->layer_checkpoints_step);
+    if (artifact->options->intra_layer_checkpoints_enabled) {
+        fputs(",\"intra_layer_checkpoints_enabled\":", fp);
+        lis_layer_trace_write_bool(
+            fp, artifact->options->intra_layer_checkpoints_enabled);
+        fprintf(fp, ",\"intra_layer_target_layer\":%zu",
+                artifact->options->intra_layer_target_layer);
+        fputs(",\"diagnostic_capture_profile\":", fp);
+        lis_layer_trace_write_json_string(
+            fp, LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE);
+    }
+    fputs(",\"diagnostics_enabled\":", fp);
     lis_layer_trace_write_bool(fp, artifact->options->diagnostics_enabled);
     fputs(",\"perf_enabled\":", fp);
     lis_layer_trace_write_bool(fp, artifact->options->perf_enabled);

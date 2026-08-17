@@ -1943,6 +1943,18 @@ static void test_cli_hf_qwen3_forward_path(void)
         "--generate", "1",
         "--diagnostics",
     };
+    char *argv_intra[] = {
+        "lis",
+        "--model", "srcs/libs/test_cli_qwen3",
+        "--config", "srcs/libs/test_cli_qwen3/config.json",
+        "--tokens", "srcs/libs/test_cli_qwen3_tokens.txt",
+        "--context", "4",
+        "--batch", "1",
+        "--generate", "1",
+        "--layer-checkpoints", "1",
+        "--layer-trace-json", "srcs/libs/test_cli_qwen3_layer.json",
+        "--intra-layer-checkpoints", "0",
+    };
 
     remove(model_path);
     remove(config_path);
@@ -1983,6 +1995,17 @@ static void test_cli_hf_qwen3_forward_path(void)
     remove(stdout_path);
     remove(stderr_path);
     remove(layer_trace_path);
+    expect_int("cli qwen3 intra unsupported",
+               run_cli_capture(
+                   (int)(sizeof(argv_intra) / sizeof(argv_intra[0])),
+                   argv_intra, stdout_path, stderr_path), 1);
+    expect_file_contains("cli qwen3 intra family error", stderr_path,
+                         "lis: artifact error: --intra-layer-checkpoints "
+                         "requires the Llama decoder family");
+    expect_file_missing("cli qwen3 intra no layer artifact",
+                        layer_trace_path);
+    remove(stdout_path);
+    remove(stderr_path);
     expect_int("cli qwen3 plain text tokenizer path",
                run_cli_capture(16, argv_text, stdout_path, stderr_path), 0);
     expect_file_contains("cli qwen3 diagnostics backend", stderr_path,
@@ -4645,6 +4668,7 @@ static void test_cli_kv_cache_flag_absent_from_help(void)
 #include "test_cli_artifact_regression.c"
 #include "test_cli_kv_cache_semantics.c"
 #include "test_cli_pass3_producer.c"
+#include "test_cli_intra_layer.c"
 
 int main(void)
 {
@@ -4776,6 +4800,8 @@ int main(void)
     test_cli_artifact_regression_runtime_fingerprint_repeatable();
     test_cli_artifact_regression_trace_determinism();
     test_cli_artifact_regression_trace_eos_stop();
+
+    test_cli_intra_layer_surface();
 
     test_cli_pass3_producer_contract();
 

@@ -22,6 +22,8 @@ typedef struct {
     const char *forced_prefix_text;
     int layer_checkpoints_enabled;
     size_t layer_checkpoints_step;
+    int intra_layer_checkpoints_enabled;
+    size_t intra_layer_target_layer;
     int perf_enabled;
     int perf_per_token_enabled;
     const char *perf_tag;

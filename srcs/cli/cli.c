@@ -17,6 +17,7 @@ static void lis_cli_print_usage(FILE *stream, const char *program)
             "       [--threads N] [--diagnostics]\n"
             "       [--forced-prefix \"ID ...\"]\n"
             "       [--layer-checkpoints STEP]\n"
+            "       [--intra-layer-checkpoints LAYER]\n"
             "       [--report-json PATH] [--report-md PATH]\n"
             "       [--trace-json PATH] [--layer-trace-json PATH]\n"
             "       [--perf] [--perf-per-token] [--perf-tag TAG]\n"
@@ -33,6 +34,7 @@ static void lis_cli_print_usage(FILE *stream, const char *program)
             "  --diagnostics        Print opt-in generation diagnostics to stderr\n"
             "  --forced-prefix \"ID ...\"  Forced token IDs for diagnostics comparison\n"
             "  --layer-checkpoints STEP    Print layer checkpoint stats at STEP (0=prefill)\n"
+            "  --intra-layer-checkpoints LAYER  Capture the fixed semantic intra-layer profile\n"
             "  --layer-trace-json PATH  Write a compact per-layer/per-stage trace artifact\n"
             "  --report-json PATH   Write a versioned machine-readable execution artifact\n"
             "  --report-md PATH   Write a bounded human-readable Markdown execution report\n"
@@ -206,6 +208,17 @@ static lis_status lis_cli_parse_options(int argc, char **argv,
                 return LIS_STATUS_INVALID_ARGUMENT;
             }
             options.layer_checkpoints_enabled = 1;
+        } else if (strcmp(arg, "--intra-layer-checkpoints") == 0) {
+            const char *value = NULL;
+
+            if (lis_cli_require_value(argc, argv, &index, &value) !=
+                    LIS_STATUS_OK ||
+                lis_cli_parse_step(value,
+                                   &options.intra_layer_target_layer) !=
+                    LIS_STATUS_OK) {
+                return LIS_STATUS_INVALID_ARGUMENT;
+            }
+            options.intra_layer_checkpoints_enabled = 1;
         } else if (strcmp(arg, "--forced-prefix") == 0) {
             if (lis_cli_require_value(argc, argv, &index,
                                       &options.forced_prefix_text) != LIS_STATUS_OK) {

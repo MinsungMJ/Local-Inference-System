@@ -9,6 +9,7 @@
 #include "lis/tensor.h"
 
 #include <float.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -3177,6 +3178,94 @@ static void test_intra_layer_null_handling(void)
     lis_intra_layer_record_destroy(NULL);
 }
 
+static void test_intra_layer_runtime_fingerprint_identity(void)
+{
+    lis_cli_options options = {0};
+    lis_artifact_fingerprint absent = {0};
+    lis_artifact_fingerprint absent_with_ignored_target = {0};
+    lis_artifact_fingerprint target_zero = {0};
+    lis_artifact_fingerprint target_zero_repeat = {0};
+    lis_artifact_fingerprint target_one = {0};
+    const size_t enabled_size =
+        157U + 2U * sizeof(uint64_t) +
+        sizeof(LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE);
+
+    options.context_length = 8U;
+    options.batch_size = 1U;
+    options.generation_limit = 2U;
+    options.thread_count = 1U;
+    options.layer_checkpoints_enabled = 1;
+    options.layer_checkpoints_step = 1U;
+    expect_status(
+        "intra fingerprint absent",
+        lis_artifact_fingerprint_runtime(
+            &options, LIS_MODEL_FORMAT_HUGGINGFACE_LOCAL,
+            LIS_MODEL_FAMILY_LLAMA3_DECODER,
+            LIS_ARTIFACT_INPUT_MODE_TOKENS, "cpu_reference", &absent),
+        LIS_STATUS_OK);
+    if (absent.digest != UINT64_C(0x79f32118f17592b7) ||
+        absent.size_bytes != 157U) {
+        fprintf(stderr,
+                "intra absent fingerprint drifted: %016" PRIx64 " %zu\n",
+                absent.digest, absent.size_bytes);
+        ++g_failures;
+    }
+
+    options.intra_layer_target_layer = 9U;
+    expect_status(
+        "intra fingerprint absent ignores target",
+        lis_artifact_fingerprint_runtime(
+            &options, LIS_MODEL_FORMAT_HUGGINGFACE_LOCAL,
+            LIS_MODEL_FAMILY_LLAMA3_DECODER,
+            LIS_ARTIFACT_INPUT_MODE_TOKENS, "cpu_reference",
+            &absent_with_ignored_target),
+        LIS_STATUS_OK);
+    if (memcmp(&absent, &absent_with_ignored_target, sizeof(absent)) != 0) {
+        fprintf(stderr, "disabled intra target changed runtime identity\n");
+        ++g_failures;
+    }
+
+    options.intra_layer_checkpoints_enabled = 1;
+    options.intra_layer_target_layer = 0U;
+    expect_status(
+        "intra fingerprint target zero",
+        lis_artifact_fingerprint_runtime(
+            &options, LIS_MODEL_FORMAT_HUGGINGFACE_LOCAL,
+            LIS_MODEL_FAMILY_LLAMA3_DECODER,
+            LIS_ARTIFACT_INPUT_MODE_TOKENS, "cpu_reference", &target_zero),
+        LIS_STATUS_OK);
+    expect_status(
+        "intra fingerprint target zero repeat",
+        lis_artifact_fingerprint_runtime(
+            &options, LIS_MODEL_FORMAT_HUGGINGFACE_LOCAL,
+            LIS_MODEL_FAMILY_LLAMA3_DECODER,
+            LIS_ARTIFACT_INPUT_MODE_TOKENS, "cpu_reference",
+            &target_zero_repeat),
+        LIS_STATUS_OK);
+    expect_size("intra fingerprint enabled size", target_zero.size_bytes,
+                enabled_size);
+    if (memcmp(&target_zero, &target_zero_repeat,
+               sizeof(target_zero)) != 0 ||
+        target_zero.digest == absent.digest) {
+        fprintf(stderr, "enabled intra runtime identity was not repeatable\n");
+        ++g_failures;
+    }
+
+    options.intra_layer_target_layer = 1U;
+    expect_status(
+        "intra fingerprint target one",
+        lis_artifact_fingerprint_runtime(
+            &options, LIS_MODEL_FORMAT_HUGGINGFACE_LOCAL,
+            LIS_MODEL_FAMILY_LLAMA3_DECODER,
+            LIS_ARTIFACT_INPUT_MODE_TOKENS, "cpu_reference", &target_one),
+        LIS_STATUS_OK);
+    if (target_one.digest == target_zero.digest ||
+        target_one.size_bytes != target_zero.size_bytes) {
+        fprintf(stderr, "intra target layer did not separate runtime identity\n");
+        ++g_failures;
+    }
+}
+
 int main(void)
 {
     test_dtype();
@@ -3212,6 +3301,7 @@ int main(void)
     test_intra_layer_writer_additive_insertion();
     test_intra_layer_json_escapes_caller_strings();
     test_intra_layer_null_handling();
+    test_intra_layer_runtime_fingerprint_identity();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d core test failure(s)\n", g_failures);
