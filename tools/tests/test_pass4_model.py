@@ -714,6 +714,32 @@ class TestPass4ResultStatusAlgebra(unittest.TestCase):
         ):
             self.assertNotIn(prohibited, Pass4Result.__dataclass_fields__)
 
+    def test_early_parser_failures_can_omit_unavailable_gate_evidence(self):
+        absent_target = {
+            field: None for field in support.target_identity()
+        }
+        malformed = support.result_for(
+            Pass4Status.CHECKPOINT_SUMMARY_MALFORMED,
+            **absent_target,
+        )
+        self.assertIsNone(malformed.coverage)
+        self.assertIsNone(malformed.target_runtime_checkpoint_step)
+
+        alignment = support.result_for(
+            Pass4Status.CHECKPOINT_ALIGNMENT_INCONSISTENT,
+            coverage=None,
+            **absent_target,
+        )
+        self.assertIsNone(alignment.coverage)
+        self.assertIsNone(alignment.target_runtime_checkpoint_step)
+
+    def test_late_alignment_failure_may_retain_validated_context(self):
+        result = support.result_for(
+            Pass4Status.CHECKPOINT_ALIGNMENT_INCONSISTENT
+        )
+        self.assertIsNotNone(result.coverage)
+        self.assertIsNotNone(result.target_runtime_checkpoint_step)
+
     def test_bounded_text_and_bool_as_int_rejection(self):
         with self.assertRaisesRegex(ValueError, "warnings"):
             support.local_mismatch_result(warnings=("x" * 300,))

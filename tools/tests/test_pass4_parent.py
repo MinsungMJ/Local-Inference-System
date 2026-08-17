@@ -431,6 +431,30 @@ class TestPass4ParentRolesAndModels(Pass4ParentCase):
                 binding.parent_recorded_trace_binding_verified
             )
 
+    def test_authoritative_inherited_reason_chain_is_preserved(self):
+        authoritative = self.case["authoritative"]["pass3"]
+        outcome = self.bind()
+        self.assertEqual(
+            outcome.inherited_pass3_reason_codes,
+            tuple(item.value for item in authoritative.reason_codes),
+        )
+        self.assertEqual(
+            outcome.inherited_pass2_reason_codes,
+            authoritative.inherited_pass2_reason_codes,
+        )
+        self.assertEqual(
+            outcome.inherited_pass1_reason_codes,
+            authoritative.inherited_pass1_reason_codes,
+        )
+        self.assertEqual(
+            outcome.inherited_pass0_reason_codes,
+            authoritative.inherited_pass0_reason_codes,
+        )
+        self.assertEqual(
+            outcome.inherited_parent_warnings,
+            authoritative.warnings,
+        )
+
     def test_parent_recorded_wrong_side_role_is_rejected(self):
         authoritative = self.case["authoritative"]["pass3"]
         changed = replace(

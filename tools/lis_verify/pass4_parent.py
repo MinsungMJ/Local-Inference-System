@@ -1644,10 +1644,23 @@ class Pass4ParentBindingOutcome:
     artifact_identities: Optional[Pass4LoadedArtifactIdentities]
     warnings: tuple[str, ...] = ()
     diagnostics: tuple[str, ...] = ()
+    inherited_pass3_reason_codes: tuple[str, ...] = ()
+    inherited_pass2_reason_codes: tuple[str, ...] = ()
+    inherited_pass1_reason_codes: tuple[str, ...] = ()
+    inherited_pass0_reason_codes: tuple[str, ...] = ()
+    inherited_parent_warnings: tuple[str, ...] = ()
 
     def __post_init__(self):
         _bounded_tuple(self.warnings, "warnings")
         _bounded_tuple(self.diagnostics, "diagnostics")
+        for label in (
+            "inherited_pass3_reason_codes",
+            "inherited_pass2_reason_codes",
+            "inherited_pass1_reason_codes",
+            "inherited_pass0_reason_codes",
+            "inherited_parent_warnings",
+        ):
+            _bounded_tuple(getattr(self, label), label)
         if self.artifact_identities is not None and not isinstance(
             self.artifact_identities, Pass4LoadedArtifactIdentities
         ):
@@ -1755,12 +1768,14 @@ def _terminal(
     identities: Optional[Pass4LoadedArtifactIdentities] = None,
     warnings: tuple[str, ...] = (),
     diagnostic: Optional[str] = None,
+    authoritative_result: Optional[Pass3Result] = None,
 ) -> Pass4ParentBindingOutcome:
     diagnostics = (
         (_bounded_detail(diagnostic, "validation failed"),)
         if diagnostic
         else ()
     )
+    inherited = _inherited_parent_evidence(authoritative_result)
     return Pass4ParentBindingOutcome(
         status,
         STATUS_TO_DISPOSITION[status],
@@ -1775,6 +1790,21 @@ def _terminal(
         identities,
         warnings,
         diagnostics,
+        *inherited,
+    )
+
+
+def _inherited_parent_evidence(
+    result: Optional[Pass3Result],
+) -> tuple[tuple[str, ...], ...]:
+    if result is None:
+        return ((), (), (), (), ())
+    return (
+        tuple(item.value for item in result.reason_codes),
+        result.inherited_pass2_reason_codes,
+        result.inherited_pass1_reason_codes,
+        result.inherited_pass0_reason_codes,
+        result.warnings,
     )
 
 
@@ -1830,6 +1860,7 @@ def _parent_terminal(
         identities=identities,
         warnings=warnings,
         diagnostic=diagnostic,
+        authoritative_result=authoritative_result,
     )
 
 
@@ -2439,6 +2470,7 @@ def bind_pass4_parent_inputs(
                 diagnostic=(
                     f"pass3b.status={authoritative_pass3.status.value}"
                 ),
+                authoritative_result=authoritative_pass3,
             )
         _pass2_binding(
             authoritative_raw, pass2_artifact, label="pass3b.pass2"
@@ -2511,6 +2543,7 @@ def bind_pass4_parent_inputs(
                     identities=identities,
                     warnings=tuple(warnings),
                     diagnostic=diagnostic or None,
+                    authoritative_result=authoritative_pass3,
                 )
         return _parent_terminal(
             classification,
@@ -2642,6 +2675,7 @@ def bind_pass4_parent_inputs(
             identities=identities,
             warnings=tuple(warnings),
             diagnostic=exc.detail,
+            authoritative_result=authoritative_pass3,
         )
     if cross_detail is not None:
         return _parent_terminal(
@@ -2669,6 +2703,7 @@ def bind_pass4_parent_inputs(
         True,
     )
     precision_path = authoritative_sources["reference"].precision_path
+    inherited = _inherited_parent_evidence(authoritative_pass3)
     return Pass4ParentBindingOutcome(
         None,
         None,
@@ -2683,4 +2718,5 @@ def bind_pass4_parent_inputs(
         identities,
         tuple(warnings),
         (),
+        *inherited,
     )
