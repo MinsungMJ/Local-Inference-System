@@ -2,8 +2,119 @@
 #include "lis/cpu_features.h"
 #include "lis/cpu_ops.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
+
+lis_status lis_intra_layer_observe_fp32(
+    lis_intra_layer_trace_record *record,
+    lis_intra_layer_stage stage,
+    size_t runtime_checkpoint_step,
+    size_t layer_index,
+    size_t token_position,
+    const lis_intra_layer_fp32_view *view)
+{
+    const lis_intra_layer_stage_info *stage_info;
+    lis_intra_layer_observation observation;
+    lis_status status;
+    size_t logical_indices[LIS_INTRA_LAYER_MAX_RANK] = {0U};
+    size_t logical_index;
+
+    if (record == NULL) {
+        return LIS_STATUS_OK;
+    }
+    if (runtime_checkpoint_step != record->runtime_checkpoint_step ||
+        layer_index != record->target_layer ||
+        token_position != record->token_position) {
+        return LIS_STATUS_OK;
+    }
+    if (record->state != LIS_INTRA_LAYER_RECORD_ACTIVE) {
+        lis_intra_layer_record_invalidate(record);
+        return LIS_STATUS_BAD_STATE;
+    }
+    stage_info = lis_intra_layer_stage_lookup((size_t)stage);
+    if (stage_info == NULL) {
+        lis_intra_layer_record_invalidate(record);
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    status = lis_intra_layer_fp32_view_validate(view);
+    if (status != LIS_STATUS_OK) {
+        lis_intra_layer_record_invalidate(record);
+        return status;
+    }
+
+    memset(&observation, 0, sizeof(observation));
+    observation.stage = stage;
+    observation.phase = LIS_INTRA_LAYER_PHASE_DECODE;
+    observation.runtime_checkpoint_step = runtime_checkpoint_step;
+    observation.layer_index = layer_index;
+    observation.token_position = token_position;
+    observation.batch_index = 0U;
+    observation.sequence_index = 0U;
+    observation.stage_order = stage_info->stage_order;
+    observation.execution_ordinal = stage_info->stage_order;
+    observation.rank = view->rank;
+    memcpy(observation.shape, view->shape, sizeof(observation.shape));
+    observation.element_count = view->logical_element_count;
+
+    for (logical_index = 0U;
+         logical_index < view->logical_element_count;
+         ++logical_index) {
+        size_t physical_offset = 0U;
+        size_t dimension;
+        float value;
+
+        for (dimension = 0U; dimension < view->rank; ++dimension) {
+            physical_offset += logical_indices[dimension] *
+                               view->element_strides[dimension];
+        }
+        value = view->data[physical_offset];
+        if (logical_index == 0U) {
+            observation.min = value;
+            observation.max = value;
+        }
+        if (isnan(value)) {
+            observation.nan = 1;
+        } else if (isinf(value)) {
+            observation.inf = 1;
+        }
+        if (value < observation.min && !isnan(value)) {
+            observation.min = value;
+        }
+        if (value > observation.max && !isnan(value)) {
+            observation.max = value;
+        }
+        if (!isnan(value) && !isinf(value)) {
+            observation.mean += value;
+            observation.l2 += value * value;
+        }
+
+        for (dimension = view->rank; dimension > 0U; --dimension) {
+            const size_t current = dimension - 1U;
+
+            ++logical_indices[current];
+            if (logical_indices[current] < view->shape[current]) {
+                break;
+            }
+            logical_indices[current] = 0U;
+        }
+    }
+    observation.mean /= (float)view->logical_element_count;
+    observation.l2 = sqrtf(observation.l2);
+
+    status = lis_intra_layer_checkpoint_digest_fp32(
+        record, &observation, view, &observation.digest);
+    if (status != LIS_STATUS_OK) {
+        lis_intra_layer_record_invalidate(record);
+        return status;
+    }
+    status = lis_intra_layer_record_append_observation(record, &observation);
+    if (status != LIS_STATUS_OK) {
+        lis_intra_layer_record_invalidate(record);
+        return status;
+    }
+    return LIS_STATUS_OK;
+}
 
 lis_status lis_runtime_options_init(lis_runtime_options *options,
                                     const lis_model_metadata *metadata,
@@ -38,6 +149,7 @@ lis_status lis_runtime_options_init(lis_runtime_options *options,
     options->layer_checkpoints_enabled = 0;
     options->layer_checkpoints_target_step = 0;
     options->layer_trace_record = NULL;
+    options->intra_layer_record = NULL;
     return LIS_STATUS_OK;
 }
 
@@ -64,6 +176,34 @@ lis_status lis_runtime_init(lis_runtime_context *runtime,
         options->backend->memory_domain != LIS_BACKEND_MEMORY_HOST ||
         options->backend->execute == NULL || options->batch_size == 0) {
         return LIS_STATUS_UNSUPPORTED;
+    }
+    if (options->intra_layer_record != NULL) {
+        const lis_intra_layer_trace_record *intra =
+            options->intra_layer_record;
+        const lis_layer_trace_record *parent = options->layer_trace_record;
+
+        if (options->metadata.config.family !=
+                LIS_MODEL_FAMILY_LLAMA3_DECODER ||
+            options->batch_size != 1U) {
+            return LIS_STATUS_UNSUPPORTED;
+        }
+        if (intra->state != LIS_INTRA_LAYER_RECORD_ACTIVE) {
+            return LIS_STATUS_BAD_STATE;
+        }
+        if (!options->layer_checkpoints_enabled ||
+            options->layer_checkpoints_target_step == 0U ||
+            parent == NULL || !parent->checkpoint_layout_supported ||
+            intra->runtime_checkpoint_step !=
+                options->layer_checkpoints_target_step ||
+            intra->total_layer_count != options->metadata.config.layer_count ||
+            intra->target_layer >= options->metadata.config.layer_count ||
+            intra->token_position >=
+                options->metadata.config.context.configured_max_tokens ||
+            parent->layout_runtime_checkpoint_step !=
+                options->layer_checkpoints_target_step ||
+            parent->total_layer_count != options->metadata.config.layer_count) {
+            return LIS_STATUS_INVALID_ARGUMENT;
+        }
     }
     thread_count = options->thread_count;
     if (thread_count == 0) {
@@ -94,6 +234,7 @@ lis_status lis_runtime_init(lis_runtime_context *runtime,
     local.layer_checkpoints_target_step = options->layer_checkpoints_target_step;
     local.decode_step_count = 0;
     local.layer_trace_record = options->layer_trace_record;
+    local.intra_layer_record = options->intra_layer_record;
 
     lis_cpu_dispatch_init(lis_cpu_features_get());
 

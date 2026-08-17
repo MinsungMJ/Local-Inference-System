@@ -7,6 +7,7 @@
 #include "lis/status.h"
 #include "lis/thread_pool.h"
 #include "lis/layer_trace.h"
+#include "lis/intra_layer_trace.h"
 
 #include <stddef.h>
 
@@ -48,6 +49,7 @@ typedef struct {
     int layer_checkpoints_enabled;
     size_t layer_checkpoints_target_step;
     lis_layer_trace_record *layer_trace_record;
+    lis_intra_layer_trace_record *intra_layer_record;
 } lis_runtime_options;
 
 typedef struct {
@@ -61,7 +63,21 @@ typedef struct {
     size_t layer_checkpoints_target_step;
     size_t decode_step_count;
     lis_layer_trace_record *layer_trace_record;
+    lis_intra_layer_trace_record *intra_layer_record;
 } lis_runtime_context;
+
+/*
+ * Observes one target coordinate without allocation or tensor mutation. A
+ * NULL record or a non-target coordinate is a successful zero-work no-op. A
+ * target failure invalidates the record so no partial artifact can be emitted.
+ */
+lis_status lis_intra_layer_observe_fp32(
+    lis_intra_layer_trace_record *record,
+    lis_intra_layer_stage stage,
+    size_t runtime_checkpoint_step,
+    size_t layer_index,
+    size_t token_position,
+    const lis_intra_layer_fp32_view *view);
 
 lis_status lis_static_batch_init(lis_static_batch *batch, size_t batch_size,
                                  size_t max_tokens);

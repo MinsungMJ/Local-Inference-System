@@ -376,6 +376,27 @@ static void lis_checkpoint_per_head_diagnostic(size_t step, const char *phase,
     }
 }
 
+static void lis_llama_observe_intra_layer(
+    lis_runtime_context *runtime,
+    lis_intra_layer_stage stage,
+    size_t checkpoint_step,
+    size_t layer,
+    size_t position,
+    const lis_intra_layer_fp32_view *view)
+{
+    lis_status status;
+
+    if (runtime == NULL || runtime->intra_layer_record == NULL) {
+        return;
+    }
+    status = lis_intra_layer_observe_fp32(
+        runtime->intra_layer_record, stage, checkpoint_step, layer, position,
+        view);
+    if (status != LIS_STATUS_OK) {
+        lis_intra_layer_record_invalidate(runtime->intra_layer_record);
+    }
+}
+
 static uint16_t lis_f32_to_f16(float value)
 {
     uint32_t bits = 0;
@@ -691,6 +712,10 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
     size_t index;
     size_t layer;
     int emit_checkpoints;
+    int emit_legacy_checkpoints;
+    int capture_intra_layer;
+    lis_intra_layer_trace_record *intra_record =
+        runtime->intra_layer_record;
     lis_status status;
 
     if (token_id >= cfg->vocab_size || logits_len < cfg->vocab_size) {
@@ -712,8 +737,14 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
     emit_checkpoints = runtime->layer_checkpoints_enabled &&
                        checkpoint_phase != NULL &&
                        checkpoint_step == runtime->layer_checkpoints_target_step;
+    emit_legacy_checkpoints = emit_checkpoints && intra_record == NULL;
+    capture_intra_layer =
+        intra_record != NULL && checkpoint_phase != NULL &&
+        strcmp(checkpoint_phase, LIS_INTRA_LAYER_PHASE_DECODE_NAME) == 0 &&
+        checkpoint_step == intra_record->runtime_checkpoint_step &&
+        position == intra_record->token_position;
 
-    if (emit_checkpoints) {
+    if (emit_legacy_checkpoints) {
         const size_t h_dims[1] = { cfg->hidden_size };
 
         lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -745,7 +776,21 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         };
         const size_t norm_dims[1] = { cfg->hidden_size };
 
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->hidden,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                checkpoint_step, layer, position, &view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -753,7 +798,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -761,7 +806,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -774,7 +819,21 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) return status;
         lis_rms_norm(scratch->hidden, tensor, cfg->hidden_size, scratch->norm,
                      runtime->pool);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->norm,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_ATTENTION_NORM_OUTPUT,
+                checkpoint_step, layer, position, &view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -782,7 +841,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->norm, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -790,7 +849,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->norm, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -798,7 +857,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->norm, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -815,7 +874,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         status = lis_layer_tensor(model, layer, "k_proj.weight", kv_dims, 2,
                                   &tensor);
         if (status != LIS_STATUS_OK) return status;
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             lis_checkpoint_weight_diagnostic(checkpoint_step, checkpoint_phase,
                                              "layer.7.k_proj_weight", tensor,
                                              kv_dims[0] * kv_dims[1],
@@ -826,7 +885,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         status = lis_layer_tensor(model, layer, "v_proj.weight", kv_dims, 2,
                                   &tensor);
         if (status != LIS_STATUS_OK) return status;
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             lis_checkpoint_weight_diagnostic(checkpoint_step, checkpoint_phase,
                                              "layer.7.v_proj_weight", tensor,
                                              kv_dims[0] * kv_dims[1],
@@ -834,7 +893,43 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         }
         lis_matvec(tensor, scratch->norm, kv_dims[0], kv_dims[1], scratch->v,
                    runtime->pool);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view q_view = {
+                .data = scratch->q,
+                .rank = 2U,
+                .shape = { cfg->attention_head_count, cfg->head_dim },
+                .element_strides = { cfg->head_dim, 1U },
+                .logical_element_count = q_dims[0],
+                .physical_element_count = q_dims[0]
+            };
+            const lis_intra_layer_fp32_view k_view = {
+                .data = scratch->k,
+                .rank = 2U,
+                .shape = { cfg->kv_head_count, cfg->head_dim },
+                .element_strides = { cfg->head_dim, 1U },
+                .logical_element_count = kv_dims[0],
+                .physical_element_count = kv_dims[0]
+            };
+            const lis_intra_layer_fp32_view v_view = {
+                .data = scratch->v,
+                .rank = 2U,
+                .shape = { cfg->kv_head_count, cfg->head_dim },
+                .element_strides = { cfg->head_dim, 1U },
+                .logical_element_count = kv_dims[0],
+                .physical_element_count = kv_dims[0]
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_QUERY_PROJECTION_OUTPUT,
+                checkpoint_step, layer, position, &q_view);
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_KEY_PROJECTION_OUTPUT,
+                checkpoint_step, layer, position, &k_view);
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_VALUE_PROJECTION_OUTPUT,
+                checkpoint_step, layer, position, &v_view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -851,7 +946,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->v, kv_dims[0],
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -868,7 +963,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->v, kv_dims[0],
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -899,7 +994,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                                cfg->head_dim,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -921,7 +1016,32 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                        position, cfg->rope_theta, runtime->pool);
         lis_apply_rope(scratch->k, cfg->kv_head_count, cfg->head_dim,
                        position, cfg->rope_theta, runtime->pool);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view q_view = {
+                .data = scratch->q,
+                .rank = 2U,
+                .shape = { cfg->attention_head_count, cfg->head_dim },
+                .element_strides = { cfg->head_dim, 1U },
+                .logical_element_count = q_dims[0],
+                .physical_element_count = q_dims[0]
+            };
+            const lis_intra_layer_fp32_view k_view = {
+                .data = scratch->k,
+                .rank = 2U,
+                .shape = { cfg->kv_head_count, cfg->head_dim },
+                .element_strides = { cfg->head_dim, 1U },
+                .logical_element_count = kv_dims[0],
+                .physical_element_count = kv_dims[0]
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_ROPE_QUERY_OUTPUT,
+                checkpoint_step, layer, position, &q_view);
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_ROPE_KEY_OUTPUT,
+                checkpoint_step, layer, position, &k_view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -948,7 +1068,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                                cfg->head_dim,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -983,7 +1103,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                         checkpoint_step, checkpoint_phase, (double)scale);
             }
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -996,7 +1116,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->k, kv_dims[0],
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t q_proj_dims[1] = { q_dims[0] };
             const size_t kv_proj_dims[1] = { kv_dims[0] };
 
@@ -1012,7 +1132,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         /* Debug-only: snapshot layer-1 kv-head-0 K in fp32 before
            the fp16 KV-cache round-trip, so the diagnostic block can
            reconstruct scores without cache precision loss. */
-        if (runtime->layer_checkpoints_enabled && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t needed =
                 (position + 1U) * cfg->head_dim;
 
@@ -1041,7 +1161,62 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                cfg->context.configured_max_tokens,
                                scratch->attn, runtime->pool);
         if (status != LIS_STATUS_OK) return status;
-        if (emit_checkpoints && layer == 1U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const size_t used_positions = position + 1U;
+
+            if (cfg->attention_head_count > SIZE_MAX / used_positions ||
+                cfg->attention_head_count >
+                    SIZE_MAX / cfg->context.configured_max_tokens) {
+                lis_intra_layer_record_invalidate(intra_record);
+            } else {
+                const size_t logical_attention_count =
+                    cfg->attention_head_count * used_positions;
+                const size_t physical_attention_count =
+                    cfg->attention_head_count *
+                    cfg->context.configured_max_tokens;
+                const lis_intra_layer_fp32_view scores_view = {
+                    .data = scratch->scores,
+                    .rank = 2U,
+                    .shape = { cfg->attention_head_count, used_positions },
+                    .element_strides = {
+                        cfg->context.configured_max_tokens, 1U
+                    },
+                    .logical_element_count = logical_attention_count,
+                    .physical_element_count = physical_attention_count
+                };
+                const lis_intra_layer_fp32_view probabilities_view = {
+                    .data = scratch->attn_probs,
+                    .rank = 2U,
+                    .shape = { cfg->attention_head_count, used_positions },
+                    .element_strides = {
+                        cfg->context.configured_max_tokens, 1U
+                    },
+                    .logical_element_count = logical_attention_count,
+                    .physical_element_count = physical_attention_count
+                };
+                const lis_intra_layer_fp32_view context_view = {
+                    .data = scratch->attn,
+                    .rank = 2U,
+                    .shape = {
+                        cfg->attention_head_count, cfg->head_dim
+                    },
+                    .element_strides = { cfg->head_dim, 1U },
+                    .logical_element_count = q_dims[0],
+                    .physical_element_count = q_dims[0]
+                };
+
+                lis_llama_observe_intra_layer(
+                    runtime, LIS_INTRA_LAYER_STAGE_ATTENTION_SCORES,
+                    checkpoint_step, layer, position, &scores_view);
+                lis_llama_observe_intra_layer(
+                    runtime, LIS_INTRA_LAYER_STAGE_ATTENTION_PROBABILITIES,
+                    checkpoint_step, layer, position, &probabilities_view);
+                lis_llama_observe_intra_layer(
+                    runtime, LIS_INTRA_LAYER_STAGE_ATTENTION_CONTEXT,
+                    checkpoint_step, layer, position, &context_view);
+            }
+        }
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t used_positions = position + 1U;
             const size_t h_dims[1] = {
                 cfg->attention_head_count * cfg->head_dim
@@ -1233,7 +1408,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->attn, h_dims[0],
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t used_positions = position + 1U;
             const size_t h_dims[1] = {
                 cfg->attention_head_count * cfg->head_dim
@@ -1254,7 +1429,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->attn, h_dims[0],
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t used_positions = position + 1U;
             const size_t h_dims[1] = {
                 cfg->attention_head_count * cfg->head_dim
@@ -1280,7 +1455,22 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) return status;
         lis_matvec(tensor, scratch->attn, o_dims[0], o_dims[1],
                    scratch->attn_out, runtime->pool);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->attn_out,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime,
+                LIS_INTRA_LAYER_STAGE_ATTENTION_OUTPUT_PROJECTION,
+                checkpoint_step, layer, position, &view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1288,7 +1478,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->attn_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1296,7 +1486,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->attn_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1304,7 +1494,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->attn_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1313,7 +1503,21 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
             runtime);
         }
         lis_residual_add(scratch->hidden, scratch->attn_out, cfg->hidden_size);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->hidden,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_POST_ATTENTION_RESIDUAL,
+                checkpoint_step, layer, position, &view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1321,7 +1525,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1329,7 +1533,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1337,7 +1541,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1351,6 +1555,20 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) return status;
         lis_rms_norm(scratch->hidden, tensor, cfg->hidden_size, scratch->norm,
                      runtime->pool);
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->norm,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_MLP_NORM_OUTPUT,
+                checkpoint_step, layer, position, &view);
+        }
 
         status = lis_layer_tensor(model, layer, "gate_proj.weight",
                                   mlp_in_dims, 2, &tensor);
@@ -1362,14 +1580,67 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
         if (status != LIS_STATUS_OK) return status;
         lis_matvec(tensor, scratch->norm, mlp_in_dims[0], mlp_in_dims[1],
                    scratch->up, runtime->pool);
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view gate_view = {
+                .data = scratch->gate,
+                .rank = 1U,
+                .shape = { cfg->intermediate_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->intermediate_size,
+                .physical_element_count = cfg->intermediate_size
+            };
+            const lis_intra_layer_fp32_view up_view = {
+                .data = scratch->up,
+                .rank = 1U,
+                .shape = { cfg->intermediate_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->intermediate_size,
+                .physical_element_count = cfg->intermediate_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_MLP_GATE_PROJECTION,
+                checkpoint_step, layer, position, &gate_view);
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_MLP_UP_PROJECTION,
+                checkpoint_step, layer, position, &up_view);
+        }
         lis_swiglu(scratch->gate, scratch->up, cfg->intermediate_size,
                    scratch->mlp, runtime->pool);
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->mlp,
+                .rank = 1U,
+                .shape = { cfg->intermediate_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->intermediate_size,
+                .physical_element_count = cfg->intermediate_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_MLP_GATED_ACTIVATION,
+                checkpoint_step, layer, position, &view);
+        }
         status = lis_layer_tensor(model, layer, "down_proj.weight",
                                   mlp_down_dims, 2, &tensor);
         if (status != LIS_STATUS_OK) return status;
         lis_matvec(tensor, scratch->mlp, mlp_down_dims[0], mlp_down_dims[1],
                    scratch->mlp_out, runtime->pool);
-        if (emit_checkpoints && layer == 0U) {
+        if (capture_intra_layer && layer == intra_record->target_layer) {
+            const lis_intra_layer_fp32_view view = {
+                .data = scratch->mlp_out,
+                .rank = 1U,
+                .shape = { cfg->hidden_size },
+                .element_strides = { 1U },
+                .logical_element_count = cfg->hidden_size,
+                .physical_element_count = cfg->hidden_size
+            };
+
+            lis_llama_observe_intra_layer(
+                runtime, LIS_INTRA_LAYER_STAGE_MLP_DOWN_PROJECTION,
+                checkpoint_step, layer, position, &view);
+        }
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1377,7 +1648,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->mlp_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1385,7 +1656,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->mlp_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1393,7 +1664,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       scratch->mlp_out, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1402,7 +1673,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
             runtime);
         }
         lis_residual_add(scratch->hidden, scratch->mlp_out, cfg->hidden_size);
-        if (emit_checkpoints && layer == 0U) {
+        if (emit_legacy_checkpoints && layer == 0U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1410,7 +1681,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 1U) {
+        if (emit_legacy_checkpoints && layer == 1U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1418,7 +1689,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 7U) {
+        if (emit_legacy_checkpoints && layer == 7U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1426,7 +1697,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                                       1, scratch->hidden, cfg->hidden_size,
             runtime);
         }
-        if (emit_checkpoints && layer == 8U) {
+        if (emit_legacy_checkpoints && layer == 8U) {
             const size_t h_dims[1] = { cfg->hidden_size };
 
             lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1461,7 +1732,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
                      runtime->pool);
     }
 
-    if (emit_checkpoints) {
+    if (emit_legacy_checkpoints) {
         const size_t h_dims[1] = { cfg->hidden_size };
 
         lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
@@ -1483,7 +1754,7 @@ static lis_status lis_llama_forward_token(lis_runtime_context *runtime,
     lis_matvec(tensor, scratch->norm, cfg->vocab_size, cfg->hidden_size,
                out_logits, runtime->pool);
 
-    if (emit_checkpoints) {
+    if (emit_legacy_checkpoints) {
         const size_t l_dims[1] = { cfg->vocab_size };
 
         lis_checkpoint_diagnostic(checkpoint_step, checkpoint_phase,
