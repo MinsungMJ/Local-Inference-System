@@ -1,19 +1,22 @@
-"""Coverage-scoped intra-layer localization core for Pass 4.
+"""Coverage-scoped intra-layer localization and public orchestration.
 
-This module implements only P4-9.  It consumes the binding-first P4-8 typed
-outcome, applies the frozen coverage algebra, validates shared-entry alignment,
-checks digest-policy availability, compares every bounded common entry, and
-constructs one coherent immutable Pass4Result.
+The P4-9 core consumes the binding-first P4-8 typed outcome, applies the frozen
+coverage algebra, validates shared-entry alignment, checks digest-policy
+availability, compares every bounded common entry, and constructs one coherent
+immutable Pass4Result.  P4-10 adds only a thin public P4-3→P4-8→P4-9 wrapper.
 
-It does not parse artifacts, recompute checkpoint digests, serialize results,
-map results to global success enums, expose a package API, or perform real-run
-orchestration.  Those remain P4-10/P4-12 responsibilities.
+Neither path recomputes checkpoint digests, serializes results, maps successful
+results to global enums, or performs real-run orchestration.  Serialization is
+owned by ``pass4_artifact`` and real integration remains a P4-12 responsibility.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
+from .pass1_inputs import CanonicalRunReport
+from .pass3_inputs import CanonicalLayerTrace, CanonicalPass2Artifact
+from .pass3_model import Pass3Result
 from .pass4_contract import (
     DIGEST_VERSION,
     EVIDENCE_LEVEL,
@@ -31,6 +34,7 @@ from .pass4_inputs import (
     IntraLayerTraceEntry,
     ParsedIntraLayerSource,
     Pass4TraceParsingOutcome,
+    parse_pass4_intra_layer_inputs,
 )
 from .pass4_model import (
     FROZEN_EVIDENCE_CEILING,
@@ -41,6 +45,10 @@ from .pass4_model import (
     Pass4CoverageAnalysis,
     Pass4LocalCoverageOutcome,
     Pass4Result,
+)
+from .pass4_parent import (
+    CanonicalPass3Artifact,
+    bind_pass4_parent_inputs,
 )
 
 
@@ -474,3 +482,46 @@ def localize_bound_intra_layer_inputs(
         ),
         **shared,
     )
+
+
+def run_coverage_scoped_intra_layer_localization(
+    discovery_pass3: Pass3Result,
+    discovery_pass3_artifact: CanonicalPass3Artifact,
+    authoritative_pass3: Pass3Result,
+    authoritative_pass3_artifact: CanonicalPass3Artifact,
+    pass2_artifact: CanonicalPass2Artifact,
+    *,
+    discovery_reference_report: CanonicalRunReport,
+    discovery_candidate_report: CanonicalRunReport,
+    discovery_reference_trace: CanonicalLayerTrace,
+    discovery_candidate_trace: CanonicalLayerTrace,
+    authoritative_reference_report: CanonicalRunReport,
+    authoritative_candidate_report: CanonicalRunReport,
+    authoritative_reference_trace: CanonicalLayerTrace,
+    authoritative_candidate_trace: CanonicalLayerTrace,
+    discovery_pass2_artifact: Optional[CanonicalPass2Artifact] = None,
+) -> Pass4Result:
+    """Run the frozen binding, parsing, and localization gates in order."""
+
+    parent = bind_pass4_parent_inputs(
+        discovery_pass3,
+        discovery_pass3_artifact,
+        authoritative_pass3,
+        authoritative_pass3_artifact,
+        pass2_artifact,
+        discovery_reference_report=discovery_reference_report,
+        discovery_candidate_report=discovery_candidate_report,
+        discovery_reference_trace=discovery_reference_trace,
+        discovery_candidate_trace=discovery_candidate_trace,
+        authoritative_reference_report=authoritative_reference_report,
+        authoritative_candidate_report=authoritative_candidate_report,
+        authoritative_reference_trace=authoritative_reference_trace,
+        authoritative_candidate_trace=authoritative_candidate_trace,
+        discovery_pass2_artifact=discovery_pass2_artifact,
+    )
+    parsed = parse_pass4_intra_layer_inputs(
+        parent,
+        authoritative_reference_trace,
+        authoritative_candidate_trace,
+    )
+    return localize_bound_intra_layer_inputs(parsed)

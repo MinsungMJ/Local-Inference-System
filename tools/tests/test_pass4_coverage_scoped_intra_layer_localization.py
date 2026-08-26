@@ -478,7 +478,7 @@ class TestPass4DigestLocalization(Pass4LocalizationCase):
 
 class TestPass4LocalizationScope(unittest.TestCase):
     def test_core_has_no_parser_digest_serializer_io_or_export_scope(self):
-        source = inspect.getsource(pass4)
+        source = inspect.getsource(localize_bound_intra_layer_inputs)
         for prohibited in (
             "canonical_intra_layer_digest_stream(",
             "intra_layer_digest_sha256(",

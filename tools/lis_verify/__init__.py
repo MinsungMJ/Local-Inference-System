@@ -1,8 +1,8 @@
-"""LIS verification core — P1 Pass 0 through coverage-scoped Pass 3.
+"""LIS verification core — P1 Pass 0 through coverage-scoped Pass 4.
 
 Model-free calibration gating, exact selected-token localization, and
-source-bound mismatch-boundary reproduction. Numeric comparison and runtime
-checkpoint confirmation are intentionally out of scope.
+source-bound layer and intra-layer mismatch localization. Numeric confirmation
+and root-cause identification are intentionally out of scope.
 """
 
 from __future__ import annotations
@@ -81,6 +81,25 @@ from .pass3_model import (
     SummaryFieldDisposition,
 )
 from .pass3_report_mapping import map_pass3_reason, map_pass3_status
+from .pass4 import run_coverage_scoped_intra_layer_localization
+from .pass4_contract import (
+    IntraLayerCoordinate,
+    Pass4Disposition,
+    Pass4ReasonCode,
+    Pass4Status,
+)
+from .pass4_model import (
+    Pass3ParentEvidence,
+    Pass4ClosingBoundaryDecision,
+    Pass4Comparison,
+    Pass4ComparisonDecision,
+    Pass4CoverageAnalysis,
+    Pass4EvidenceCeiling,
+    Pass4LocalCoverageOutcome,
+    Pass4Result,
+    Pass4SourceBinding,
+)
+from .pass4_parent import CanonicalPass3Artifact
 from .report_mapping import map_block_reason
 
 __all__ = [
@@ -153,4 +172,19 @@ __all__ = [
     "pass3_to_json",
     "map_pass3_reason",
     "map_pass3_status",
+    "Pass4Result",
+    "Pass4Status",
+    "Pass4Disposition",
+    "Pass4ReasonCode",
+    "Pass4ComparisonDecision",
+    "Pass4LocalCoverageOutcome",
+    "Pass4Comparison",
+    "Pass4CoverageAnalysis",
+    "Pass4SourceBinding",
+    "Pass3ParentEvidence",
+    "Pass4ClosingBoundaryDecision",
+    "Pass4EvidenceCeiling",
+    "IntraLayerCoordinate",
+    "CanonicalPass3Artifact",
+    "run_coverage_scoped_intra_layer_localization",
 ]
