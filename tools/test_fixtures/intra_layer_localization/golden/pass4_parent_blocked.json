@@ -1,0 +1,84 @@
+{
+  "schema": "lis.execution_artifact/v1",
+  "kind": "intra_layer_localization",
+  "contract_version": "differential_verification_contract_v1",
+  "contract_namespace": "coverage_scoped_intra_layer_localization",
+  "parent_pass3": null,
+  "source_binding": {
+    "reference": null,
+    "candidate": null
+  },
+  "target": {
+    "runtime_checkpoint_step": null,
+    "layer": null,
+    "token_position": null,
+    "phase": null,
+    "model_family": null,
+    "precision_path": null
+  },
+  "layout": {
+    "layout_name": null,
+    "layout_version": null,
+    "stage_taxonomy": null
+  },
+  "coverage": {
+    "reference": {
+      "requested": [],
+      "captured": [],
+      "missing": []
+    },
+    "candidate": {
+      "requested": [],
+      "captured": [],
+      "missing": []
+    },
+    "common_captured": [],
+    "common_comparable": [],
+    "reference_only": [],
+    "candidate_only": []
+  },
+  "comparisons": {
+    "items": [],
+    "total_count": 0,
+    "serialized_count": 0,
+    "truncated": false
+  },
+  "localization": null,
+  "status": "comparison_blocked_by_pass3",
+  "disposition": "blocked",
+  "reason_codes": [
+    "pass4.parent_status_blocked"
+  ],
+  "inherited_reason_codes": {
+    "pass3": [],
+    "pass2": [],
+    "pass1": [],
+    "pass0": []
+  },
+  "warnings": [],
+  "evidence_level": null,
+  "digest_contract_identity": null,
+  "evidence_ceiling": {
+    "evidence_level": "tier1_bounded_digest",
+    "nonclaims": {
+      "numeric_divergence_confirmed": false,
+      "true_first_divergence_confirmed": false,
+      "root_cause_identified": false,
+      "tensor_equality_proved": false,
+      "complete_intra_layer_coverage_proved": false,
+      "operation_level_localization_performed": false,
+      "exhaustive_confirmation_performed": false,
+      "automatic_frozen_success_mapping": false
+    }
+  },
+  "nonclaims": {
+    "numeric_divergence_confirmed": false,
+    "true_first_divergence_confirmed": false,
+    "root_cause_identified": false,
+    "tensor_equality_proved": false,
+    "complete_intra_layer_coverage_proved": false,
+    "operation_level_localization_performed": false,
+    "exhaustive_confirmation_performed": false,
+    "automatic_frozen_success_mapping": false
+  }
+}

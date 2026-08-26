@@ -82,6 +82,10 @@ from .pass3_model import (
 )
 from .pass3_report_mapping import map_pass3_reason, map_pass3_status
 from .pass4 import run_coverage_scoped_intra_layer_localization
+from .pass4_artifact import (
+    serialize as serialize_pass4,
+    to_json as pass4_to_json,
+)
 from .pass4_contract import (
     IntraLayerCoordinate,
     Pass4Disposition,
@@ -188,6 +192,8 @@ __all__ = [
     "IntraLayerCoordinate",
     "CanonicalPass3Artifact",
     "run_coverage_scoped_intra_layer_localization",
+    "serialize_pass4",
+    "pass4_to_json",
     "map_pass4_reason",
     "map_pass4_status",
 ]
