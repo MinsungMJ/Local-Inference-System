@@ -100,6 +100,7 @@ from .pass4_model import (
     Pass4SourceBinding,
 )
 from .pass4_parent import CanonicalPass3Artifact
+from .pass4_report_mapping import map_pass4_reason, map_pass4_status
 from .report_mapping import map_block_reason
 
 __all__ = [
@@ -187,4 +188,6 @@ __all__ = [
     "IntraLayerCoordinate",
     "CanonicalPass3Artifact",
     "run_coverage_scoped_intra_layer_localization",
+    "map_pass4_reason",
+    "map_pass4_status",
 ]
