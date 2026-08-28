@@ -12,7 +12,7 @@ LIS is an independent personal project. The initial codebase is personally autho
 
 - **Correctness-first** — reference execution path with verified token parity and token mismatch localisation
 - **Inspectability** — opt-in machine-readable execution artifacts and diagnostics
-- **Differential verification** — verified mismatch-boundary reproduction and coverage-scoped Llama layer localisation
+- **Differential verification** — verified mismatch-boundary reproduction and coverage-scoped Llama layer and intra-layer localisation
 - **Reproducibility** — bounded, versioned, source-bound execution artifacts with canonical content identities
 - **Performance transparency** — opt-in per-stage and per-token wall-clock instrumentation
 - **Artifact-friendly execution** — structured JSON reports, Markdown companions, and diagnostic traces without telemetry or uploads
@@ -24,7 +24,9 @@ The workflow localises a selected-token mismatch, verifies its prompt, generated
 
 LIS can identify the earliest observed mismatching Llama layer-output checkpoint within common captured coverage and report a bounded suspect interval. Sparse capture remains explicit, so the interval may contain uncaptured layers.
 
-This is bounded diagnostic evidence. It does not prove tensor equality, confirm the first numeric divergence, or localise an uncaptured operation. See [Differential Verification](docs/differential_verification.md) for the detailed contract and [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md) for artifact generation and handling.
+For an observed mismatching Llama layer output, LIS can narrow that interval to the earliest observed mismatching intra-layer checkpoint within validated common captured coverage. This opt-in diagnostic is decode-only, targets one selected layer, and preserves sparse or missing local coverage in the reported interval.
+
+This is bounded digest-based diagnostic evidence. It does not prove tensor equality, confirm the first numeric or operation-level divergence, identify a root cause, establish complete intra-layer coverage, or localise an uncaptured operation. See [Differential Verification](docs/differential_verification.md) for the detailed contract and [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md) for artifact generation and handling.
 
 ## Supported Scope
 
@@ -47,7 +49,9 @@ This is bounded diagnostic evidence. It does not prove tensor equality, confirm 
 
 - Token mismatch localisation and mismatch-boundary reproduction require semantically compatible, source-bound execution artifacts.
 - Coverage-scoped layer localisation supports the versioned Llama layer-output trace layout with matching precision paths.
-- Qwen3 inference support does not imply layer-localisation support. Qwen3 and legacy layer-trace layouts are unsupported for this comparison.
+- Coverage-scoped intra-layer localisation supports Llama decode evidence for one previously identified mismatching layer, using the fixed 17-stage semantic capture profile and an authoritative revalidated layer-output boundary.
+- The C CLI captures the required evidence with `--intra-layer-checkpoints LAYER`; localization and result serialization are provided by the `lis_verify` Python tooling rather than a standalone verification CLI command.
+- Qwen3 inference support does not imply layer- or intra-layer-localisation support. Qwen3 and legacy layer-trace layouts are unsupported for these comparisons.
 
 ## Unsupported / Non-Goals
 

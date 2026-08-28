@@ -355,19 +355,21 @@ Layer-trace artifact writing is fail-closed:
   artifact error explicitly. A partial file may remain on disk when the close
   fails, consistent with the other artifact writers.
 
-## Frozen Intra-Layer Artifact Extension (Not Implemented)
+## Intra-Layer Artifact Extension
 
-The Pass 4 P4-1 contract freezes a future additive extension of the existing
-outer `layer_trace` artifact. The outer identity remains:
+The implemented Pass 4 producer follows the separately frozen P4-1 contract
+and adds optional intra-layer summaries to the existing outer `layer_trace`
+artifact. The outer identity remains:
 
 ```text
 schema = lis.execution_artifact/v1
 kind = layer_trace
 ```
 
-The frozen producer-side field names are
-`intra_layer_checkpoint_layout` and `intra_layer_trace`. When a later producer
-is implemented and enabled, sibling manifests will conditionally bind:
+The additive producer-side field names are
+`intra_layer_checkpoint_layout` and `intra_layer_trace`. When intra-layer
+capture is enabled, sibling run-report, decode-trace, and layer-trace manifests
+and runtime fingerprints conditionally bind:
 
 ```text
 intra_layer_checkpoints_enabled = true
@@ -375,19 +377,41 @@ intra_layer_target_layer = <Pass 3-selected layer>
 diagnostic_capture_profile = semantic_layer_and_intra_v1
 ```
 
-These fields are absent today. The producer is not implemented, runtime
-intra-layer capture is unavailable, and no CLI flag currently requests it.
-There is also no runtime-artifact parser, localization algorithm/execution
-surface, or Pass 4 result serializer. P4-1 must therefore not be interpreted
-as an advertised runtime capability.
+The C CLI requests this evidence with:
 
-The future layout identity is `llama_intra_layer_summary` version 1 with
+```text
+--layer-checkpoints STEP
+--layer-trace-json PATH
+--intra-layer-checkpoints LAYER
+```
+
+`STEP` must be greater than zero, capture is decode-only, batch size must be
+one, and the loaded model must use the supported Llama decoder family. The
+target layer must be valid for the loaded model. In the differential workflow,
+`LAYER` is the layer discovered by Pass 3A and independently revalidated by
+Pass 3B; the capture flag alone does not establish that authority.
+
+When the flag is absent, `intra_layer_checkpoint_layout`,
+`intra_layer_trace`, `intra_layer_checkpoints_enabled`,
+`intra_layer_target_layer`, and `semantic_layer_and_intra_v1` remain absent.
+Existing layer-only artifacts therefore keep the legacy capture profile and
+remain readable by prior Pass 3 tooling. Enabling capture selects the semantic
+layer-and-intra profile and deliberately changes the bound semantic identity.
+
+The layout identity is `llama_intra_layer_summary` version 1 with
 taxonomy `lis.llama.intra_layer_stages/v1`, Llama decode-only semantics, and a
-fixed 17-stage request. Entries will remain separate from `layer_trace[]`.
+fixed 17-stage request. Entries remain separate from `layer_trace[]`.
 The existing Pass 3 `layer_output` checkpoint stays the authoritative inherited
 boundary and is not duplicated in `intra_layer_trace[]`.
 
-The future Pass 4 result identity is:
+Each intra-layer entry is a bounded summary with its contextual digest and
+coordinate metadata. Full tensor payloads are prohibited. Record count, rank,
+shape product, element spans, requested coverage, ordering, duplicates, and
+artifact size are validated fail-closed. Resource or validation failure is
+sticky and suppresses the requested artifact rather than emitting partial
+Pass 4 evidence.
+
+The Pass 4 result identity is:
 
 ```text
 schema = lis.execution_artifact/v1
@@ -396,16 +420,41 @@ contract_version = differential_verification_contract_v1
 contract_namespace = coverage_scoped_intra_layer_localization
 ```
 
-The frozen digest domain is `lis.checkpoint.intra_layer.fp32le/v1`; it does not
-change the existing `lis.checkpoint.fp32le/v1` layer-output digest. Both the
-future intra-layer evidence and result remain bounded diagnostic metadata.
-Full tensor payloads are prohibited, and digest equality will not prove tensor
-equality.
+The contextual digest domain is `lis.checkpoint.intra_layer.fp32le/v1`; it does
+not change the existing `lis.checkpoint.fp32le/v1` layer-output digest. Both
+the intra-layer evidence and result remain bounded diagnostic metadata. Digest
+equality does not prove tensor equality, and a mismatch does not by itself
+confirm a first numeric or operation-level divergence or identify a root
+cause.
 
 `artifact_set_id` remains same-execution association evidence only. It cannot
 replace canonical run-report, layer-trace, Pass 2, Pass 3, or semantic-manifest
-identities. Any future evidence must be bound by the authoritative recaptured
-Pass 3B trace SHA before intra-layer summary access.
+identities.
+
+### Two-generation localization binding
+
+The implemented workflow uses two parent generations:
+
+1. Pass 3A discovers the candidate layer boundary and is retained as discovery
+   provenance only.
+2. A fresh four-run recapture executes the original reference/candidate
+   boundary pair and the independent reproduction reference/candidate pair,
+   each source-bound and using the semantic intra-layer profile.
+3. Passes 0 through 3 are rebuilt from those recaptured artifacts.
+4. Pass 3B revalidates the target layer and becomes the authoritative parent.
+5. Each extended layer trace is bound to the exact Pass 3B trace SHA and its
+   sibling run report, semantic manifest, Pass 2 artifact, and artifact-set
+   association before any intra-layer summary is parsed.
+
+Target drift, semantic drift, cross-generation substitution, a mismatching
+canonical SHA, malformed coverage, or a missing sibling binding fails closed.
+The result localizes only within validated common captured coverage and may
+close at the inherited Pass 3B layer-output boundary when no earlier local
+mismatch is observable.
+
+Localization and result serialization are provided by the `lis_verify` Python
+library. The C flag captures evidence; it is not a standalone Pass 4
+localization command.
 
 ## LIS Inspect Compatibility Protection
 

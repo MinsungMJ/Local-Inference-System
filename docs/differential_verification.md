@@ -3,32 +3,35 @@
 - Contract status: Approved
 - Implemented diagnostic boundary: Pass 0 calibration, Pass 1 selected-token
   localization, Pass 2 prefix and policy reproduction, and Pass 3
-  coverage-scoped Llama layer localization
-- Frozen later-stage boundary: Pass 4 intra-layer contract only (P4-1);
-  producer, runtime capture, parsing, localization execution, and result
-  serialization are not implemented
+  coverage-scoped Llama layer localization, plus Pass 4 coverage-scoped Llama
+  intra-layer localization
+- Frozen Pass 4 contract: the immutable P4-1 taxonomy, identity, digest,
+  coverage, status, and evidence-ceiling snapshot remains authoritative; the
+  additive producer, runtime capture, parsing, localization, and result
+  serialization defined by it are implemented
 - Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
 This document combines the original differential-verification design contract
 with additive implemented diagnostic stages. The base `verification_report`,
-exhaustive tensor comparison, intra-layer localization, and confirmatory
-verdict surfaces remain unimplemented. Their approved contracts are retained
-for future work.
+exhaustive tensor comparison, and confirmatory verdict surfaces remain
+unimplemented. Their approved contracts are retained for future work.
 
 The implemented boundary includes token mismatch localization,
-mismatch-boundary reproduction, source-bound producer artifacts, and
-coverage-scoped Llama layer-output localization. These results are bounded
-diagnostic evidence. They do not prove tensor equality or confirm the first
-numeric divergence. Qwen3 inference remains supported only within its
-documented runtime scope and does not provide the layer-output layout required
-for layer localization.
+mismatch-boundary reproduction, source-bound producer artifacts,
+coverage-scoped Llama layer-output localization, and coverage-scoped Llama
+intra-layer localization. These results are bounded diagnostic evidence. They
+do not prove tensor equality, confirm the first numeric or operation-level
+divergence, identify a root cause, or establish complete coverage. Qwen3
+inference remains supported only within its documented runtime scope and does
+not provide the layout required for layer or intra-layer localization.
 
-The Pass 4 intra-layer contract is frozen separately so later producer and
-Python work share one taxonomy, coordinate grammar, digest domain, and evidence
-ceiling. This freeze is not an implemented localization capability: no
-intra-layer producer fields are emitted, runtime capture is unavailable, and
-no Pass 4 localization can currently be executed.
+The Pass 4 intra-layer contract was frozen separately before implementation so
+the C producer and Python tooling share one taxonomy, coordinate grammar,
+digest domain, and evidence ceiling. Its implementation adds opt-in Llama
+decode capture for one selected layer and a Python localization/serialization
+surface. It does not add a standalone Pass 4 CLI execution command or raise
+the frozen evidence ceiling.
 
 ## 1. Status and Scope
 
@@ -41,18 +44,19 @@ coverage-scoped layer localization.
 Implemented capabilities are documented in the additive staged sections below.
 They include model-free compatibility calibration, selected-token mismatch
 localization, prefix and policy reproduction, the bounded C checkpoint-artifact
-producer, and coverage-scoped Llama layer-output localization.
+producer, coverage-scoped Llama layer-output localization, opt-in intra-layer
+artifact capture, strict runtime-artifact parsing, coverage-scoped intra-layer
+localization, and bounded Pass 4 result serialization.
 
 The following base or later-stage surfaces remain outside the implemented
 boundary:
 
 - binary full-tensor checkpoint capture,
 - exhaustive tensor comparison,
-- intra-layer capture, artifact parsing, and localization execution (the P4-1
-  contract alone is frozen),
 - confirmatory numeric or first-divergence verdicts,
 - production of the base `verification_report` artifact,
-- new differential-verification CLI commands or confirm-checkpoint flags,
+- standalone differential-verification execution commands or
+  confirm-checkpoint flags,
 - a `verify-diff` make target,
 - LIS Inspect verification views,
 - an external semantic adapter.
@@ -700,13 +704,20 @@ Implemented:
 - Pass 2 prefix and policy reproduction,
 - producer-vNext source-associated artifacts and the versioned Llama
   layer-output checkpoint layout,
-- Pass 3 coverage-scoped Llama layer localization.
+- Pass 3 coverage-scoped Llama layer localization,
+- the Pass 4 bounded C producer and contextual intra-layer digest,
+- opt-in single-layer Llama decode capture and conditional artifact identity,
+- strict Pass 4 parent/source binding and runtime-artifact parsing,
+- coverage-scoped intra-layer localization and bounded result serialization,
+- isolated test-only integration controls and two-generation real-artifact
+  revalidation.
 
-Frozen contract only:
+Frozen contract snapshot retained unchanged:
 
-- Pass 4 P4-1 Llama/decode intra-layer taxonomy, coordinate, coverage,
+- the Pass 4 P4-1 Llama/decode intra-layer taxonomy, coordinate, coverage,
   parent, interval, digest, artifact-identity, status/reason, and evidence
-  ceiling contracts.
+  ceiling contract and its documentation index. Freeze-time implementation
+  flags describe the P4-1 milestone, not the current implementation status.
 
 The implemented layer-localization result identifies the earliest observed
 digest mismatch within validated common captured coverage and may report a
@@ -718,14 +729,11 @@ Not implemented:
 
 - binary full-tensor checkpoint capture,
 - exhaustive tensor comparison,
-- the Pass 4 producer, runtime intra-layer capture, runtime artifact parsing,
-  localization algorithm/execution, result serializer, or public execution
-  API,
 - `confirmed_divergence_at_checkpoint` or `confirmed_first_divergence`
   production,
 - production of the base `verification_report` artifact,
 - runtime support for the base `verification_inconclusive` result class,
-- new differential-verification CLI commands,
+- a standalone differential-verification execution CLI,
 - a `verify-diff` make target,
 - LIS Inspect verification views,
 - the Mode-C external semantic adapter.
@@ -1765,24 +1773,27 @@ contract.
 ```
 <!-- COVERAGE-SCOPED-LAYER-LOCALIZATION-INDEX-END -->
 
-## 27. Coverage-Scoped Intra-Layer Localization Contract Freeze
+## 27. Coverage-Scoped Intra-Layer Localization
 
-Pass 4 P4-1 is frozen as a contract-only dependency for later implementation.
-It does not add an implemented producer or localization surface. In particular:
+Pass 4 implements the separately frozen P4-1 contract without changing its
+taxonomy, identities, digest domain, status algebra, or evidence ceiling. The
+implemented surfaces are:
 
-- the C producer is not implemented;
-- runtime intra-layer capture is unavailable;
-- `intra_layer_checkpoint_layout` and `intra_layer_trace` are not emitted;
-- no runtime-artifact parser or localization algorithm is implemented;
-- localization execution and Pass 4 result serialization are unavailable;
-- no CLI flag or public Pass 4 execution API exists.
+- a bounded C producer and fixed-record validation module;
+- opt-in Llama decode capture for one selected layer;
+- additive `intra_layer_checkpoint_layout` and `intra_layer_trace` fields in
+  the existing outer layer-trace artifact;
+- strict Python parent/source binding and runtime-artifact parsing;
+- coverage-scoped localization and bounded result serialization; and
+- the `--intra-layer-checkpoints LAYER` evidence-capture flag.
 
-The future outer evidence artifact retains schema
+Localization is a `lis_verify` Python library surface, not a standalone Pass 4
+CLI execution command. The outer evidence artifact retains schema
 `lis.execution_artifact/v1` and kind `layer_trace`. The additive producer-side
 field names are `intra_layer_checkpoint_layout` and `intra_layer_trace`.
-Enabled recapture manifests will conditionally bind
+Enabled recapture manifests conditionally bind
 `intra_layer_checkpoints_enabled`, `intra_layer_target_layer`, and capture
-profile `semantic_layer_and_intra_v1`. The future local result retains the same
+profile `semantic_layer_and_intra_v1`. The local result retains the same
 schema and uses kind `intra_layer_localization`, contract version
 `differential_verification_contract_v1`, and namespace
 `coverage_scoped_intra_layer_localization`.
@@ -1869,7 +1880,7 @@ parents are `comparison_blocked_by_pass3`; unsupported family, layout, or
 evidence policy is `unsupported_parent`; and Pass 3A/Pass 3B target or semantic
 drift is `parent_revalidation_inconsistent`.
 
-The future canonical Pass 3 wrapper must call the existing Pass 3 serializer,
+The canonical Pass 3 wrapper calls the existing Pass 3 serializer,
 existing canonical JSON and SHA-256 helpers, and strict duplicate-key-rejecting
 JSON parser. It may not hash `repr` or pickle, hash selected fields, define a
 separate Pass 4 serializer for Pass 3, or rerun Pass 3 while parsing an
@@ -1974,9 +1985,60 @@ exhaustive_confirmation_performed
 automatic_frozen_success_mapping
 ```
 
+### Two-generation execution and authority
+
+Pass 4 execution is gated by the complete Pass 3 workflow rather than by an
+isolated pair of intra-layer traces:
+
+1. Pass 3A discovers the mismatching layer boundary but does not authorize
+   Pass 4 evidence.
+2. The workflow performs a fresh four-run recapture for the selected layer:
+   original reference/candidate boundary executions and independent
+   reproduction reference/candidate executions, all separately source-bound.
+3. Passes 0 through 3 are rebuilt from the recaptured artifacts rather than
+   copied from discovery results.
+4. Pass 3B revalidates the selected target and becomes the authoritative Pass 4
+   parent.
+5. The parser binds each exact extended layer trace to the Pass 3B trace SHA,
+   sibling run report, semantic manifest, Pass 2 artifact, and artifact-set
+   association before reading intra-layer summaries.
+6. Pass 4 compares all aligned common-captured local stages and either closes
+   at the earliest observed local mismatch or at the inherited authoritative
+   Pass 3B layer-output boundary.
+
+Target-layer or semantic drift between Pass 3A and Pass 3B is
+`parent_revalidation_inconsistent`. Missing, malformed, oversized, truncated,
+or cross-bound evidence fails closed and cannot be repaired by an
+`artifact_set_id` match.
+
+### Implemented support and operational boundaries
+
+- Capture is limited to the Llama decoder family, decode steps greater than
+  zero, batch size one, and one explicitly selected layer.
+- `--intra-layer-checkpoints LAYER` requires
+  `--layer-checkpoints STEP`, `STEP > 0`, and `--layer-trace-json PATH`.
+- Qwen3 and legacy layer-trace layouts remain unsupported for Pass 4 even when
+  the base runtime can execute the model.
+- Disabled capture leaves the additive fields absent and performs zero
+  intra-layer element visits and capture allocations.
+- Enabled capture uses fixed capacity, validated spans and shapes, contextual
+  digests, bounded summaries, and sticky artifact suppression on validation or
+  resource failure. Full tensor payloads are prohibited.
+- Test perturbations and selected-token controls are compiled only into
+  `LIS_TESTING` variants. Production builds are checked for their absence.
+- Deterministic counters and artifact bounds are acceptance gates. Repeated
+  wall-clock capture-off/on measurements are recorded as informational only;
+  no timing threshold is approved.
+- Temporary real-artifact fixtures are private, scoped, and removed after the
+  integration run. No private model is required by CI.
+
 The authoritative machine-readable P4-1 contract is
 `tools/test_fixtures/intra_layer_localization/pass4_contract.json`. Its compact
-documentation index is mirrored below.
+documentation index is mirrored below. This JSON is the immutable P4-1
+freeze-time snapshot. Its `P4-1_contract_only` scope and false implementation
+flags intentionally describe that historical milestone and are preserved
+byte-for-value for contract parity; they are not the current implementation
+status.
 
 <!-- COVERAGE-SCOPED-INTRA-LAYER-LOCALIZATION-INDEX-BEGIN -->
 ```json
@@ -2015,3 +2077,20 @@ documentation index is mirrored below.
 }
 ```
 <!-- COVERAGE-SCOPED-INTRA-LAYER-LOCALIZATION-INDEX-END -->
+
+### Current implementation status
+
+| Surface | Current status |
+|---|---|
+| Frozen P4-1 contract and documentation index | Implemented unchanged; freeze-time snapshot retained |
+| C layout/digest producer | Implemented |
+| Runtime single-layer Llama decode capture | Implemented and opt-in |
+| Conditional manifest and artifact identity | Implemented |
+| Strict parent/source binding and trace parser | Implemented |
+| Coverage-scoped localization algorithm | Implemented in `lis_verify` |
+| Bounded Pass 4 result serializer and conservative mapping | Implemented in `lis_verify` |
+| Two-generation real-artifact revalidation | Implemented in test/integration tooling |
+| Standalone Pass 4 execution CLI | Not implemented |
+| LIS Inspect rendering for Pass 4 blocks/results | Not required and not implemented |
+| Qwen3 intra-layer localization | Unsupported |
+| Numeric confirmation, first-operation proof, or root-cause identification | Not claimed |
