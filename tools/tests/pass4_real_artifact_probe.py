@@ -8,6 +8,7 @@ import json
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
+from statistics import median
 from unittest import mock
 
 from lis_verify import pass4 as pass4_module
@@ -23,7 +24,10 @@ from lis_verify import (
 )
 from lis_verify.pass3_model import Pass3Status
 from lis_verify.pass3_inputs import LayerTraceIdentity
-from lis_verify.pass4_parent import CanonicalPass3Artifact
+from lis_verify.pass4_parent import (
+    MAX_LAYER_TRACE_BYTES,
+    CanonicalPass3Artifact,
+)
 
 import pass3_real_artifact_probe as pass3_probe
 
@@ -79,8 +83,182 @@ class Generation:
     pass3_artifact: CanonicalPass3Artifact
 
 
+@dataclass(frozen=True)
+class PerformanceSample:
+    profile: str
+    decode_ns: int
+    stage_count: int
+    intra_element_visits: int
+    parent_element_visits: int
+    layer_artifact_bytes: int
+
+    @property
+    def total_element_visits(self) -> int:
+        return self.intra_element_visits + self.parent_element_visits
+
+    @property
+    def intra_logical_bytes(self) -> int:
+        return self.intra_element_visits * 4
+
+    @property
+    def total_logical_bytes(self) -> int:
+        return self.total_element_visits * 4
+
+
 def _path(directory: Path, name: str, kind: str) -> Path:
     return directory / f"{name}_{kind}.json"
+
+
+def _performance_sample(
+    directory: Path, name: str, *, capture_enabled: bool
+) -> PerformanceSample:
+    report_path = _path(directory, name, "report")
+    layer_path = _path(directory, name, "layer")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    layer = json.loads(layer_path.read_text(encoding="utf-8"))
+    runtime = report["manifest"]["runtime"]
+    perf = report["report"]["perf"]
+    stages = perf["stages"]
+    required_stages = {
+        "model_load",
+        "tokenizer_load",
+        "tokenizer_encode",
+        "runtime_init",
+        "prefill",
+        "first_decode",
+        "decode_steady_state",
+    }
+    assert set(stages) == required_stages
+    for stage in stages.values():
+        assert set(stage) == {"ns", "ms", "tokens"}
+        assert isinstance(stage["ns"], int) and stage["ns"] >= 0
+        assert isinstance(stage["tokens"], int) and stage["tokens"] >= 0
+        assert isinstance(stage["ms"], (int, float)) and stage["ms"] >= 0
+    assert perf["threads"] == 1
+    assert perf["prompt_tokens"] == 1
+    assert perf["generated_tokens"] == 2
+    assert runtime["perf_enabled"] is True
+
+    parent_entries = [
+        entry
+        for entry in layer["layer_trace"]
+        if entry.get("tensor_role") == "layer_output"
+    ]
+    parent_visits = sum(entry["element_count"] for entry in parent_entries)
+    intra_entries = layer.get("intra_layer_trace", [])
+    intra_visits = sum(entry["element_count"] for entry in intra_entries)
+    artifact_bytes = layer_path.stat().st_size
+    assert 0 < artifact_bytes <= MAX_LAYER_TRACE_BYTES
+
+    if capture_enabled:
+        assert runtime["intra_layer_checkpoints_enabled"] is True
+        assert runtime["intra_layer_target_layer"] == TARGET_LAYER
+        assert [entry["stage_id"] for entry in intra_entries] == list(
+            STAGE_IDS
+        )
+        by_stage = {entry["stage_id"]: entry for entry in intra_entries}
+        hidden = by_stage["layer_input"]["element_count"]
+        query = by_stage["query_projection_output"]["element_count"]
+        key = by_stage["key_projection_output"]["element_count"]
+        scores = by_stage["attention_scores"]["element_count"]
+        intermediate = by_stage["mlp_gate_projection"]["element_count"]
+        expected_e_new = (
+            6 * hidden
+            + 3 * query
+            + 3 * key
+            + 2 * scores
+            + 3 * intermediate
+        )
+        assert intra_visits == expected_e_new
+    else:
+        assert "intra_layer_checkpoints_enabled" not in runtime
+        assert "intra_layer_target_layer" not in runtime
+        assert "intra_layer_checkpoint_layout" not in layer
+        assert "intra_layer_trace" not in layer
+
+    return PerformanceSample(
+        "capture_on" if capture_enabled else "capture_off",
+        stages["first_decode"]["ns"]
+        + stages["decode_steady_state"]["ns"],
+        len(intra_entries),
+        intra_visits,
+        parent_visits,
+        artifact_bytes,
+    )
+
+
+def _performance_profile(
+    directories: tuple[Path, ...],
+    *,
+    capture_enabled: bool,
+) -> dict:
+    prefix = "authoritative" if capture_enabled else "discovery"
+    names = (
+        f"{prefix}_original_reference",
+        f"{prefix}_reproduction_reference",
+    )
+    samples = tuple(
+        _performance_sample(
+            directory, name, capture_enabled=capture_enabled
+        )
+        for directory in directories
+        for name in names
+    )
+    assert len(samples) == 4
+    expected = (
+        (17, 19, 8, 27, 76, 108)
+        if capture_enabled
+        else (0, 0, 8, 8, 0, 32)
+    )
+    for sample in samples:
+        assert (
+            sample.stage_count,
+            sample.intra_element_visits,
+            sample.parent_element_visits,
+            sample.total_element_visits,
+            sample.intra_logical_bytes,
+            sample.total_logical_bytes,
+        ) == expected
+    return {
+        "profile": samples[0].profile,
+        "sample_count": len(samples),
+        "decode_ns_samples": [sample.decode_ns for sample in samples],
+        "median_decode_ns": median(sample.decode_ns for sample in samples),
+        "stage_count": expected[0],
+        "intra_element_visits": expected[1],
+        "parent_element_visits": expected[2],
+        "total_element_visits": expected[3],
+        "intra_logical_bytes": expected[4],
+        "total_logical_bytes": expected[5],
+        "layer_artifact_bytes_samples": [
+            sample.layer_artifact_bytes for sample in samples
+        ],
+        "median_layer_artifact_bytes": median(
+            sample.layer_artifact_bytes for sample in samples
+        ),
+    }
+
+
+def _performance_baseline(directories: tuple[Path, ...]) -> dict:
+    capture_off = _performance_profile(
+        directories, capture_enabled=False
+    )
+    capture_on = _performance_profile(
+        directories, capture_enabled=True
+    )
+    off_median = capture_off["median_decode_ns"]
+    ratio = (
+        capture_on["median_decode_ns"] / off_median
+        if off_median > 0
+        else None
+    )
+    return {
+        "capture_off": capture_off,
+        "capture_on": capture_on,
+        "decode_time_ratio_on_over_off": ratio,
+        "timing_is_informational": True,
+        "timing_threshold_applied": False,
+    }
 
 
 def _load_generation(directory: Path, prefix: str) -> Generation:
@@ -756,6 +934,11 @@ def main(argv: list[str]) -> int:
     case_b = Path(argv[2])
     _run_case(case_a, local_mismatch=False)
     _run_case(case_b, local_mismatch=True)
+    baseline = _performance_baseline((case_a, case_b))
+    print(
+        "pass4-perf-baseline: "
+        + json.dumps(baseline, sort_keys=True, separators=(",", ":"))
+    )
     print(
         "pass4-real-integration: "
         "test_a=mismatch_bounded_to_inherited_closing_boundary "

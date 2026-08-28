@@ -200,6 +200,7 @@ static int p4_12_run_cli(const p4_12_case_fixture *fixture,
     argv[argc++] = "1";
     argv[argc++] = "--layer-trace-json";
     argv[argc++] = (char *)artifacts->layer;
+    argv[argc++] = "--perf";
     if (intra_layer_capture) {
         argv[argc++] = "--intra-layer-checkpoints";
         argv[argc++] = target_layer;
