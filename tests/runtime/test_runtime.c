@@ -2,6 +2,7 @@
 #include "lis/dtype.h"
 #include "lis/runtime.h"
 #include "lis/status.h"
+#include "lis_test_controls.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -771,6 +772,133 @@ static void test_intra_layer_observer_contract(void)
     expect_size("observer inf true", (size_t)observation->inf, 1U);
 }
 
+static void test_intra_layer_streamed_override_contract(void)
+{
+    lis_intra_layer_trace_record baseline;
+    lis_intra_layer_trace_record controlled;
+    lis_intra_layer_trace_record invalid;
+    lis_intra_layer_fp32_view view = {0};
+    float storage[6] = {1.0f, 2.0f, 99.0f, 3.0f, 4.0f, 99.0f};
+    float storage_before[6];
+    const lis_intra_layer_observation *observation;
+
+    lis_cli_test_injection_reset();
+    memcpy(storage_before, storage, sizeof(storage));
+    view.data = storage;
+    view.rank = 2U;
+    view.shape[0] = 2U;
+    view.shape[1] = 2U;
+    view.element_strides[0] = 3U;
+    view.element_strides[1] = 1U;
+    view.logical_element_count = 4U;
+    view.physical_element_count = 6U;
+
+    expect_status("stream override baseline init",
+                  lis_intra_layer_record_init(&baseline), LIS_STATUS_OK);
+    expect_status("stream override baseline configure",
+                  lis_intra_layer_record_configure(
+                      &baseline, 3U, 0U, 1U, 2U, "f32"),
+                  LIS_STATUS_OK);
+    expect_status("stream override baseline capture",
+                  lis_intra_layer_observe_fp32(
+                      &baseline, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      3U, 0U, 2U, &view),
+                  LIS_STATUS_OK);
+
+    expect_status("stream override control configure",
+                  lis_cli_test_perturb_intra_layer_observation(
+                      LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 1U, 5.0f),
+                  LIS_STATUS_OK);
+    expect_status("stream override controlled init",
+                  lis_intra_layer_record_init(&controlled), LIS_STATUS_OK);
+    expect_status("stream override controlled configure",
+                  lis_intra_layer_record_configure(
+                      &controlled, 3U, 0U, 1U, 2U, "f32"),
+                  LIS_STATUS_OK);
+    expect_status("stream override non-target is zero work",
+                  lis_intra_layer_observe_fp32(
+                      &controlled, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      4U, 0U, 2U, &view),
+                  LIS_STATUS_OK);
+    expect_size("stream override non-target not consumed",
+                (size_t)lis_test_control_intra_layer_observation_applied(),
+                0U);
+    expect_status("stream override controlled capture",
+                  lis_intra_layer_observe_fp32(
+                      &controlled, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      3U, 0U, 2U, &view),
+                  LIS_STATUS_OK);
+    expect_size("stream override applied once",
+                (size_t)lis_test_control_intra_layer_observation_applied(),
+                1U);
+    if (memcmp(storage, storage_before, sizeof(storage)) != 0) {
+        fprintf(stderr, "stream override mutated runtime tensor bytes\n");
+        ++g_failures;
+    }
+    observation = &controlled.slots[0].observation;
+    expect_float_close("stream override min", observation->min, 1.0f,
+                       0.0f);
+    expect_float_close("stream override max", observation->max, 7.0f,
+                       0.0f);
+    expect_float_close("stream override mean", observation->mean, 3.75f,
+                       0.0f);
+    expect_float_close("stream override l2", observation->l2,
+                       sqrtf(75.0f), 1.0e-6f);
+    if (memcmp(baseline.slots[0].observation.digest.bytes,
+               controlled.slots[0].observation.digest.bytes,
+               LIS_CHECKPOINT_DIGEST_SIZE) == 0) {
+        fprintf(stderr, "stream override did not change target digest\n");
+        ++g_failures;
+    }
+
+    lis_cli_test_injection_reset();
+    expect_status("stream override invalid index configure",
+                  lis_cli_test_perturb_intra_layer_observation(
+                      LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 4U, 1.0f),
+                  LIS_STATUS_OK);
+    expect_status("stream override invalid record init",
+                  lis_intra_layer_record_init(&invalid), LIS_STATUS_OK);
+    expect_status("stream override invalid record configure",
+                  lis_intra_layer_record_configure(
+                      &invalid, 3U, 0U, 1U, 2U, "f32"),
+                  LIS_STATUS_OK);
+    expect_status("stream override out-of-range fails closed",
+                  lis_intra_layer_observe_fp32(
+                      &invalid, LIS_INTRA_LAYER_STAGE_LAYER_INPUT,
+                      3U, 0U, 2U, &view),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    expect_size("stream override invalid record sticky",
+                (size_t)invalid.state,
+                (size_t)LIS_INTRA_LAYER_RECORD_INVALID);
+    expect_size("stream override invalid not applied",
+                (size_t)lis_test_control_intra_layer_observation_applied(),
+                0U);
+    expect_status("stream override rejects invalid stage",
+                  lis_cli_test_perturb_intra_layer_observation(
+                      (lis_intra_layer_stage)LIS_INTRA_LAYER_STAGE_COUNT,
+                      0U, 1.0f),
+                  LIS_STATUS_INVALID_ARGUMENT);
+    {
+        int active = 1;
+
+        expect_status("stream override invalid stage clears stale control",
+                      lis_test_control_prepare_intra_layer_observation(
+                          LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 4U, &active),
+                      LIS_STATUS_OK);
+        expect_size("stream override stale control inactive",
+                    (size_t)active, 0U);
+    }
+    expect_status("stream override rejects nonfinite delta",
+                  lis_cli_test_perturb_intra_layer_observation(
+                      LIS_INTRA_LAYER_STAGE_LAYER_INPUT, 0U, INFINITY),
+                  LIS_STATUS_INVALID_ARGUMENT);
+
+    lis_cli_test_injection_reset();
+    lis_intra_layer_record_destroy(&invalid);
+    lis_intra_layer_record_destroy(&controlled);
+    lis_intra_layer_record_destroy(&baseline);
+}
+
 static void test_intra_layer_runtime_init_gates(void)
 {
     lis_model_metadata metadata = valid_metadata();
@@ -955,14 +1083,18 @@ static void test_intra_layer_llama_runtime_capture(void)
     lis_model_metadata metadata = {0};
     lis_runtime_options baseline_options = {0};
     lis_runtime_options capture_options = {0};
+    lis_runtime_options controlled_options = {0};
     lis_runtime_context baseline_runtime = {0};
     lis_runtime_context capture_runtime = {0};
+    lis_runtime_context controlled_runtime = {0};
     lis_runtime_context tight_runtime = {0};
     lis_runtime_context failed_runtime = {0};
     lis_layer_trace_record parent = {0};
+    lis_layer_trace_record controlled_parent = {0};
     lis_layer_trace_record tight_parent = {0};
     lis_layer_trace_record failed_parent = {0};
     lis_intra_layer_trace_record intra;
+    lis_intra_layer_trace_record controlled_intra;
     lis_intra_layer_trace_record tight_intra;
     lis_intra_layer_trace_record failed_intra;
     lis_runtime_options tight_options = {0};
@@ -975,9 +1107,11 @@ static void test_intra_layer_llama_runtime_capture(void)
     size_t model_byte_offset = 0U;
     float baseline_logits[3] = {0.0f};
     float capture_logits[3] = {0.0f};
+    float controlled_logits[3] = {0.0f};
     size_t baseline_token = 0U;
     size_t baseline_prefill_token = 0U;
     size_t capture_token = 0U;
+    size_t controlled_token = 0U;
     size_t stage;
 
     if (build_intra_layer_tiny_llama_model(&model, &metadata) !=
@@ -1154,6 +1288,128 @@ static void test_intra_layer_llama_runtime_capture(void)
                   lis_intra_layer_record_finalize(&intra), LIS_STATUS_OK);
     expect_size("intra capture ready", (size_t)intra.state,
                 (size_t)LIS_INTRA_LAYER_RECORD_READY);
+
+    /*
+     * A middle-stage testing override changes only the value streamed into
+     * the observation summary/digest. The runtime buffers feeding later
+     * computation remain authoritative and therefore all later digests,
+     * logits, selected tokens, and KV bytes must match the baseline capture.
+     */
+    lis_cli_test_injection_reset();
+    expect_status("intra controlled override configure",
+                  lis_cli_test_perturb_intra_layer_observation(
+                      LIS_INTRA_LAYER_STAGE_MLP_GATE_PROJECTION,
+                      1U, 0.25f),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled parent init",
+                  lis_layer_trace_record_init(&controlled_parent, 4U),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled parent configure",
+                  lis_layer_trace_record_configure_llama_layout(
+                      &controlled_parent, 1U,
+                      metadata.config.layer_count),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled record init",
+                  lis_intra_layer_record_init(&controlled_intra),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled record configure",
+                  lis_intra_layer_record_configure(
+                      &controlled_intra, 1U, 0U,
+                      metadata.config.layer_count, 2U,
+                      "f32_accum;weights=f32;kv=f32"),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled options",
+                  lis_runtime_options_init(
+                      &controlled_options, &metadata,
+                      lis_backend_cpu_reference(), 1U),
+                  LIS_STATUS_OK);
+    controlled_options.layer_checkpoints_enabled = 1;
+    controlled_options.layer_checkpoints_target_step = 1U;
+    controlled_options.layer_trace_record = &controlled_parent;
+    controlled_options.intra_layer_record = &controlled_intra;
+    expect_status("intra controlled runtime init",
+                  lis_runtime_init(&controlled_runtime,
+                                   &controlled_options),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled prefill",
+                  lis_runtime_llama_prefill(
+                      &controlled_runtime, &model, tokens, lengths, 1U,
+                      controlled_logits, 3U),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled prefill token",
+                  lis_runtime_greedy_select(
+                      controlled_logits, 3U, &controlled_token),
+                  LIS_STATUS_OK);
+    expect_size("intra controlled prefill token parity", controlled_token,
+                baseline_prefill_token);
+    expect_status("intra controlled decode",
+                  lis_runtime_llama_decode(
+                      &controlled_runtime, &model, controlled_token,
+                      controlled_logits, 3U),
+                  LIS_STATUS_OK);
+    expect_status("intra controlled decode token",
+                  lis_runtime_greedy_select(
+                      controlled_logits, 3U, &controlled_token),
+                  LIS_STATUS_OK);
+    expect_size("intra controlled decode token parity", controlled_token,
+                baseline_token);
+    expect_size("intra controlled hook applied",
+                (size_t)lis_test_control_intra_layer_observation_applied(),
+                1U);
+    if (memcmp(controlled_logits, baseline_logits,
+               sizeof(controlled_logits)) != 0) {
+        fprintf(stderr, "intra streamed override changed logits\n");
+        ++g_failures;
+    }
+    if (baseline_runtime.kv_cache.layout.bytes_per_cache !=
+            controlled_runtime.kv_cache.layout.bytes_per_cache ||
+        memcmp(baseline_runtime.kv_cache.keys,
+               controlled_runtime.kv_cache.keys,
+               baseline_runtime.kv_cache.layout.bytes_per_cache) != 0 ||
+        memcmp(baseline_runtime.kv_cache.values,
+               controlled_runtime.kv_cache.values,
+               baseline_runtime.kv_cache.layout.bytes_per_cache) != 0) {
+        fprintf(stderr, "intra streamed override changed KV state\n");
+        ++g_failures;
+    }
+    expect_size("intra controlled captured count",
+                controlled_intra.captured_count,
+                LIS_INTRA_LAYER_STAGE_COUNT);
+    for (stage = 0U; stage < LIS_INTRA_LAYER_STAGE_COUNT; ++stage) {
+        const int digest_equal =
+            memcmp(intra.slots[stage].observation.digest.bytes,
+                   controlled_intra.slots[stage].observation.digest.bytes,
+                   LIS_CHECKPOINT_DIGEST_SIZE) == 0;
+
+        if (stage == (size_t)LIS_INTRA_LAYER_STAGE_MLP_GATE_PROJECTION) {
+            if (digest_equal) {
+                fprintf(stderr,
+                        "intra controlled target digest did not change\n");
+                ++g_failures;
+            }
+        } else if (!digest_equal) {
+            fprintf(stderr,
+                    "intra controlled non-target digest changed at stage "
+                    "%zu\n", stage);
+            ++g_failures;
+        }
+    }
+    if (parent.step_count != controlled_parent.step_count ||
+        parent.step_count != 1U ||
+        memcmp(parent.steps[0].digest.bytes,
+               controlled_parent.steps[0].digest.bytes,
+               LIS_CHECKPOINT_DIGEST_SIZE) != 0) {
+        fprintf(stderr,
+                "intra streamed override changed Pass 3 parent digest\n");
+        ++g_failures;
+    }
+    expect_status("intra controlled finalize",
+                  lis_intra_layer_record_finalize(&controlled_intra),
+                  LIS_STATUS_OK);
+    lis_cli_test_injection_reset();
+    lis_runtime_destroy(&controlled_runtime);
+    lis_intra_layer_record_destroy(&controlled_intra);
+    lis_layer_trace_record_destroy(&controlled_parent);
 
     /*
      * Repeat with no physical attention-row padding. The logical tensors and
@@ -1754,6 +2010,7 @@ int main(void)
     test_greedy_select();
     test_llama_forward_tiny_fixture();
     test_intra_layer_observer_contract();
+    test_intra_layer_streamed_override_contract();
     test_intra_layer_runtime_init_gates();
     test_intra_layer_llama_runtime_capture();
     test_precision_f16_bf16_forward_and_kv_cache();

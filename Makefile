@@ -5,6 +5,10 @@ CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Werror -O2
 LDFLAGS ?=
 LDLIBS ?=
 
+ifneq ($(findstring LIS_TESTING,$(CPPFLAGS)),)
+$(error LIS_TESTING is reserved for the isolated testing object rule)
+endif
+
 # Per-TU AVX flags. Global CFLAGS stay generic so the binary loads on pre-AVX2
 # hardware; -mavx2 -mfma -mf16c attach only to cpu_avx.o.
 AVX_CFLAGS := -mavx2 -mfma -mf16c
@@ -15,6 +19,7 @@ SIMD ?= on
 
 BUILD_DIR := srcs/libs
 OBJ_DIR := $(BUILD_DIR)/obj
+TESTING_OBJ_DIR := $(BUILD_DIR)/obj_testing
 BIN := $(BUILD_DIR)/lis
 TEST_BIN := $(BUILD_DIR)/test_core
 TEST_LOADER_BIN := $(BUILD_DIR)/test_loader
@@ -106,6 +111,9 @@ TEST_HF_IMPORT_SRCS := \
 TEST_THREADING_SRCS := \
 	tests/runtime/test_threading.c
 
+TEST_CONTROL_SRCS := \
+	tests/support/lis_test_controls.c
+
 APP_OBJS := $(APP_SRCS:%.c=$(OBJ_DIR)/%.o)
 CORE_OBJS := $(CORE_SRCS:%.c=$(OBJ_DIR)/%.o)
 LOADER_OBJS := $(LOADER_SRCS:%.c=$(OBJ_DIR)/%.o)
@@ -116,23 +124,39 @@ TEST_OBJS := $(TEST_SRCS:%.c=$(OBJ_DIR)/%.o)
 TEST_LOADER_OBJS := $(TEST_LOADER_SRCS:%.c=$(OBJ_DIR)/%.o)
 TEST_BACKEND_OBJS := $(TEST_BACKEND_SRCS:%.c=$(OBJ_DIR)/%.o)
 TEST_CPU_AVX_OBJS := $(TEST_CPU_AVX_SRCS:%.c=$(OBJ_DIR)/%.o)
-TEST_RUNTIME_OBJS := $(TEST_RUNTIME_SRCS:%.c=$(OBJ_DIR)/%.o)
-TEST_CLI_OBJS := $(TEST_CLI_SRCS:%.c=$(OBJ_DIR)/%.o)
+TEST_RUNTIME_OBJS := $(TEST_RUNTIME_SRCS:%.c=$(TESTING_OBJ_DIR)/%.o)
+TEST_CLI_OBJS := $(TEST_CLI_SRCS:%.c=$(TESTING_OBJ_DIR)/%.o)
 TEST_TOKENIZER_OBJS := $(TEST_TOKENIZER_SRCS:%.c=$(OBJ_DIR)/%.o)
 TEST_HF_IMPORT_OBJS := $(TEST_HF_IMPORT_SRCS:%.c=$(OBJ_DIR)/%.o)
 TEST_THREADING_OBJS := $(TEST_THREADING_SRCS:%.c=$(OBJ_DIR)/%.o)
-CLI_DRIVER_OBJS := \
+
+TEST_CONTROL_OBJS := $(TEST_CONTROL_SRCS:%.c=$(TESTING_OBJ_DIR)/%.o)
+TESTING_CORE_OBJS := \
+	$(filter-out $(OBJ_DIR)/srcs/core/checkpoint_digest.o,$(CORE_OBJS)) \
+	$(TESTING_OBJ_DIR)/srcs/core/checkpoint_digest.o
+TESTING_RUNTIME_LIB_OBJS := \
+	$(filter-out $(OBJ_DIR)/srcs/runtime/runtime.o \
+		$(OBJ_DIR)/srcs/runtime/llama.o,$(RUNTIME_OBJS)) \
+	$(TESTING_OBJ_DIR)/srcs/runtime/runtime.o \
+	$(TESTING_OBJ_DIR)/srcs/runtime/llama.o
+TESTING_CLI_DRIVER_OBJS := \
 	$(OBJ_DIR)/srcs/cli/cli.o \
-	$(OBJ_DIR)/srcs/cli/driver.o
+	$(TESTING_OBJ_DIR)/srcs/cli/driver.o
+TESTING_AFFECTED_OBJS := \
+	$(TESTING_OBJ_DIR)/srcs/cli/driver.o \
+	$(TESTING_OBJ_DIR)/srcs/core/checkpoint_digest.o \
+	$(TESTING_OBJ_DIR)/srcs/runtime/runtime.o \
+	$(TESTING_OBJ_DIR)/srcs/runtime/llama.o
 OBJS := $(APP_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) \
 	$(RUNTIME_OBJS) $(TEST_OBJS) $(TEST_LOADER_OBJS) $(TEST_BACKEND_OBJS) \
 	$(TEST_CPU_AVX_OBJS) $(TEST_RUNTIME_OBJS) $(TOKENIZER_OBJS) \
 	$(TEST_CLI_OBJS) $(TEST_TOKENIZER_OBJS) $(TEST_HF_IMPORT_OBJS) \
-	$(TEST_THREADING_OBJS)
+	$(TEST_THREADING_OBJS) $(TEST_CONTROL_OBJS) $(TESTING_AFFECTED_OBJS)
 DEPS := $(OBJS:.o=.d)
 
 .PHONY: all build test docs clean bench verify verify-kernels verify-cli \
-	verify-token-parity verify-qwen3-sanity verify-perf-smoke
+	verify-test-isolation verify-token-parity verify-qwen3-sanity \
+	verify-perf-smoke
 
 # Default build/test do not require model artifacts. Model-backed validation
 # and benchmarks are optional local/manual gates driven by explicit env vars.
@@ -167,11 +191,11 @@ $(TEST_BACKEND_BIN): $(TEST_BACKEND_OBJS) $(CORE_OBJS) $(BACKEND_OBJS) $(OBJ_DIR
 $(TEST_CPU_AVX_BIN): $(TEST_CPU_AVX_OBJS) $(CORE_OBJS) $(BACKEND_OBJS) $(OBJ_DIR)/srcs/runtime/thread_pool.o | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) $(TEST_CPU_AVX_OBJS) $(CORE_OBJS) $(BACKEND_OBJS) $(OBJ_DIR)/srcs/runtime/thread_pool.o $(LDLIBS) -lm -lpthread -o $@
 
-$(TEST_RUNTIME_BIN): $(TEST_RUNTIME_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) | $(BUILD_DIR)
-	$(CC) $(LDFLAGS) $(TEST_RUNTIME_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) $(LDLIBS) -lm -lpthread -o $@
+$(TEST_RUNTIME_BIN): $(TEST_RUNTIME_OBJS) $(TEST_CONTROL_OBJS) $(TESTING_CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(TESTING_RUNTIME_LIB_OBJS) | $(BUILD_DIR)
+	$(CC) $(LDFLAGS) $(TEST_RUNTIME_OBJS) $(TEST_CONTROL_OBJS) $(TESTING_CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(TESTING_RUNTIME_LIB_OBJS) $(LDLIBS) -lm -lpthread -o $@
 
-$(TEST_CLI_BIN): $(TEST_CLI_OBJS) $(CLI_DRIVER_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) $(TOKENIZER_OBJS) | $(BUILD_DIR)
-	$(CC) $(LDFLAGS) $(TEST_CLI_OBJS) $(CLI_DRIVER_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) $(TOKENIZER_OBJS) $(LDLIBS) -lm -lpthread -o $@
+$(TEST_CLI_BIN): $(TEST_CLI_OBJS) $(TEST_CONTROL_OBJS) $(TESTING_CLI_DRIVER_OBJS) $(TESTING_CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(TESTING_RUNTIME_LIB_OBJS) $(TOKENIZER_OBJS) | $(BUILD_DIR)
+	$(CC) $(LDFLAGS) $(TEST_CLI_OBJS) $(TEST_CONTROL_OBJS) $(TESTING_CLI_DRIVER_OBJS) $(TESTING_CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(TESTING_RUNTIME_LIB_OBJS) $(TOKENIZER_OBJS) $(LDLIBS) -lm -lpthread -o $@
 
 $(TEST_TOKENIZER_BIN): $(TEST_TOKENIZER_OBJS) $(CORE_OBJS) $(TOKENIZER_OBJS) | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) $(TEST_TOKENIZER_OBJS) $(CORE_OBJS) $(TOKENIZER_OBJS) $(LDLIBS) -lm -o $@
@@ -186,16 +210,20 @@ $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
+$(TESTING_OBJ_DIR)/%.o: %.c | $(TESTING_OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) -Itests/support -DLIS_TESTING $(CFLAGS) -MMD -MP -c $< -o $@
+
 # Per-TU AVX flags. Only cpu_avx.c compiles with -mavx2 -mfma -mf16c so the
 # rest of the binary is safe to load on pre-AVX2 hardware.
 $(OBJ_DIR)/srcs/backend/cpu_avx.o: srcs/backend/cpu_avx.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(AVX_CFLAGS) -MMD -MP -c $< -o $@
 
-$(BUILD_DIR) $(OBJ_DIR):
+$(BUILD_DIR) $(OBJ_DIR) $(TESTING_OBJ_DIR):
 	mkdir -p $@
 
-test: build $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN)
+test: build $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN) verify-test-isolation
 	$(BIN) --help >/dev/null
 	$(TEST_BIN)
 	$(TEST_LOADER_BIN)
@@ -216,6 +244,14 @@ verify-kernels: $(TEST_CPU_AVX_BIN)
 
 verify-cli: $(TEST_CLI_BIN)
 	$(TEST_CLI_BIN)
+
+verify-test-isolation: $(BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN)
+	python3 tests/verification/check_p4_11_isolation.py \
+		--production-bin $(BIN) \
+		--test-cli-bin $(TEST_CLI_BIN) \
+		--test-runtime-bin $(TEST_RUNTIME_BIN) \
+		--production-obj-dir $(OBJ_DIR) \
+		--testing-obj-dir $(TESTING_OBJ_DIR)
 
 verify-token-parity: $(BIN)
 	@if [ -z "$(strip $(VERIFY_MODEL))" ]; then \
@@ -280,6 +316,6 @@ bench: $(BIN)
 		--out-json tests/perf/results.json
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN) $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN)
+	rm -rf $(OBJ_DIR) $(TESTING_OBJ_DIR) $(BIN) $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN)
 
 -include $(DEPS)

@@ -53,11 +53,6 @@ typedef struct {
     size_t total_layer_count;
     size_t layer_output_count;
     size_t digest_element_visits;
-    int    test_observation_perturbation_enabled;
-    size_t test_observation_perturbation_layer;
-    size_t test_observation_perturbation_element;
-    float  test_observation_perturbation_delta;
-    int    test_observation_perturbation_applied;
 } lis_layer_trace_record;
 
 /* Optional Pass 4 producer record; declared, never dereferenced, here. */

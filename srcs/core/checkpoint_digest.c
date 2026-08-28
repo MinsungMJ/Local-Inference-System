@@ -1,6 +1,10 @@
 #include "lis/checkpoint_digest.h"
 #include "lis/intra_layer_trace.h"
 
+#ifdef LIS_TESTING
+#include "lis_test_controls.h"
+#endif
+
 #include <float.h>
 #include <stdint.h>
 #include <string.h>
@@ -528,7 +532,18 @@ lis_status lis_intra_layer_checkpoint_digest_fp32(
             physical_offset += logical_indices[dimension] *
                                view->element_strides[dimension];
         }
+#ifdef LIS_TESTING
+        {
+            const float observed_value =
+                lis_test_control_intra_layer_value(
+                    observation->stage, logical_index,
+                    view->data[physical_offset]);
+
+            memcpy(&bits, &observed_value, sizeof(bits));
+        }
+#else
         memcpy(&bits, view->data + physical_offset, sizeof(bits));
+#endif
         if ((bits & UINT32_C(0x7f800000)) == UINT32_C(0x7f800000) &&
             (bits & UINT32_C(0x007fffff)) != 0U) {
             bits = UINT32_C(0x7fc00000);

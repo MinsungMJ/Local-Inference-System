@@ -1,10 +1,6 @@
 /* Real-artifact Pass 3 integration cases, included by test_cli.c. */
 
-void lis_cli_test_injection_reset(void);
-void lis_cli_test_override_selected_token(size_t step, size_t token_id);
-void lis_cli_test_perturb_layer_observation(size_t layer_index,
-                                            size_t element_index,
-                                            float delta);
+#include "lis_test_controls.h"
 
 typedef struct {
     const char *report;
@@ -191,7 +187,9 @@ static void test_cli_pass3_producer_contract(void)
     expect_int("pass3 original reference run",
                run_pass3_cli_case(same_token_path, &original_reference), 0);
 
-    lis_cli_test_override_selected_token(0U, 1U);
+    expect_status("pass3 selected-token control configure",
+                  lis_cli_test_override_selected_token(0U, 1U),
+                  LIS_STATUS_OK);
     expect_int("pass3 original controlled boundary run",
                run_pass3_cli_case(same_token_path, &original_candidate), 0);
     lis_cli_test_injection_reset();
@@ -201,7 +199,9 @@ static void test_cli_pass3_producer_contract(void)
     expect_int("pass3 independent same candidate run",
                run_pass3_cli_case(same_token_path, &same_candidate), 0);
 
-    lis_cli_test_perturb_layer_observation(4U, 0U, 0.25f);
+    expect_status("pass3 layer-observation control configure",
+                  lis_cli_test_perturb_layer_observation(4U, 0U, 0.25f),
+                  LIS_STATUS_OK);
     expect_int("pass3 same-boundary controlled observation run",
                run_pass3_cli_case(same_token_path, &controlled_candidate), 0);
     lis_cli_test_injection_reset();

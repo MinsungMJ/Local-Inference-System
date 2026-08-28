@@ -2,6 +2,10 @@
 #include "lis/cpu_features.h"
 #include "lis/cpu_ops.h"
 
+#ifdef LIS_TESTING
+#include "lis_test_controls.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +23,9 @@ lis_status lis_intra_layer_observe_fp32(
     lis_status status;
     size_t logical_indices[LIS_INTRA_LAYER_MAX_RANK] = {0U};
     size_t logical_index;
+#ifdef LIS_TESTING
+    int test_observation_active = 0;
+#endif
 
     if (record == NULL) {
         return LIS_STATUS_OK;
@@ -42,6 +49,14 @@ lis_status lis_intra_layer_observe_fp32(
         lis_intra_layer_record_invalidate(record);
         return status;
     }
+#ifdef LIS_TESTING
+    status = lis_test_control_prepare_intra_layer_observation(
+        stage, view->logical_element_count, &test_observation_active);
+    if (status != LIS_STATUS_OK) {
+        lis_intra_layer_record_invalidate(record);
+        return status;
+    }
+#endif
 
     memset(&observation, 0, sizeof(observation));
     observation.stage = stage;
@@ -69,6 +84,12 @@ lis_status lis_intra_layer_observe_fp32(
                                view->element_strides[dimension];
         }
         value = view->data[physical_offset];
+#ifdef LIS_TESTING
+        if (test_observation_active) {
+            value = lis_test_control_intra_layer_value(
+                stage, logical_index, value);
+        }
+#endif
         if (logical_index == 0U) {
             observation.min = value;
             observation.max = value;
@@ -113,6 +134,11 @@ lis_status lis_intra_layer_observe_fp32(
         lis_intra_layer_record_invalidate(record);
         return status;
     }
+#ifdef LIS_TESTING
+    if (test_observation_active) {
+        lis_test_control_mark_intra_layer_observation_applied(stage);
+    }
+#endif
     return LIS_STATUS_OK;
 }
 

@@ -4,6 +4,10 @@
 #include "lis/layer_trace.h"
 #include "lis/thread_pool.h"
 
+#ifdef LIS_TESTING
+#include "lis_test_controls.h"
+#endif
+
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -49,31 +53,39 @@ static void lis_checkpoint_diagnostic_impl(size_t step, const char *phase,
     lis_layer_trace_record *record =
         runtime != NULL ? runtime->layer_trace_record : NULL;
     const float *observed_data = data;
+#ifdef LIS_TESTING
     float *perturbed_data = NULL;
+#endif
 
     if (count == 0 || data == NULL || dims == NULL || phase == NULL) {
         return;
     }
 
+#ifdef LIS_TESTING
     if (record != NULL && is_layer_output &&
-        record->test_observation_perturbation_enabled &&
-        !record->test_observation_perturbation_applied &&
-        step == record->layout_runtime_checkpoint_step &&
-        layer_index == record->test_observation_perturbation_layer &&
-        record->test_observation_perturbation_element < count &&
-        isfinite(record->test_observation_perturbation_delta) &&
-        count <= SIZE_MAX / sizeof(*perturbed_data)) {
-        perturbed_data = malloc(count * sizeof(*perturbed_data));
-        if (perturbed_data == NULL) {
-            record->append_failed = 1;
-            return;
+        step == record->layout_runtime_checkpoint_step) {
+        size_t perturbation_element = 0U;
+        float perturbation_delta = 0.0f;
+
+        if (lis_test_control_layer_observation(
+                layer_index, count, &perturbation_element,
+                &perturbation_delta)) {
+            if (count > SIZE_MAX / sizeof(*perturbed_data)) {
+                record->append_failed = 1;
+                return;
+            }
+            perturbed_data = malloc(count * sizeof(*perturbed_data));
+            if (perturbed_data == NULL) {
+                record->append_failed = 1;
+                return;
+            }
+            memcpy(perturbed_data, data, count * sizeof(*perturbed_data));
+            perturbed_data[perturbation_element] += perturbation_delta;
+            observed_data = perturbed_data;
+            lis_test_control_mark_layer_observation_applied();
         }
-        memcpy(perturbed_data, data, count * sizeof(*perturbed_data));
-        perturbed_data[record->test_observation_perturbation_element] +=
-            record->test_observation_perturbation_delta;
-        observed_data = perturbed_data;
-        record->test_observation_perturbation_applied = 1;
     }
+#endif
 
     lts.step = step;
     if (snprintf(lts.phase, sizeof(lts.phase), "%s", phase) >= (int)sizeof(lts.phase))
@@ -127,7 +139,9 @@ static void lis_checkpoint_diagnostic_impl(size_t step, const char *phase,
             }
         }
     }
+#ifdef LIS_TESTING
     free(perturbed_data);
+#endif
 }
 
 static void lis_checkpoint_diagnostic(size_t step, const char *phase,
