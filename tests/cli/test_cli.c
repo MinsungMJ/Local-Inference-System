@@ -4669,6 +4669,7 @@ static void test_cli_kv_cache_flag_absent_from_help(void)
 #include "test_cli_kv_cache_semantics.c"
 #include "test_cli_pass3_producer.c"
 #include "test_cli_intra_layer.c"
+#include "test_cli_pass4_integration.c"
 
 int main(void)
 {
@@ -4804,6 +4805,8 @@ int main(void)
     test_cli_intra_layer_surface();
 
     test_cli_pass3_producer_contract();
+
+    test_cli_pass4_real_artifact_integration();
 
     if (g_failures != 0) {
         fprintf(stderr, "%d CLI test failure(s)\n", g_failures);
