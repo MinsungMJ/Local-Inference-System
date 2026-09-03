@@ -155,6 +155,8 @@ checkpoint evidence without adding chat-template/Jinja scope.
 - No telemetry platform or new benchmark framework.
 
 The approved design contract for differential verification is documented in
-`docs/differential_verification.md`. The feature remains planned and is not yet
-part of the currently implemented runtime, CLI, verification, or artifact
-surface.
+`docs/differential_verification.md`. Passes 0–4 are implemented as bounded
+diagnostic library and artifact surfaces. The customer-facing LIS Verify
+contract is frozen in `docs/lis_verify_contract.md`, but its standalone CLI,
+unified report production, orchestration, packaging, and CI product remain
+unimplemented after M0.

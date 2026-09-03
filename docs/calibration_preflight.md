@@ -2,9 +2,11 @@
 
 - Status: Implemented (model-free Python, `tools/lis_verify/`).
 - Artifact: `kind: "calibration_preflight"` under schema `lis.execution_artifact/v1`.
-- Scope: Pass 0 of the P1 differential-verification system. Pass 1 is
-  implemented; Passes 2–6 remain planned. See
-  `docs/differential_verification.md`.
+- Scope: Pass 0 of the P1 differential-verification system. Passes 1–4 are
+  implemented bounded diagnostic stages. The Pass 5 product contract is frozen,
+  while its unified report and orchestration remain unimplemented; numeric
+  confirmation remains conditional future work. See
+  `docs/differential_verification.md` and `docs/lis_verify_contract.md`.
 
 ## What Pass 0 is
 
@@ -99,7 +101,9 @@ internal LIS differential.
   array-equal prompt identity. **Always false** for the current LIS build.
 - `hf_forced_token_runtime` — a structured object: `potentially_eligible` but
   `artifact_supported = false`, because `--forced-prefix` and `--report-json` are
-  mutually exclusive today.
+  mutually exclusive today. Pass 5 M0 freezes an additive source-bound report
+  design for later M3 implementation; M0 does not change this current false
+  implementation status.
 - `oracle_scope` — capped at `internal_lis_only` in the MVP.
 
 Internal differential success is never serialized as external semantic

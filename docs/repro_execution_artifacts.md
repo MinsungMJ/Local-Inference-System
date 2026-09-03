@@ -126,6 +126,11 @@ Artifact requests are fail-closed:
 - unsupported combinations are rejected explicitly; current LIS rejects
   `--report-json` together with `--forced-prefix`
 
+Pass 5 M0 freezes the future additive `forced_prefix` report object and its
+source-binding rules in `docs/lis_verify_contract.md`. That design is not an
+implementation claim: until M3 changes the C producer and binding path, the
+rejection above and Pass 0's `artifact_supported = false` remain authoritative.
+
 This contract is intentionally narrow. It does not add:
 
 - per-layer trace output
