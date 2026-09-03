@@ -1,0 +1,50 @@
+{
+  "nonclaims": {
+    "tensor_equality": false,
+    "numeric_divergence_confirmed": false,
+    "first_divergence_confirmed": false,
+    "whole_runtime_equivalence": false
+  },
+  "cases": [
+    {
+      "name": "bounded_digest_equality_is_not_tensor_equality",
+      "input_evidence": "bounded_digest_equal",
+      "prohibited_claim": "tensor_equality"
+    },
+    {
+      "name": "bounded_digest_mismatch_is_not_numeric_confirmation",
+      "input_evidence": "bounded_digest_mismatch",
+      "prohibited_claim": "numeric_divergence_confirmed"
+    },
+    {
+      "name": "suspect_interval_is_not_confirmed_first_divergence",
+      "input_evidence": "suspect_interval",
+      "prohibited_claim": "first_divergence_confirmed"
+    },
+    {
+      "name": "partial_coverage_is_not_whole_runtime_equivalence",
+      "input_evidence": "no_mismatch_in_partial_coverage",
+      "prohibited_claim": "whole_runtime_equivalence"
+    },
+    {
+      "name": "request_only_is_not_independent_rerun",
+      "input_evidence": "reproduction_request_only",
+      "prohibited_claim": "independent_rerun_verified"
+    },
+    {
+      "name": "prefill_is_not_decode_boundary",
+      "input_evidence": "prefill_construction",
+      "prohibited_claim": "decode_boundary_reproduced"
+    },
+    {
+      "name": "next_action_is_not_evidence",
+      "input_evidence": "next_action",
+      "prohibited_claim": "any_verification_claim"
+    },
+    {
+      "name": "missing_coverage_is_not_equal_coverage",
+      "input_evidence": "missing_coverage",
+      "prohibited_claim": "equivalent_coverage"
+    }
+  ]
+}

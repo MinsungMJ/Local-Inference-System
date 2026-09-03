@@ -1,0 +1,222 @@
+{
+  "contract_status": "approved",
+  "implementation_status": "contract_only",
+  "contract_version": "lis.verify.product_contract/v1",
+  "schema": "lis.verification_report/v1",
+  "kind": "verification_report",
+  "report_version": "1.0",
+  "authority": {
+    "markdown_role": "normative_human_readable_contract",
+    "fixture_role": "machine_readable_conformance_oracle",
+    "disagreement_policy": "contract_validation_failure",
+    "silent_override_allowed": false
+  },
+  "customer_verdicts": [
+    "PASS",
+    "REGRESSION",
+    "INCONCLUSIVE",
+    "UNSUPPORTED",
+    "HARNESS_ERROR"
+  ],
+  "execution_policies": [
+    "default",
+    "require_supported"
+  ],
+  "workflow_classifications": [
+    "development_debugging",
+    "verification_acceptance"
+  ],
+  "stage_states": [
+    "executed",
+    "not_applicable",
+    "blocked",
+    "failed"
+  ],
+  "cleanup_statuses": [
+    "success",
+    "failed",
+    "partial",
+    "retained_debug",
+    "not_applicable"
+  ],
+  "residue_statuses": [
+    "none_observed",
+    "present",
+    "unknown",
+    "retained_debug"
+  ],
+  "aggregation_actions": [
+    "continue",
+    "stop",
+    "inherit",
+    "retain_proven_regression_and_block_localization",
+    "not_applicable"
+  ],
+  "cli_modes": {
+    "demo": {
+      "required_options": [],
+      "forbidden_options": [
+        "model",
+        "reference_bin",
+        "candidate_bin",
+        "pass_number",
+        "forced_prefix",
+        "runtime_checkpoint_step",
+        "target_layer",
+        "intermediate_artifact"
+      ],
+      "offline": true,
+      "input_source": "seeded_model_free_fixture"
+    },
+    "backend": {
+      "required_options": [
+        "model"
+      ],
+      "forbidden_options": [
+        "reference_bin",
+        "candidate_bin",
+        "pass_number",
+        "forced_prefix",
+        "runtime_checkpoint_step",
+        "target_layer",
+        "intermediate_artifact"
+      ],
+      "offline": true,
+      "input_source": "supported_model_profile_direct_token_ids"
+    },
+    "runtime": {
+      "required_options": [
+        "reference_bin",
+        "candidate_bin",
+        "model"
+      ],
+      "forbidden_options": [
+        "pass_number",
+        "forced_prefix",
+        "runtime_checkpoint_step",
+        "target_layer",
+        "intermediate_artifact"
+      ],
+      "offline": true,
+      "input_source": "supported_model_profile_direct_token_ids"
+    }
+  },
+  "cli_common_options": [
+    "out",
+    "require_supported",
+    "debug_retain",
+    "stage_timeout_seconds",
+    "verbose"
+  ],
+  "cli_defaults": {
+    "out": ".lis/verify",
+    "network": "disabled",
+    "telemetry": "disabled",
+    "raw_text_retention": "disabled",
+    "raw_tensor_retention": "disabled",
+    "debug_retention": "disabled",
+    "workflow_classification": "development_debugging",
+    "batch_size": 1,
+    "thread_count": 1,
+    "generation_limit": 8,
+    "input_source": "mode_contract",
+    "selection_policy": "lis_policy_modified_greedy_v1"
+  },
+  "report_top_level_fields": [
+    "schema",
+    "kind",
+    "report_version",
+    "attempt",
+    "command",
+    "verdict",
+    "reason_codes",
+    "policy_result",
+    "identities",
+    "token_comparison",
+    "localization",
+    "coverage",
+    "numeric_confirmation",
+    "evidence",
+    "stages",
+    "next_action",
+    "warnings",
+    "cleanup"
+  ],
+  "identity_fields": [
+    "source_sha256",
+    "binary_sha256",
+    "model_sha256",
+    "config_sha256",
+    "input_sha256",
+    "runtime_sha256",
+    "backend_sha256"
+  ],
+  "evidence_nonclaims": [
+    "tensor_equality",
+    "numeric_divergence_confirmed",
+    "first_divergence_confirmed",
+    "whole_runtime_equivalence"
+  ],
+  "bounds": {
+    "max_report_bytes": 1048576,
+    "max_summary_bytes": 65536,
+    "max_identifier_bytes": 128,
+    "max_detail_bytes": 256,
+    "max_next_action_bytes": 512,
+    "max_warnings": 32,
+    "max_reason_codes": 32,
+    "max_token_id_preview": 64,
+    "max_layer_collection": 4096,
+    "max_intra_layer_stages": 17,
+    "max_ledger_event_bytes": 65536
+  },
+  "resource_limits": {
+    "default_stage_timeout_seconds": 1800,
+    "max_stage_timeout_seconds": 7200,
+    "max_subprocess_output_bytes": 1048576,
+    "max_temp_disk_bytes": 1073741824,
+    "max_in_memory_artifact_bytes": 67108864,
+    "termination_grace_seconds": 10,
+    "unbounded_override_allowed": false,
+    "limit_exhaustion_fails_closed": true
+  },
+  "canonical_json": {
+    "encoding": "utf-8",
+    "key_order": "lexicographic",
+    "separators": "compact",
+    "trailing_newline": true,
+    "allow_nan": false,
+    "allow_infinity": false,
+    "additional_properties": false
+  },
+  "privacy": {
+    "raw_prompt_text_allowed": false,
+    "raw_generated_text_allowed": false,
+    "raw_tensor_values_allowed": false,
+    "absolute_model_paths_allowed": false,
+    "absolute_temporary_paths_allowed": false,
+    "telemetry_allowed": false,
+    "silent_model_download_allowed": false
+  },
+  "core_v1_limits": {
+    "confirmed_first_divergence_always_null": true,
+    "confirmed_checkpoint_divergence_always_null": true,
+    "bounded_digest_is_tensor_equality": false,
+    "bounded_digest_is_numeric_confirmation": false,
+    "next_action_is_evidence": false,
+    "missing_coverage_inferred_equal": false
+  },
+  "pass0_block_reason_verdicts": {
+    "incompatible_decode_policy": "UNSUPPORTED",
+    "input_token_divergence": "HARNESS_ERROR",
+    "incompatible_model_family": "UNSUPPORTED",
+    "config_fingerprint_mismatch": "HARNESS_ERROR",
+    "external_oracle_ineligible": "UNSUPPORTED",
+    "prompt_token_array_missing": "INCONCLUSIVE",
+    "prompt_token_identity_unverified": "INCONCLUSIVE"
+  },
+  "pass3_role_transitions": {
+    "pass3a_discovery": "bounded_recapture",
+    "pass3b_authoritative_localization": "pass4_intra_layer_localization"
+  }
+}

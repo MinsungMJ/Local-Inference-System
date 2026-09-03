@@ -1,0 +1,121 @@
+{
+  "stage_states": [
+    "executed",
+    "not_applicable",
+    "blocked",
+    "failed"
+  ],
+  "transient_states_allowed_in_final_report": false,
+  "canonical_stages": [
+    "preflight",
+    "reference_original_execution",
+    "candidate_original_execution",
+    "pass0_calibration",
+    "pass1_token_localization",
+    "pass2_prefix_policy_reproduction",
+    "pass3a_discovery",
+    "bounded_recapture",
+    "pass3b_authoritative_localization",
+    "pass4_intra_layer_localization",
+    "aggregation",
+    "cleanup"
+  ],
+  "dependencies": {
+    "preflight": [],
+    "reference_original_execution": ["preflight"],
+    "candidate_original_execution": ["preflight"],
+    "pass0_calibration": ["reference_original_execution", "candidate_original_execution"],
+    "pass1_token_localization": ["pass0_calibration"],
+    "pass2_prefix_policy_reproduction": ["pass1_token_localization"],
+    "pass3a_discovery": ["pass2_prefix_policy_reproduction"],
+    "bounded_recapture": ["pass3a_discovery"],
+    "pass3b_authoritative_localization": ["bounded_recapture"],
+    "pass4_intra_layer_localization": ["pass3b_authoritative_localization"],
+    "aggregation": ["preflight", "reference_original_execution", "candidate_original_execution", "pass0_calibration", "pass1_token_localization"],
+    "cleanup": ["aggregation"]
+  },
+  "state_requirements": {
+    "executed": ["result_ref", "evidence_tier"],
+    "not_applicable": ["reason"],
+    "blocked": ["blocker", "reason"],
+    "failed": ["failure_class", "reason"]
+  },
+  "equal_token_early_stop_not_applicable": [
+    "pass2_prefix_policy_reproduction",
+    "pass3a_discovery",
+    "bounded_recapture",
+    "pass3b_authoritative_localization",
+    "pass4_intra_layer_localization"
+  ],
+  "attempt_identity": {
+    "format": "lisa1:<32 lowercase hex>",
+    "entropy_bits": 128,
+    "reuse_allowed": false,
+    "retry_requires_new_identity": true,
+    "supersedes_attempt_id_optional": true
+  },
+  "ledger": {
+    "format": "json_lines",
+    "run_directory_mode": "0700",
+    "file_mode": "0600",
+    "max_event_bytes": 65536,
+    "append_only": true,
+    "sequence_starts_at": 0,
+    "sequence_contiguous": true,
+    "required_event_fields": [
+      "sequence",
+      "attempt_id",
+      "workflow_classification",
+      "event",
+      "timestamp_utc",
+      "payload"
+    ],
+    "timestamp_format": "rfc3339_utc_seconds",
+    "events": [
+      "attempt_started",
+      "stage_started",
+      "stage_finished",
+      "cleanup_observed",
+      "attempt_finished"
+    ],
+    "event_payload_fields": {
+      "attempt_started": ["mode"],
+      "stage_started": ["stage"],
+      "stage_finished": ["stage", "state"],
+      "cleanup_observed": ["residue_status"],
+      "attempt_finished": ["verdict"]
+    },
+    "raw_text_allowed": false,
+    "raw_tensor_allowed": false,
+    "absolute_private_paths_allowed": false,
+    "silent_retry_allowed": false
+  },
+  "valid_ledger_example": [
+    {"sequence": 0, "attempt_id": "lisa1:99999999999999999999999999999999", "workflow_classification": "development_debugging", "event": "attempt_started", "timestamp_utc": "2026-09-03T00:00:00Z", "payload": {"mode": "demo"}},
+    {"sequence": 1, "attempt_id": "lisa1:99999999999999999999999999999999", "workflow_classification": "development_debugging", "event": "stage_started", "timestamp_utc": "2026-09-03T00:00:01Z", "payload": {"stage": "preflight"}},
+    {"sequence": 2, "attempt_id": "lisa1:99999999999999999999999999999999", "workflow_classification": "development_debugging", "event": "stage_finished", "timestamp_utc": "2026-09-03T00:00:02Z", "payload": {"stage": "preflight", "state": "executed"}},
+    {"sequence": 3, "attempt_id": "lisa1:99999999999999999999999999999999", "workflow_classification": "development_debugging", "event": "cleanup_observed", "timestamp_utc": "2026-09-03T00:00:03Z", "payload": {"residue_status": "none_observed"}},
+    {"sequence": 4, "attempt_id": "lisa1:99999999999999999999999999999999", "workflow_classification": "development_debugging", "event": "attempt_finished", "timestamp_utc": "2026-09-03T00:00:04Z", "payload": {"verdict": "PASS"}}
+  ],
+  "cleanup": {
+    "normal_path": "mandatory",
+    "handled_error_path": "mandatory",
+    "abnormal_termination": "best_effort_only",
+    "unknown_residue_inferred_zero": false,
+    "startup_stale_run_auto_delete": false
+  },
+  "terminal_conditions": [
+    {"condition": "timeout", "active_stage_state": "failed", "dependent_stage_state": "blocked", "semantic_result": "INCONCLUSIVE_unless_prior_REGRESSION", "process_exit": 3},
+    {"condition": "handled_SIGINT", "active_stage_state": "failed", "dependent_stage_state": "blocked", "semantic_result": "INCONCLUSIVE_unless_prior_REGRESSION", "process_exit": 130},
+    {"condition": "handled_SIGTERM", "active_stage_state": "failed", "dependent_stage_state": "blocked", "semantic_result": "INCONCLUSIVE_unless_prior_REGRESSION", "process_exit": 143},
+    {"condition": "ordinary_cleanup_warning", "active_stage_state": "executed", "dependent_stage_state": "not_applicable", "semantic_result": "unchanged", "process_exit": "semantic_policy_exit"},
+    {"condition": "cleanup_invalidates_confidentiality_or_evidence", "active_stage_state": "failed", "dependent_stage_state": "not_applicable", "semantic_result": "HARNESS_ERROR", "process_exit": 2}
+  ],
+  "cleanup_residue_pairs": {
+    "success": ["none_observed"],
+    "failed": ["present", "unknown"],
+    "partial": ["present", "unknown"],
+    "retained_debug": ["retained_debug"],
+    "not_applicable": ["unknown"]
+  }
+}

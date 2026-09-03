@@ -1,0 +1,72 @@
+{
+  "audit_status": "resolved",
+  "baseline_revision": "1f1e0f7c36ccdff1bf192dd97c0f60e15e120af3",
+  "classifications": [
+    "current",
+    "historical_frozen"
+  ],
+  "unresolved_entries": [],
+  "capabilities": [
+    {"capability": "pass0_calibration", "status": "implemented", "classification": "current"},
+    {"capability": "pass1_token_localization", "status": "implemented", "classification": "current"},
+    {"capability": "pass2_prefix_policy_reproduction", "status": "implemented", "classification": "current"},
+    {"capability": "pass3_layer_localization", "status": "implemented_bounded_llama", "classification": "current"},
+    {"capability": "pass4_intra_layer_localization", "status": "implemented_bounded_llama", "classification": "current"},
+    {"capability": "legacy_base_verification_report_contract", "status": "planned_unimplemented", "classification": "historical_frozen"},
+    {"capability": "lis_verify_product_contract", "status": "contract_only_implemented", "classification": "current"},
+    {"capability": "lis_verify_cli_packaging_and_report_production", "status": "planned_m1", "classification": "current"},
+    {"capability": "forced_prefix_source_bound_report_channel", "status": "design_frozen_implementation_pending_m3", "classification": "current"},
+    {"capability": "make_verify_diff_and_ci_product", "status": "planned_m4", "classification": "current"},
+    {"capability": "selected_checkpoint_numeric_confirmation", "status": "conditional_m6", "classification": "current"},
+    {"capability": "external_semantic_adapter", "status": "conditional_m7", "classification": "current"},
+    {"capability": "lis_inspect_pass4_view", "status": "separate_future_work", "classification": "current"}
+  ],
+  "document_assertions": [
+    {
+      "document": "docs/calibration_preflight.md",
+      "required_text": "Passes 1–4 are implemented bounded diagnostic stages",
+      "classification": "current"
+    },
+    {
+      "document": "docs/calibration_preflight.md",
+      "required_text": "Pass 5 M0 freezes an additive source-bound report design",
+      "classification": "current"
+    },
+    {
+      "document": "docs/verification_framework.md",
+      "required_text": "The customer-facing LIS Verify contract is frozen",
+      "classification": "current"
+    },
+    {
+      "document": "docs/repro_execution_artifacts.md",
+      "required_text": "That design is not an implementation claim",
+      "classification": "current"
+    },
+    {
+      "document": "docs/differential_verification.md",
+      "required_text": "Pass 5 M0 product contract: Approved and frozen",
+      "classification": "current"
+    },
+    {
+      "document": "docs/differential_verification.md",
+      "required_text": "Base contract — Implementation status: Planned / Not yet implemented",
+      "classification": "historical_frozen"
+    },
+    {
+      "document": "docs/lis_verify_contract.md",
+      "required_text": "Implementation status: Contract only",
+      "classification": "current"
+    }
+  ],
+  "preserved_nonclaims": [
+    "bounded_digest_not_tensor_equality",
+    "bounded_digest_mismatch_not_numeric_confirmation",
+    "suspect_interval_not_confirmed_first_divergence",
+    "partial_coverage_not_whole_runtime_equivalence",
+    "missing_coverage_not_equal",
+    "pass3a_discovery_not_authoritative_pass4_parent",
+    "qwen3_layout_not_supported_by_pass3_or_pass4",
+    "forced_prefix_design_not_implemented_by_m0"
+  ],
+  "public_repository_references_private_archive": false
+}

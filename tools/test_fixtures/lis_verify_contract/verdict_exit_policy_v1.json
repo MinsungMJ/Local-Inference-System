@@ -1,0 +1,41 @@
+{
+  "customer_verdicts": [
+    "PASS",
+    "REGRESSION",
+    "INCONCLUSIVE",
+    "UNSUPPORTED",
+    "HARNESS_ERROR"
+  ],
+  "default_exit_codes": {
+    "PASS": 0,
+    "REGRESSION": 4,
+    "INCONCLUSIVE": 3,
+    "UNSUPPORTED": 0,
+    "HARNESS_ERROR": 2
+  },
+  "require_supported_exit_codes": {
+    "PASS": 0,
+    "REGRESSION": 4,
+    "INCONCLUSIVE": 3,
+    "UNSUPPORTED": 6,
+    "HARNESS_ERROR": 2
+  },
+  "signal_exit_codes": {
+    "SIGINT": 130,
+    "SIGTERM": 143
+  },
+  "pre_attempt_exit_codes": {
+    "help": 0,
+    "version": 0,
+    "syntax_or_argument_error": 2
+  },
+  "semantic_verdict_rewritten_by_policy": false,
+  "policy_satisfied_iff_process_exit_zero": true,
+  "legacy_base_numeric_exit_code_5_preserved": true,
+  "cleanup_warning_alters_semantic_verdict": false,
+  "hard_cleanup_failures": [
+    "report_emission_failed",
+    "confidentiality_policy_requires_hard_failure",
+    "required_evidence_cannot_be_trusted"
+  ]
+}

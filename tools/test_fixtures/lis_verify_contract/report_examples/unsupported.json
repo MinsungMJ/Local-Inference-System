@@ -1,0 +1,36 @@
+{
+  "schema": "lis.verification_report/v1",
+  "kind": "verification_report",
+  "report_version": "1.0",
+  "attempt": {"id": "lisa1:00000000000000000000000000000004", "workflow_classification": "verification_acceptance"},
+  "command": {"mode": "runtime", "require_supported": true, "output_path_redacted": true},
+  "verdict": "UNSUPPORTED",
+  "reason_codes": ["unsupported_model_family"],
+  "policy_result": {"policy": "require_supported", "satisfied": false, "exit_code": 6, "reason": "model_family_unsupported"},
+  "identities": {
+    "reference": {"source_sha256": "sha256:0101010101010101010101010101010101010101010101010101010101010101", "binary_sha256": "sha256:0202020202020202020202020202020202020202020202020202020202020202", "model_sha256": "sha256:0303030303030303030303030303030303030303030303030303030303030303", "config_sha256": "sha256:0404040404040404040404040404040404040404040404040404040404040404", "input_sha256": "sha256:0505050505050505050505050505050505050505050505050505050505050505", "runtime_sha256": "sha256:0606060606060606060606060606060606060606060606060606060606060606", "backend_sha256": "sha256:0707070707070707070707070707070707070707070707070707070707070707"},
+    "candidate": {"source_sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "binary_sha256": "sha256:1212121212121212121212121212121212121212121212121212121212121212", "model_sha256": "sha256:0303030303030303030303030303030303030303030303030303030303030303", "config_sha256": "sha256:0404040404040404040404040404040404040404040404040404040404040404", "input_sha256": "sha256:0505050505050505050505050505050505050505050505050505050505050505", "runtime_sha256": "sha256:1616161616161616161616161616161616161616161616161616161616161616", "backend_sha256": "sha256:1717171717171717171717171717171717171717171717171717171717171717"}
+  },
+  "token_comparison": {"status": "unavailable", "reference_observed_count": 0, "candidate_observed_count": 0, "first_mismatch": null},
+  "localization": {"layer_suspect_interval": null, "intra_layer_suspect_interval": null},
+  "coverage": {"scope": "preflight_only", "common_layers": [], "missing_reference_layers": [], "missing_candidate_layers": [], "common_intra_layer_stages": [], "missing_reference_intra_layer_stages": [], "missing_candidate_intra_layer_stages": []},
+  "numeric_confirmation": {"status": "not_performed", "confirmed_divergence_at_checkpoint": null, "confirmed_first_divergence": null},
+  "evidence": {"tier": "tier0_structural", "ceiling": "no_comparison", "nonclaims": {"tensor_equality": false, "numeric_divergence_confirmed": false, "first_divergence_confirmed": false, "whole_runtime_equivalence": false}},
+  "stages": [
+    {"name": "preflight", "state": "executed", "result_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "evidence_tier": "tier0_structural", "failure_class": null, "reason": null, "blocker": null},
+    {"name": "reference_original_execution", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "unsupported model family", "blocker": "preflight"},
+    {"name": "candidate_original_execution", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "unsupported model family", "blocker": "preflight"},
+    {"name": "pass0_calibration", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "original executions did not run", "blocker": "preflight"},
+    {"name": "pass1_token_localization", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "Pass 0 did not execute", "blocker": "pass0_calibration"},
+    {"name": "pass2_prefix_policy_reproduction", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "Pass 1 did not execute", "blocker": "pass1_token_localization"},
+    {"name": "pass3a_discovery", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "Pass 2 did not execute", "blocker": "pass2_prefix_policy_reproduction"},
+    {"name": "bounded_recapture", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "Pass 3A did not execute", "blocker": "pass3a_discovery"},
+    {"name": "pass3b_authoritative_localization", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "recapture did not execute", "blocker": "bounded_recapture"},
+    {"name": "pass4_intra_layer_localization", "state": "blocked", "result_ref": null, "evidence_tier": null, "failure_class": null, "reason": "Pass 3B did not execute", "blocker": "pass3b_authoritative_localization"},
+    {"name": "aggregation", "state": "executed", "result_ref": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "evidence_tier": "product_contract_v1", "failure_class": null, "reason": null, "blocker": null},
+    {"name": "cleanup", "state": "executed", "result_ref": "sha256:babababababababababababababababababababababababababababababababa", "evidence_tier": "observed_cleanup", "failure_class": null, "reason": null, "blocker": null}
+  ],
+  "next_action": {"code": "select_supported_model", "summary": "Use a model family and configuration listed in the LIS support matrix."},
+  "warnings": [],
+  "cleanup": {"status": "success", "residue_status": "none_observed", "observed": true, "retained_debug": false}
+}

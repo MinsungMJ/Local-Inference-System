@@ -1,0 +1,93 @@
+{
+  "contract_status": "design_frozen",
+  "implementation_status": "pending_m3",
+  "run_report_schema": "lis.execution_artifact/v1",
+  "object_name": "forced_prefix",
+  "presence": "required_when_forced_prefix_applied_otherwise_absent",
+  "required_fields": [
+    "mode",
+    "applied",
+    "token_count",
+    "token_ids_sha256",
+    "prefix_start_generated_step",
+    "prefix_end_generated_step_exclusive",
+    "target_generated_token_step",
+    "runtime_checkpoint_step",
+    "prompt_token_count",
+    "context_position",
+    "selection_policy",
+    "selection_policy_sha256",
+    "source_pass0_artifact_sha256",
+    "source_original_run_report_sha256",
+    "source_pass1_artifact_sha256",
+    "source_localization_ref_sha256"
+  ],
+  "max_token_count": 64,
+  "selection_policy_enum": [
+    "raw_greedy",
+    "lis_policy_modified_greedy_v1"
+  ],
+  "selection_policy_identity": {
+    "algorithm": "sha256",
+    "canonicalization": "utf8_sorted_compact_json_with_newline",
+    "profiles": {
+      "raw_greedy": {
+        "domain": "lis.selection_policy/v1",
+        "selection_mode": "raw_greedy",
+        "repetition_penalty_decimal": "1.0",
+        "structural_token_suppression": false
+      },
+      "lis_policy_modified_greedy_v1": {
+        "domain": "lis.selection_policy/v1",
+        "selection_mode": "policy_modified_greedy",
+        "repetition_penalty_decimal": "1.2",
+        "structural_token_suppression": true
+      }
+    }
+  },
+  "raw_token_ids_retained_by_default": false,
+  "raw_prompt_text_retained": false,
+  "raw_generated_text_retained": false,
+  "artifact_set_id_substitutes_for_content_identity": false,
+  "source_binding_validations": [
+    "actual_applied_prefix_sha256_matches_pass1_prefix",
+    "actual_applied_prefix_count_matches_pass1_prefix",
+    "pass0_artifact_sha256_matches_policy_calibration",
+    "original_run_report_sha256_matches_role",
+    "pass1_artifact_sha256_matches_localization_reference",
+    "generated_token_step_matches_prefix_count",
+    "runtime_checkpoint_step_equals_generated_token_step_plus_one",
+    "context_position_equals_prompt_count_plus_prefix_count",
+    "input_config_binary_and_policy_identity_continuity"
+  ],
+  "rejection_classes": [
+    "missing_source_sha",
+    "prefix_digest_mismatch",
+    "prefix_count_mismatch",
+    "generated_step_mismatch",
+    "runtime_step_mismatch",
+    "context_position_mismatch",
+    "policy_mismatch",
+    "wrong_side_binding",
+    "request_only_evidence",
+    "prefill_substituted_for_decode_boundary"
+  ],
+  "valid_example": {
+    "mode": "injected_selected_token_prefix_v1",
+    "applied": true,
+    "token_count": 2,
+    "token_ids_sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "prefix_start_generated_step": 0,
+    "prefix_end_generated_step_exclusive": 2,
+    "target_generated_token_step": 2,
+    "runtime_checkpoint_step": 3,
+    "prompt_token_count": 4,
+    "context_position": 6,
+    "selection_policy": "lis_policy_modified_greedy_v1",
+    "selection_policy_sha256": "sha256:63f64c98586bc3cf31bbcccda5f6f354faba9ba47675780e77608309f7c912d0",
+    "source_pass0_artifact_sha256": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "source_original_run_report_sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "source_pass1_artifact_sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "source_localization_ref_sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  }
+}

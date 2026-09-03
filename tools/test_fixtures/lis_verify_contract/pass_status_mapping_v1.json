@@ -1,0 +1,58 @@
+{
+  "pass0": [
+    {"status": "comparison_allowed", "action": "continue", "target": "pass1_token_localization"},
+    {"status": "limited_comparison_allowed", "action": "continue", "target": "pass1_token_localization"},
+    {"status": "comparison_blocked", "action": "stop", "target": "pass0_block_reason_partition"}
+  ],
+  "pass1": [
+    {"status": "comparison_blocked_by_pass0", "action": "inherit", "target": "pass0_calibration"},
+    {"status": "token_equivalent_on_observed_range", "action": "stop", "target": "PASS"},
+    {"status": "first_mismatch_found", "action": "continue", "target": "pass2_prefix_policy_reproduction"},
+    {"status": "input_token_divergence", "action": "stop", "target": "HARNESS_ERROR"},
+    {"status": "selected_token_array_missing", "action": "stop", "target": "HARNESS_ERROR"},
+    {"status": "selected_token_identity_unverified", "action": "stop", "target": "INCONCLUSIVE"},
+    {"status": "unsupported_comparison", "action": "stop", "target": "UNSUPPORTED"},
+    {"status": "inconclusive", "action": "stop", "target": "INCONCLUSIVE"}
+  ],
+  "pass2": [
+    {"status": "reproduction_verified", "action": "continue", "target": "pass3a_discovery"},
+    {"status": "comparison_blocked_by_pass0", "action": "inherit", "target": "pass0_calibration"},
+    {"status": "token_localization_not_available", "action": "inherit", "target": "pass1_token_localization"},
+    {"status": "no_mismatch_to_reproduce", "action": "not_applicable", "target": "pass1_token_localization"},
+    {"status": "source_binding_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "prefix_material_unavailable", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "prefix_reproduction_failed", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "decode_policy_reproduction_failed", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_step_mapping_mismatch", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "context_position_mismatch", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "unsupported_reproduction_mode", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "inconclusive", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"}
+  ],
+  "pass3": [
+    {"status": "observable_mismatch_found", "action": "continue", "target": "pass3_role_partition"},
+    {"status": "no_mismatch_in_captured_coverage", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "comparison_blocked_by_pass2", "action": "inherit", "target": "pass2_prefix_policy_reproduction"},
+    {"status": "insufficient_common_coverage", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "source_binding_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_alignment_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_artifact_missing", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_summary_malformed", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "comparison_policy_unavailable", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "unsupported_checkpoint_layout", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "inconclusive", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"}
+  ],
+  "pass4": [
+    {"status": "observable_intra_layer_mismatch_found", "action": "stop", "target": "REGRESSION"},
+    {"status": "mismatch_bounded_to_inherited_closing_boundary", "action": "stop", "target": "REGRESSION"},
+    {"status": "not_applicable", "action": "inherit", "target": "pass3b_authoritative_localization"},
+    {"status": "comparison_blocked_by_pass3", "action": "inherit", "target": "pass3b_authoritative_localization"},
+    {"status": "insufficient_common_intra_layer_coverage", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "source_binding_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_alignment_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "checkpoint_summary_malformed", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "comparison_policy_unavailable", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "unsupported_parent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "unsupported_intra_layer_layout", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"},
+    {"status": "parent_revalidation_inconsistent", "action": "retain_proven_regression_and_block_localization", "target": "pass1_token_localization"}
+  ]
+}
