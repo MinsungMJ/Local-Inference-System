@@ -14,8 +14,10 @@
   parity tests are implemented
 - Pass 5 M1 product spine: installable packaging, strict CLI parsing, canonical
   report model/publication, deterministic summaries, private attempt ledger,
-  explicit stage machine, and bounded subprocess primitives are implemented;
-  seeded and real evidence adapters remain M2/M3 work
+  explicit stage machine, and bounded subprocess primitives are implemented
+- Pass 5 M2 model-free Alpha: the packaged seeded `demo` adapter exercises the
+  actual Pass 0–4 consumers and emits a unified bounded `REGRESSION`; real
+  backend/runtime evidence adapters remain M3 work
 - Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
@@ -29,8 +31,8 @@ Pass 5 M0 added a separate customer-product contract namespace,
 Pass-local aggregation, exit and strict-policy behavior, final stage state,
 attempt/ledger rules, cleanup/residue semantics, report bounds, and the future
 forced-prefix source-binding design. M1 now implements the executable and
-report/lifecycle spine without changing those semantics. It does not yet connect
-the seeded `demo` or real backend/runtime evidence workflows.
+report/lifecycle spine without changing those semantics. M2 connects the
+seeded `demo`; real backend/runtime evidence workflows remain pending M3.
 
 The implemented boundary includes token mismatch localization,
 mismatch-boundary reproduction, source-bound producer artifacts,

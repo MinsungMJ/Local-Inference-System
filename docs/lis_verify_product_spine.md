@@ -1,12 +1,13 @@
 # LIS Verify Product Spine
 
-- Milestone: Pass 5 M1
+- Milestone: Pass 5 M1 spine with M2 demo adapter
 - Status: Implemented
 - Product contract: `lis.verify.product_contract/v1`
 - Report schema: `lis.verification_report/v1`
 
-M1 provides the reusable, model-free lifecycle framework for later LIS Verify
-workflows. It does not run a model or claim that a customer comparison occurred.
+M1 provides the reusable lifecycle framework. M2 connects its first production
+adapter: a model-free seeded demonstration that runs the actual Pass 0–4
+consumer chain without claiming that a customer model or binary was executed.
 
 ## Installation
 
@@ -46,11 +47,11 @@ Common options are `--out`, `--require-supported`, `--debug-retain`,
 checkpoint steps, target layers, intermediate artifact paths, and artifact-set
 IDs are not customer options.
 
-M1 intentionally registers no production mode runner. Calling a valid mode
-before its adapter is implemented exits 2 before attempt creation and does not
-write a report. This avoids inventing required source identities. M2 connects
-`demo`; M3 connects `backend` and `runtime` after the source-bound forced-prefix
-report prerequisite is implemented.
+M2 registers the production `demo` runner. It consumes packaged, digest-bound
+synthetic replay evidence in a bounded child process and deterministically
+produces an actionable `REGRESSION`. Calling `backend` or `runtime` still exits
+2 before attempt creation because those adapters remain M3 work. This avoids
+inventing unavailable customer source identities.
 
 ## Implemented components
 

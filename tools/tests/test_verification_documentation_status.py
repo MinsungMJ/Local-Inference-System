@@ -53,13 +53,13 @@ class TestDocumentationStatusAudit(unittest.TestCase):
         self.assertIn("artifact_supported = false", contract)
         self.assertIn("current C CLI rejection", contract)
 
-    def test_m1_spine_does_not_claim_m2_or_m3_adapters(self):
+    def test_m2_demo_does_not_claim_m3_adapters(self):
         spine = " ".join(
             (ROOT / "docs" / "lis_verify_product_spine.md").read_text().split()
         )
-        self.assertIn("M1 intentionally registers no production mode runner", spine)
-        self.assertIn("M2 connects `demo`", spine)
-        self.assertIn("M3 connects `backend` and `runtime`", spine)
+        self.assertIn("M2 registers the production `demo` runner", spine)
+        self.assertIn("Calling `backend` or `runtime` still exits 2", spine)
+        self.assertIn("remain M3 work", spine)
 
     def test_pass3_and_pass4_nonclaims_remain_visible(self):
         differential = " ".join(
