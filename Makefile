@@ -21,6 +21,7 @@ BUILD_DIR := srcs/libs
 OBJ_DIR := $(BUILD_DIR)/obj
 TESTING_OBJ_DIR := $(BUILD_DIR)/obj_testing
 BIN := $(BUILD_DIR)/lis
+BIN_PROVENANCE := $(BIN).lis-build.json
 TEST_BIN := $(BUILD_DIR)/test_core
 TEST_LOADER_BIN := $(BUILD_DIR)/test_loader
 TEST_BACKEND_BIN := $(BUILD_DIR)/test_backend
@@ -174,10 +175,16 @@ VERIFY_HF_TOKENIZER_PATH = $(if $(strip $(VERIFY_MODEL)),$(if $(strip $(VERIFY_H
 
 all: build
 
-build: $(BIN)
+build: $(BIN) $(BIN_PROVENANCE)
 
 $(BIN): $(APP_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) $(TOKENIZER_OBJS) | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) $(APP_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) $(RUNTIME_OBJS) $(TOKENIZER_OBJS) $(LDLIBS) -lm -lpthread -o $@
+
+$(BIN_PROVENANCE): $(BIN) $(APP_SRCS) $(CORE_SRCS) $(LOADER_SRCS) $(BACKEND_SRCS) $(RUNTIME_SRCS) $(TOKENIZER_SRCS) $(wildcard srcs/includes/lis/*.h) Makefile tools/lis_verify/provenance.py
+	PYTHONPATH=tools python3 -m lis_verify.provenance generate \
+		--binary "$(BIN)" --output "$(BIN_PROVENANCE)" --source-root . \
+		--compiler="$(CC)" --cppflags="$(CPPFLAGS)" --cflags="$(CFLAGS)" \
+		--ldflags="$(LDFLAGS)" --ldlibs="$(LDLIBS) -lm -lpthread" --simd="$(SIMD)"
 
 $(TEST_BIN): $(TEST_OBJS) $(CORE_OBJS) | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) $(TEST_OBJS) $(CORE_OBJS) $(LDLIBS) -o $@
@@ -316,6 +323,6 @@ bench: $(BIN)
 		--out-json tests/perf/results.json
 
 clean:
-	rm -rf $(OBJ_DIR) $(TESTING_OBJ_DIR) $(BIN) $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN)
+	rm -rf $(OBJ_DIR) $(TESTING_OBJ_DIR) $(BIN) $(BIN_PROVENANCE) $(TEST_BIN) $(TEST_LOADER_BIN) $(TEST_BACKEND_BIN) $(TEST_CPU_AVX_BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN) $(TEST_TOKENIZER_BIN) $(TEST_HF_IMPORT_BIN) $(TEST_THREADING_BIN)
 
 -include $(DEPS)

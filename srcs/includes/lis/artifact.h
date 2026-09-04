@@ -18,6 +18,17 @@
 #define LIS_ARTIFACT_SET_ID_LEN 38
 #define LIS_INTRA_LAYER_DIAGNOSTIC_CAPTURE_PROFILE \
     "semantic_layer_and_intra_v1"
+#define LIS_FORCED_PREFIX_MAX_TOKENS 64U
+#define LIS_SHA256_ID_HEX_LEN 64U
+#define LIS_SHA256_ID_TEXT_LEN 71U
+#define LIS_FORCED_PREFIX_MODE "injected_selected_token_prefix_v1"
+#define LIS_SELECTION_POLICY_RAW_GREEDY "raw_greedy"
+#define LIS_SELECTION_POLICY_MODIFIED_GREEDY \
+    "lis_policy_modified_greedy_v1"
+#define LIS_SELECTION_POLICY_RAW_GREEDY_SHA256 \
+    "sha256:fde534e94802f32b2aa573c90294fdaacb2bf2dd36e44b0e0e070d8edfd0724d"
+#define LIS_SELECTION_POLICY_MODIFIED_GREEDY_SHA256 \
+    "sha256:63f64c98586bc3cf31bbcccda5f6f354faba9ba47675780e77608309f7c912d0"
 
 typedef struct {
     char value[LIS_ARTIFACT_SET_ID_LEN + 1U];
@@ -67,6 +78,26 @@ typedef struct {
 } lis_artifact_kv_cache_report;
 
 typedef struct {
+    int valid;
+    const char *mode;
+    int applied;
+    size_t token_count;
+    char token_ids_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+    size_t prefix_start_generated_step;
+    size_t prefix_end_generated_step_exclusive;
+    size_t target_generated_token_step;
+    size_t runtime_checkpoint_step;
+    size_t prompt_token_count;
+    size_t context_position;
+    const char *selection_policy;
+    const char *selection_policy_sha256;
+    char source_pass0_artifact_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+    char source_original_run_report_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+    char source_pass1_artifact_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+    char source_localization_ref_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+} lis_artifact_forced_prefix_report;
+
+typedef struct {
     const char *path;
     const lis_artifact_set_id *artifact_set_id;
     const char *model_format_name;
@@ -95,6 +126,7 @@ typedef struct {
     lis_status status;
     const lis_perf_report *perf;
     lis_artifact_kv_cache_report kv_cache;
+    const lis_artifact_forced_prefix_report *forced_prefix;
 } lis_artifact_run_report;
 
 const char *lis_artifact_input_mode_name(lis_artifact_input_mode mode);

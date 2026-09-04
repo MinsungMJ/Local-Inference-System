@@ -189,6 +189,110 @@ static void lis_artifact_write_json_string(FILE *fp, const char *text)
     fputc('"', fp);
 }
 
+static int lis_artifact_sha256_id_is_valid(const char *value)
+{
+    size_t index;
+
+    if (value == NULL || strncmp(value, "sha256:", 7U) != 0) {
+        return 0;
+    }
+    for (index = 7U; index < LIS_SHA256_ID_TEXT_LEN; ++index) {
+        const char ch = value[index];
+
+        if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'))) {
+            return 0;
+        }
+    }
+    return value[LIS_SHA256_ID_TEXT_LEN] == '\0';
+}
+
+static int lis_artifact_forced_prefix_is_valid(
+    const lis_artifact_forced_prefix_report *forced)
+{
+    const char *expected_policy_sha = NULL;
+
+    if (forced == NULL) {
+        return 1;
+    }
+    if (!forced->valid || !forced->applied ||
+        forced->mode == NULL ||
+        strcmp(forced->mode, LIS_FORCED_PREFIX_MODE) != 0 ||
+        forced->token_count == 0U ||
+        forced->token_count > LIS_FORCED_PREFIX_MAX_TOKENS ||
+        forced->prefix_start_generated_step != 0U ||
+        forced->prefix_end_generated_step_exclusive != forced->token_count ||
+        forced->target_generated_token_step != forced->token_count ||
+        forced->runtime_checkpoint_step != forced->token_count + 1U ||
+        forced->prompt_token_count > SIZE_MAX - forced->token_count ||
+        forced->context_position !=
+            forced->prompt_token_count + forced->token_count) {
+        return 0;
+    }
+    if (forced->selection_policy != NULL &&
+        strcmp(forced->selection_policy,
+               LIS_SELECTION_POLICY_RAW_GREEDY) == 0) {
+        expected_policy_sha = LIS_SELECTION_POLICY_RAW_GREEDY_SHA256;
+    } else if (forced->selection_policy != NULL &&
+               strcmp(forced->selection_policy,
+                      LIS_SELECTION_POLICY_MODIFIED_GREEDY) == 0) {
+        expected_policy_sha = LIS_SELECTION_POLICY_MODIFIED_GREEDY_SHA256;
+    } else {
+        return 0;
+    }
+    return lis_artifact_sha256_id_is_valid(forced->token_ids_sha256) &&
+           lis_artifact_sha256_id_is_valid(
+               forced->source_pass0_artifact_sha256) &&
+           lis_artifact_sha256_id_is_valid(
+               forced->source_original_run_report_sha256) &&
+           lis_artifact_sha256_id_is_valid(
+               forced->source_pass1_artifact_sha256) &&
+           lis_artifact_sha256_id_is_valid(
+               forced->source_localization_ref_sha256) &&
+           forced->selection_policy_sha256 != NULL &&
+           strcmp(forced->selection_policy_sha256, expected_policy_sha) == 0;
+}
+
+static void lis_artifact_write_forced_prefix_json(
+    FILE *fp,
+    const lis_artifact_forced_prefix_report *forced)
+{
+    fputs(",\"forced_prefix\":{\"mode\":", fp);
+    lis_artifact_write_json_string(fp, forced->mode);
+    fputs(",\"applied\":true", fp);
+    fprintf(fp,
+            ",\"token_count\":%zu,\"token_ids_sha256\":",
+            forced->token_count);
+    lis_artifact_write_json_string(fp, forced->token_ids_sha256);
+    fprintf(fp,
+            ",\"prefix_start_generated_step\":%zu"
+            ",\"prefix_end_generated_step_exclusive\":%zu"
+            ",\"target_generated_token_step\":%zu"
+            ",\"runtime_checkpoint_step\":%zu"
+            ",\"prompt_token_count\":%zu"
+            ",\"context_position\":%zu"
+            ",\"selection_policy\":",
+            forced->prefix_start_generated_step,
+            forced->prefix_end_generated_step_exclusive,
+            forced->target_generated_token_step,
+            forced->runtime_checkpoint_step,
+            forced->prompt_token_count,
+            forced->context_position);
+    lis_artifact_write_json_string(fp, forced->selection_policy);
+    fputs(",\"selection_policy_sha256\":", fp);
+    lis_artifact_write_json_string(fp, forced->selection_policy_sha256);
+    fputs(",\"source_pass0_artifact_sha256\":", fp);
+    lis_artifact_write_json_string(fp, forced->source_pass0_artifact_sha256);
+    fputs(",\"source_original_run_report_sha256\":", fp);
+    lis_artifact_write_json_string(
+        fp, forced->source_original_run_report_sha256);
+    fputs(",\"source_pass1_artifact_sha256\":", fp);
+    lis_artifact_write_json_string(fp, forced->source_pass1_artifact_sha256);
+    fputs(",\"source_localization_ref_sha256\":", fp);
+    lis_artifact_write_json_string(
+        fp, forced->source_localization_ref_sha256);
+    fputc('}', fp);
+}
+
 static void lis_artifact_write_bool(FILE *fp, int value)
 {
     fputs(value ? "true" : "false", fp);
@@ -651,7 +755,10 @@ lis_status lis_artifact_write_run_report_md(
         !report->backend_fingerprint.valid ||
         !report->selected_token_digest.valid ||
         !report->emitted_token_digest.valid ||
-        !report->kv_cache.valid) {
+        !report->kv_cache.valid ||
+        !lis_artifact_forced_prefix_is_valid(report->forced_prefix) ||
+        ((report->options->forced_prefix_text != NULL) !=
+         (report->forced_prefix != NULL))) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 
@@ -697,6 +804,22 @@ lis_status lis_artifact_write_run_report_md(
             report->options->diagnostics_enabled ? "enabled" : "disabled");
     fprintf(fp, "- Perf: %s\n",
             report->options->perf_enabled ? "enabled" : "disabled");
+
+    if (report->forced_prefix != NULL) {
+        fprintf(fp, "\n## Forced Prefix\n\n");
+        fprintf(fp, "- Mode: `%s`\n", report->forced_prefix->mode);
+        fprintf(fp, "- Applied tokens: %zu\n",
+                report->forced_prefix->token_count);
+        fprintf(fp, "- Token SHA-256: `%s`\n",
+                report->forced_prefix->token_ids_sha256);
+        fprintf(fp, "- Target generated step: %zu\n",
+                report->forced_prefix->target_generated_token_step);
+        fprintf(fp, "- Runtime checkpoint step: %zu\n",
+                report->forced_prefix->runtime_checkpoint_step);
+        fprintf(fp, "- Selection policy: `%s`\n",
+                report->forced_prefix->selection_policy);
+        fprintf(fp, "- Raw forced token IDs: omitted\n");
+    }
 
     /* KV Cache */
     lis_artifact_write_kv_cache_md(fp, &report->kv_cache);
@@ -783,7 +906,10 @@ lis_status lis_artifact_write_run_report(
         !report->backend_fingerprint.valid ||
         !report->selected_token_digest.valid ||
         !report->emitted_token_digest.valid ||
-        !report->kv_cache.valid) {
+        !report->kv_cache.valid ||
+        !lis_artifact_forced_prefix_is_valid(report->forced_prefix) ||
+        ((report->options->forced_prefix_text != NULL) !=
+         (report->forced_prefix != NULL))) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 
@@ -795,6 +921,9 @@ lis_status lis_artifact_write_run_report(
     fputs("{\"schema\":\"" LIS_ARTIFACT_SCHEMA "\",\"kind\":\"run_report\","
           "\"artifact_set_id\":", fp);
     lis_artifact_write_json_string(fp, report->artifact_set_id->value);
+    if (report->forced_prefix != NULL) {
+        lis_artifact_write_forced_prefix_json(fp, report->forced_prefix);
+    }
     fputs(",\"manifest\":{", fp);
     fputs("\"retention_policy\":{"
           "\"absolute_paths\":\"omitted\","

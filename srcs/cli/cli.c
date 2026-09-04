@@ -16,6 +16,7 @@ static void lis_cli_print_usage(FILE *stream, const char *program)
             "--hf-tokenizer PATH --prompt TEXT]\n"
             "       [--threads N] [--diagnostics]\n"
             "       [--forced-prefix \"ID ...\"]\n"
+            "       [--forced-prefix-binding-json PATH]\n"
             "       [--layer-checkpoints STEP]\n"
             "       [--intra-layer-checkpoints LAYER]\n"
             "       [--report-json PATH] [--report-md PATH]\n"
@@ -33,6 +34,7 @@ static void lis_cli_print_usage(FILE *stream, const char *program)
             "  --threads N          CPU thread count (default: 1)\n"
             "  --diagnostics        Print opt-in generation diagnostics to stderr\n"
             "  --forced-prefix \"ID ...\"  Forced token IDs for diagnostics comparison\n"
+            "  --forced-prefix-binding-json PATH  Source binding for a forced-prefix run report\n"
             "  --layer-checkpoints STEP    Print layer checkpoint stats at STEP (0=prefill)\n"
             "  --intra-layer-checkpoints LAYER  Capture the fixed semantic intra-layer profile\n"
             "  --layer-trace-json PATH  Write a compact per-layer/per-stage trace artifact\n"
@@ -224,6 +226,13 @@ static lis_status lis_cli_parse_options(int argc, char **argv,
                                       &options.forced_prefix_text) != LIS_STATUS_OK) {
                 return LIS_STATUS_INVALID_ARGUMENT;
             }
+        } else if (strcmp(arg, "--forced-prefix-binding-json") == 0) {
+            if (lis_cli_require_value(
+                    argc, argv, &index,
+                    &options.forced_prefix_binding_json_path) !=
+                LIS_STATUS_OK) {
+                return LIS_STATUS_INVALID_ARGUMENT;
+            }
         } else if (strcmp(arg, "--perf") == 0) {
             options.perf_enabled = 1;
         } else if (strcmp(arg, "--perf-per-token") == 0) {
@@ -284,7 +293,14 @@ static lis_status lis_cli_parse_options(int argc, char **argv,
         options.hf_tokenizer_path == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
-    if (options.forced_prefix_text != NULL && !options.diagnostics_enabled) {
+    if (options.forced_prefix_binding_json_path != NULL &&
+        (options.forced_prefix_text == NULL ||
+         options.report_json_path == NULL)) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    if (options.forced_prefix_text != NULL &&
+        !options.diagnostics_enabled &&
+        options.forced_prefix_binding_json_path == NULL) {
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 

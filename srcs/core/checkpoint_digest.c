@@ -189,6 +189,26 @@ static void lis_sha256_final(lis_sha256_context *context,
     }
 }
 
+lis_status lis_sha256_digest_bytes(
+    const void *data,
+    size_t size,
+    lis_checkpoint_digest *out)
+{
+    lis_sha256_context context;
+
+    if (out == NULL || (data == NULL && size != 0U)) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+    lis_sha256_init(&context);
+    if (size != 0U) {
+        lis_sha256_update(&context, (const unsigned char *)data, size);
+    }
+    lis_sha256_final(&context, out->bytes);
+    out->valid = 1;
+    return LIS_STATUS_OK;
+}
+
 static void lis_checkpoint_digest_update_u64_le(lis_sha256_context *context,
                                                  uint64_t value)
 {

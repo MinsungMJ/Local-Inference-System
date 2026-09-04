@@ -1,15 +1,19 @@
 #include "lis/cli.h"
 
 #include "lis/artifact.h"
+#include "lis/checkpoint_digest.h"
 #include "lis/layer_trace.h"
 #include "lis/trace.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "lis/backend.h"
 #include "lis/cpu_ops.h"
@@ -30,6 +34,9 @@ static const float LIS_CLI_REPETITION_PENALTY = 1.2f;
  * This is a compile-time constant; k is not user-configurable.
  */
 #define LIS_CLI_TOPK_CANDIDATE_COUNT 5
+#define LIS_CLI_FORCED_BINDING_MAX_BYTES (16U * 1024U)
+#define LIS_CLI_FORCED_PREFIX_JSON_MAX_BYTES 4096U
+#define LIS_CLI_JSON_SAFE_INTEGER_MAX 9007199254740991.0
 
 typedef struct {
     size_t token_id;
@@ -500,6 +507,7 @@ static lis_status lis_cli_write_execution_artifact(
     const char *precision_path,
     const lis_artifact_set_id *artifact_set_id,
     const lis_cli_execution_record *record,
+    const lis_artifact_forced_prefix_report *forced_prefix,
     lis_status run_status,
     const lis_perf_report *perf)
 {
@@ -612,6 +620,7 @@ static lis_status lis_cli_write_execution_artifact(
         ? record->emitted_token_ids : empty_token_ids;
     report.emitted_token_count = record->emitted_token_count;
     report.emitted_token_digest = emitted_digest;
+    report.forced_prefix = forced_prefix;
     report.status = run_status;
     report.perf = perf;
     status = lis_cli_build_kv_cache_report(runtime, &report.kv_cache);
@@ -819,6 +828,311 @@ out:
     free(data);
     if (fp != NULL && fclose(fp) != 0 && status == LIS_STATUS_OK) {
         status = LIS_STATUS_IO;
+    }
+    return status;
+}
+
+static lis_status lis_cli_read_bounded_regular_file(
+    const char *path,
+    size_t maximum,
+    char **out_data,
+    size_t *out_len)
+{
+    int flags = O_RDONLY;
+    int fd = -1;
+    struct stat before;
+    struct stat after;
+    char *data = NULL;
+    size_t offset = 0U;
+    lis_status status = LIS_STATUS_IO;
+
+    if (path == NULL || maximum == 0U || out_data == NULL ||
+        out_len == NULL) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+#ifdef O_CLOEXEC
+    flags |= O_CLOEXEC;
+#endif
+#ifdef O_NOFOLLOW
+    flags |= O_NOFOLLOW;
+#endif
+    fd = open(path, flags);
+    if (fd < 0 || fstat(fd, &before) != 0 ||
+        !S_ISREG(before.st_mode) || before.st_size <= 0 ||
+        (uintmax_t)before.st_size > (uintmax_t)maximum) {
+        goto out;
+    }
+    data = malloc((size_t)before.st_size + 1U);
+    if (data == NULL) {
+        status = LIS_STATUS_NO_MEMORY;
+        goto out;
+    }
+    while (offset < (size_t)before.st_size) {
+        ssize_t got = read(fd, data + offset,
+                           (size_t)before.st_size - offset);
+
+        if (got < 0 && errno == EINTR) {
+            continue;
+        }
+        if (got <= 0) {
+            goto out;
+        }
+        offset += (size_t)got;
+    }
+    if (fstat(fd, &after) != 0 ||
+        before.st_dev != after.st_dev || before.st_ino != after.st_ino ||
+        before.st_size != after.st_size ||
+        before.st_mtime != after.st_mtime) {
+        status = LIS_STATUS_BAD_STATE;
+        goto out;
+    }
+    data[offset] = '\0';
+    *out_data = data;
+    *out_len = offset;
+    data = NULL;
+    status = LIS_STATUS_OK;
+
+out:
+    free(data);
+    if (fd >= 0 && close(fd) != 0 && status == LIS_STATUS_OK) {
+        status = LIS_STATUS_IO;
+    }
+    return status;
+}
+
+static int lis_cli_json_string_equals(const lis_json_value *value,
+                                      const char *expected)
+{
+    const size_t length = expected != NULL ? strlen(expected) : 0U;
+
+    return value != NULL && value->type == LIS_JSON_STRING &&
+           value->as.string.len == length &&
+           memcmp(value->as.string.data, expected, length) == 0;
+}
+
+static lis_status lis_cli_json_size(const lis_json_value *value,
+                                    size_t *out)
+{
+    double number;
+
+    if (value == NULL || out == NULL || value->type != LIS_JSON_NUMBER) {
+        return LIS_STATUS_FORMAT;
+    }
+    number = value->as.number;
+    if (!isfinite(number) || number < 0.0 ||
+        number > LIS_CLI_JSON_SAFE_INTEGER_MAX ||
+        number > (double)SIZE_MAX || floor(number) != number) {
+        return LIS_STATUS_FORMAT;
+    }
+    *out = (size_t)number;
+    return LIS_STATUS_OK;
+}
+
+static int lis_cli_sha256_text_is_valid(const lis_json_value *value)
+{
+    size_t index;
+
+    if (value == NULL || value->type != LIS_JSON_STRING ||
+        value->as.string.len != LIS_SHA256_ID_TEXT_LEN ||
+        memcmp(value->as.string.data, "sha256:", 7U) != 0) {
+        return 0;
+    }
+    for (index = 7U; index < LIS_SHA256_ID_TEXT_LEN; ++index) {
+        const char ch = value->as.string.data[index];
+
+        if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'))) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static lis_status lis_cli_copy_sha256_text(
+    const lis_json_value *value,
+    char out[LIS_SHA256_ID_TEXT_LEN + 1U])
+{
+    if (out == NULL || !lis_cli_sha256_text_is_valid(value)) {
+        return LIS_STATUS_FORMAT;
+    }
+    memcpy(out, value->as.string.data, LIS_SHA256_ID_TEXT_LEN);
+    out[LIS_SHA256_ID_TEXT_LEN] = '\0';
+    return LIS_STATUS_OK;
+}
+
+static int lis_cli_forced_binding_keys_are_exact(const lis_json_value *root)
+{
+    static const char *const fields[] = {
+        "mode",
+        "applied",
+        "token_count",
+        "token_ids_sha256",
+        "prefix_start_generated_step",
+        "prefix_end_generated_step_exclusive",
+        "target_generated_token_step",
+        "runtime_checkpoint_step",
+        "prompt_token_count",
+        "context_position",
+        "selection_policy",
+        "selection_policy_sha256",
+        "source_pass0_artifact_sha256",
+        "source_original_run_report_sha256",
+        "source_pass1_artifact_sha256",
+        "source_localization_ref_sha256"
+    };
+    size_t index;
+    size_t field_index;
+
+    if (root == NULL || root->type != LIS_JSON_OBJECT ||
+        root->as.object.count != sizeof(fields) / sizeof(fields[0])) {
+        return 0;
+    }
+    for (index = 0U; index < root->as.object.count; ++index) {
+        int found = 0;
+
+        for (field_index = 0U;
+             field_index < sizeof(fields) / sizeof(fields[0]);
+             ++field_index) {
+            const size_t length = strlen(fields[field_index]);
+
+            if (root->as.object.key_lens[index] == length &&
+                memcmp(root->as.object.keys[index], fields[field_index],
+                       length) == 0) {
+                size_t previous;
+
+                for (previous = 0U; previous < index; ++previous) {
+                    if (root->as.object.key_lens[previous] == length &&
+                        memcmp(root->as.object.keys[previous],
+                               fields[field_index], length) == 0) {
+                        return 0;
+                    }
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static lis_status lis_cli_load_forced_prefix_binding(
+    const char *path,
+    lis_artifact_forced_prefix_report *out)
+{
+    char *data = NULL;
+    size_t data_len = 0U;
+    lis_json_value root = { 0 };
+    const lis_json_value *value = NULL;
+    lis_status status;
+
+    if (path == NULL || out == NULL) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+    status = lis_cli_read_bounded_regular_file(
+        path, LIS_CLI_FORCED_BINDING_MAX_BYTES, &data, &data_len);
+    if (status != LIS_STATUS_OK) {
+        return status;
+    }
+    status = lis_json_parse(data, data_len, &root);
+    free(data);
+    if (status != LIS_STATUS_OK) {
+        return status;
+    }
+    if (!lis_cli_forced_binding_keys_are_exact(&root) ||
+        !lis_cli_json_string_equals(
+            lis_json_object_get(&root, "mode"), LIS_FORCED_PREFIX_MODE)) {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    value = lis_json_object_get(&root, "applied");
+    if (value == NULL || value->type != LIS_JSON_BOOL ||
+        !value->as.boolean) {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    status = lis_cli_json_size(
+        lis_json_object_get(&root, "token_count"), &out->token_count);
+    if (status != LIS_STATUS_OK || out->token_count == 0U ||
+        out->token_count > LIS_FORCED_PREFIX_MAX_TOKENS ||
+        lis_cli_json_size(
+            lis_json_object_get(&root, "prefix_start_generated_step"),
+            &out->prefix_start_generated_step) != LIS_STATUS_OK ||
+        lis_cli_json_size(
+            lis_json_object_get(
+                &root, "prefix_end_generated_step_exclusive"),
+            &out->prefix_end_generated_step_exclusive) != LIS_STATUS_OK ||
+        lis_cli_json_size(
+            lis_json_object_get(&root, "target_generated_token_step"),
+            &out->target_generated_token_step) != LIS_STATUS_OK ||
+        lis_cli_json_size(
+            lis_json_object_get(&root, "runtime_checkpoint_step"),
+            &out->runtime_checkpoint_step) != LIS_STATUS_OK ||
+        lis_cli_json_size(
+            lis_json_object_get(&root, "prompt_token_count"),
+            &out->prompt_token_count) != LIS_STATUS_OK ||
+        lis_cli_json_size(
+            lis_json_object_get(&root, "context_position"),
+            &out->context_position) != LIS_STATUS_OK) {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    if (out->prefix_start_generated_step != 0U ||
+        out->prefix_end_generated_step_exclusive != out->token_count ||
+        out->target_generated_token_step != out->token_count ||
+        out->runtime_checkpoint_step != out->token_count + 1U ||
+        out->prompt_token_count > SIZE_MAX - out->token_count ||
+        out->context_position != out->prompt_token_count + out->token_count) {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    value = lis_json_object_get(&root, "selection_policy");
+    if (lis_cli_json_string_equals(value, LIS_SELECTION_POLICY_RAW_GREEDY)) {
+        out->selection_policy = LIS_SELECTION_POLICY_RAW_GREEDY;
+        out->selection_policy_sha256 =
+            LIS_SELECTION_POLICY_RAW_GREEDY_SHA256;
+    } else if (lis_cli_json_string_equals(
+                   value, LIS_SELECTION_POLICY_MODIFIED_GREEDY)) {
+        out->selection_policy = LIS_SELECTION_POLICY_MODIFIED_GREEDY;
+        out->selection_policy_sha256 =
+            LIS_SELECTION_POLICY_MODIFIED_GREEDY_SHA256;
+    } else {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    if (!lis_cli_json_string_equals(
+            lis_json_object_get(&root, "selection_policy_sha256"),
+            out->selection_policy_sha256) ||
+        lis_cli_copy_sha256_text(
+            lis_json_object_get(&root, "token_ids_sha256"),
+            out->token_ids_sha256) != LIS_STATUS_OK ||
+        lis_cli_copy_sha256_text(
+            lis_json_object_get(&root, "source_pass0_artifact_sha256"),
+            out->source_pass0_artifact_sha256) != LIS_STATUS_OK ||
+        lis_cli_copy_sha256_text(
+            lis_json_object_get(
+                &root, "source_original_run_report_sha256"),
+            out->source_original_run_report_sha256) != LIS_STATUS_OK ||
+        lis_cli_copy_sha256_text(
+            lis_json_object_get(&root, "source_pass1_artifact_sha256"),
+            out->source_pass1_artifact_sha256) != LIS_STATUS_OK ||
+        lis_cli_copy_sha256_text(
+            lis_json_object_get(&root, "source_localization_ref_sha256"),
+            out->source_localization_ref_sha256) != LIS_STATUS_OK) {
+        status = LIS_STATUS_FORMAT;
+        goto out;
+    }
+    out->mode = LIS_FORCED_PREFIX_MODE;
+    out->applied = 1;
+    out->valid = 1;
+    status = LIS_STATUS_OK;
+
+out:
+    lis_json_destroy(&root);
+    if (status != LIS_STATUS_OK) {
+        memset(out, 0, sizeof(*out));
     }
     return status;
 }
@@ -1830,6 +2144,49 @@ static lis_status lis_cli_emit_decoder_tokens(lis_runtime_context *runtime,
     return status;
 }
 
+static lis_status lis_cli_sha256_token_ids_json(
+    const size_t *ids,
+    size_t count,
+    char out[LIS_SHA256_ID_TEXT_LEN + 1U])
+{
+    char json[LIS_CLI_FORCED_PREFIX_JSON_MAX_BYTES];
+    size_t offset = 0U;
+    size_t index;
+    lis_checkpoint_digest digest = { { 0 }, 0 };
+    char hex[LIS_CHECKPOINT_DIGEST_HEX_SIZE + 1U];
+    lis_status status;
+
+    if (ids == NULL || count == 0U ||
+        count > LIS_FORCED_PREFIX_MAX_TOKENS || out == NULL) {
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    json[offset++] = '[';
+    for (index = 0U; index < count; ++index) {
+        int written = snprintf(json + offset, sizeof(json) - offset,
+                               "%s%zu", index == 0U ? "" : ",",
+                               ids[index]);
+
+        if (written < 0 || (size_t)written >= sizeof(json) - offset) {
+            return LIS_STATUS_OVERFLOW;
+        }
+        offset += (size_t)written;
+    }
+    if (offset + 1U > sizeof(json)) {
+        return LIS_STATUS_OVERFLOW;
+    }
+    json[offset++] = ']';
+    status = lis_sha256_digest_bytes(json, offset, &digest);
+    if (status != LIS_STATUS_OK) {
+        return status;
+    }
+    lis_checkpoint_digest_hex(&digest, hex);
+    if (snprintf(out, LIS_SHA256_ID_TEXT_LEN + 1U,
+                 "sha256:%s", hex) != (int)LIS_SHA256_ID_TEXT_LEN) {
+        return LIS_STATUS_FORMAT;
+    }
+    return LIS_STATUS_OK;
+}
+
 /*
  * Parse space-separated token IDs from a string.
  * Caller owns *out_ids and must free() it.
@@ -1865,6 +2222,10 @@ static lis_status lis_cli_parse_forced_prefix(const char *text,
         if (*cursor == '\0') {
             break;
         }
+        if (*cursor < '0' || *cursor > '9') {
+            free(ids);
+            return LIS_STATUS_FORMAT;
+        }
 
         errno = 0;
         value = strtoumax(cursor, &end, 10);
@@ -1873,6 +2234,10 @@ static lis_status lis_cli_parse_forced_prefix(const char *text,
             value > (uintmax_t)SIZE_MAX) {
             free(ids);
             return LIS_STATUS_FORMAT;
+        }
+        if (count >= LIS_FORCED_PREFIX_MAX_TOKENS) {
+            free(ids);
+            return LIS_STATUS_LIMIT_EXCEEDED;
         }
         if (count == capacity) {
             size_t new_cap = capacity * 2U;
@@ -1917,7 +2282,9 @@ static lis_status lis_cli_run_forced_prefix_diagnostics(
     const size_t *prefix_ids,
     size_t prefix_count,
     const lis_tokenizer *tok,
-    lis_perf_report *perf)
+    lis_perf_report *perf,
+    int diagnostics_enabled,
+    lis_cli_execution_record *record)
 {
     float *logits = NULL;
     const size_t vocab_size = runtime->metadata.config.vocab_size;
@@ -2004,24 +2371,37 @@ static lis_status lis_cli_run_forced_prefix_diagnostics(
         return status;
     }
 
-    lis_cli_extract_topk_candidates(logits, vocab_size, tok,
-                                    prefix_ids, prefix_count,
-                                    token_id, &topk);
-
-    /* Emit forced-prefix metadata header. */
-    fprintf(stderr,
-            "lis: forced-prefix-info prompt_tokens=%zu "
-            "forced_prefix_tokens=%zu forced_prefix_ids=",
-            batch->token_count, prefix_count);
-    for (step = 0; step < prefix_count; ++step) {
-        fprintf(stderr, "%s%zu", step > 0 ? "," : "", prefix_ids[step]);
+    if (record != NULL) {
+        status = lis_cli_execution_record_append_selected(record, token_id);
+        if (status != LIS_STATUS_OK) {
+            free(logits);
+            return status;
+        }
+        if (lis_model_config_token_is_eos(
+                &runtime->metadata.config, token_id)) {
+            record->stop_reason = LIS_CLI_STOP_MODEL_EOS;
+        } else if (should_stop) {
+            record->stop_reason = LIS_CLI_STOP_STRUCTURAL_CONTROL;
+        } else {
+            record->stop_reason = LIS_CLI_STOP_DECODE_LIMIT;
+        }
     }
-    fputc('\n', stderr);
 
-    /* Emit diagnostics for the next-step prediction. */
-    {
+    if (diagnostics_enabled) {
         lis_cli_generation_stop_reason reason = LIS_CLI_STOP_NONE;
 
+        lis_cli_extract_topk_candidates(logits, vocab_size, tok,
+                                        prefix_ids, prefix_count,
+                                        token_id, &topk);
+        fprintf(stderr,
+                "lis: forced-prefix-info prompt_tokens=%zu "
+                "forced_prefix_tokens=%zu forced_prefix_ids=",
+                batch->token_count, prefix_count);
+        for (step = 0; step < prefix_count; ++step) {
+            fprintf(stderr, "%s%zu", step > 0 ? "," : "",
+                    prefix_ids[step]);
+        }
+        fputc('\n', stderr);
         if (lis_model_config_token_is_eos(&runtime->metadata.config,
                                           token_id)) {
             reason = LIS_CLI_STOP_MODEL_EOS;
@@ -2061,6 +2441,9 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
     lis_intra_layer_trace_record intra_layer_record_data = { 0 };
     lis_intra_layer_trace_record *intra_layer_record = NULL;
     lis_artifact_set_id artifact_set_id = {{0}, 0};
+    lis_artifact_forced_prefix_report forced_prefix_report = { 0 };
+    size_t *forced_prefix_ids = NULL;
+    size_t forced_prefix_count = 0U;
     const char *backend_name = NULL;
     char precision_path[64];
     lis_status status;
@@ -2097,16 +2480,76 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
         return LIS_STATUS_INVALID_ARGUMENT;
     }
 
+    artifact_requested = options->report_json_path != NULL ||
+                         options->report_md_path != NULL;
+    if (options->forced_prefix_binding_json_path != NULL &&
+        (options->forced_prefix_text == NULL ||
+         options->report_json_path == NULL)) {
+        fprintf(stderr,
+                "lis: user-input error: --forced-prefix-binding-json "
+                "requires --forced-prefix and --report-json\n");
+        return LIS_STATUS_INVALID_ARGUMENT;
+    }
+    if (options->forced_prefix_text != NULL) {
+        char actual_prefix_sha256[LIS_SHA256_ID_TEXT_LEN + 1U];
+
+        status = lis_cli_parse_forced_prefix(options->forced_prefix_text,
+                                             &forced_prefix_ids,
+                                             &forced_prefix_count);
+        if (status != LIS_STATUS_OK) {
+            fprintf(stderr,
+                    "lis: user-input error: invalid forced prefix: %s\n",
+                    lis_status_name(status));
+            return status;
+        }
+        if (artifact_requested &&
+            options->forced_prefix_binding_json_path == NULL) {
+            fprintf(stderr,
+                    "lis: user-input error: --report-json with "
+                    "--forced-prefix requires "
+                    "--forced-prefix-binding-json\n");
+            free(forced_prefix_ids);
+            return LIS_STATUS_INVALID_ARGUMENT;
+        }
+        if (options->forced_prefix_binding_json_path != NULL) {
+            status = lis_cli_load_forced_prefix_binding(
+                options->forced_prefix_binding_json_path,
+                &forced_prefix_report);
+            if (status != LIS_STATUS_OK) {
+                fprintf(stderr,
+                        "lis: user-input error: invalid forced-prefix "
+                        "binding: %s\n", lis_status_name(status));
+                free(forced_prefix_ids);
+                return status;
+            }
+            status = lis_cli_sha256_token_ids_json(
+                forced_prefix_ids, forced_prefix_count,
+                actual_prefix_sha256);
+            if (status != LIS_STATUS_OK ||
+                forced_prefix_report.token_count != forced_prefix_count ||
+                strcmp(forced_prefix_report.token_ids_sha256,
+                       actual_prefix_sha256) != 0 ||
+                strcmp(forced_prefix_report.selection_policy,
+                       LIS_SELECTION_POLICY_MODIFIED_GREEDY) != 0) {
+                fprintf(stderr,
+                        "lis: user-input error: forced-prefix binding "
+                        "does not match the applied prefix or runtime policy\n");
+                free(forced_prefix_ids);
+                return status == LIS_STATUS_OK ? LIS_STATUS_FORMAT : status;
+            }
+        }
+    }
+
     status = lis_artifact_set_id_generate(&artifact_set_id);
     if (status != LIS_STATUS_OK) {
         fprintf(stderr,
                 "lis: artifact association error: operating-system random "
                 "source failed before inference: %s\n",
                 lis_status_name(status));
+        free(forced_prefix_ids);
         return status;
     }
 
-    artifact_requested = options->report_json_path != NULL || options->report_md_path != NULL;
     if (options->trace_json_path != NULL) {
         trace_record = &trace_record_data;
         status = lis_trace_record_init(trace_record,
@@ -2115,6 +2558,7 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
             fprintf(stderr,
                     "lis: trace error: could not initialize trace record: %s\n",
                     lis_status_name(status));
+            free(forced_prefix_ids);
             return status;
         }
     }
@@ -2126,27 +2570,32 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
             fprintf(stderr,
                     "lis: artifact error: layer-trace init failed: %s\n",
                     lis_status_name(status));
+            lis_trace_record_destroy(&trace_record_data);
+            free(forced_prefix_ids);
             return status;
         }
     }
-    if (artifact_requested && options->forced_prefix_text != NULL) {
-        fprintf(stderr,
-                "lis: user-input error: --report-json does not support "
-                "--forced-prefix\n");
-        return LIS_STATUS_INVALID_ARGUMENT;
-    }
-
     lis_perf_report_init(&perf, options->perf_enabled,
                          options->perf_per_token_enabled, options->perf_tag);
 
     if (artifact_requested) {
+        size_t record_capacity = options->generation_limit;
+
+        if (forced_prefix_report.valid) {
+            record_capacity = 1U;
+        }
         status = lis_cli_execution_record_init(&execution_record,
-                                               options->generation_limit);
+                                               record_capacity);
         if (status != LIS_STATUS_OK) {
             fprintf(stderr,
                     "lis: artifact error: could not initialize execution "
                     "record: %s\n",
                     lis_status_name(status));
+            lis_trace_record_destroy(&trace_record_data);
+            if (layer_trace_record != NULL) {
+                lis_layer_trace_record_destroy(layer_trace_record);
+            }
+            free(forced_prefix_ids);
             return status;
         }
     }
@@ -2374,6 +2823,38 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                 lis_status_name(status));
         goto out;
     }
+    if (forced_prefix_count != 0U) {
+        size_t prefix_index;
+
+        for (prefix_index = 0U; prefix_index < forced_prefix_count;
+             ++prefix_index) {
+            if (forced_prefix_ids[prefix_index] >=
+                metadata.config.vocab_size) {
+                fprintf(stderr,
+                        "lis: user-input error: forced-prefix token ID "
+                        "outside vocab\n");
+                status = LIS_STATUS_INVALID_ARGUMENT;
+                goto out;
+            }
+        }
+        if (forced_prefix_report.valid &&
+            (batch.batch_size != 1U ||
+             forced_prefix_report.prompt_token_count != batch.token_count ||
+             forced_prefix_report.target_generated_token_step >=
+                 options->generation_limit ||
+             forced_prefix_report.context_position >
+                 options->context_length ||
+             (options->layer_checkpoints_enabled &&
+              options->layer_checkpoints_step !=
+                  forced_prefix_report.runtime_checkpoint_step))) {
+            fprintf(stderr,
+                    "lis: user-input error: forced-prefix binding "
+                    "disagrees with prompt, generation, context, or "
+                    "checkpoint execution\n");
+            status = LIS_STATUS_FORMAT;
+            goto out;
+        }
+    }
     if (!use_hf_forward) {
         status = lis_cli_find_validation_logits(&model,
                                                 metadata.config.vocab_size,
@@ -2499,21 +2980,12 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                 lis_dtype_name(runtime.kv_cache.layout.dtype));
     }
     if (use_hf_forward && options->forced_prefix_text != NULL) {
-        size_t *prefix_ids = NULL;
-        size_t prefix_count = 0;
-
-        status = lis_cli_parse_forced_prefix(options->forced_prefix_text,
-                                              &prefix_ids, &prefix_count);
-        if (status != LIS_STATUS_OK) {
-            fprintf(stderr,
-                    "lis: user-input error: invalid forced prefix: %s\n",
-                    lis_status_name(status));
-            goto out;
-        }
         status = lis_cli_run_forced_prefix_diagnostics(
-            &runtime, &model, &batch, prefix_ids, prefix_count,
-            has_tokenizer ? &tokenizer : NULL, &perf);
-        free(prefix_ids);
+            &runtime, &model, &batch, forced_prefix_ids,
+            forced_prefix_count,
+            has_tokenizer ? &tokenizer : NULL, &perf,
+            options->diagnostics_enabled,
+            forced_prefix_report.valid ? &execution_record : NULL);
     } else if (use_hf_forward) {
         status = lis_cli_emit_decoder_tokens(&runtime, &model, &batch,
                                               options->generation_limit,
@@ -2608,6 +3080,9 @@ lis_status lis_cli_run_inference(const lis_cli_options *options)
                                                   precision_path,
                                                   &artifact_set_id,
                                                   &execution_record,
+                                                  forced_prefix_report.valid
+                                                      ? &forced_prefix_report
+                                                      : NULL,
                                                   status, &perf);
         if (status != LIS_STATUS_OK) {
             fprintf(stderr,
@@ -2678,7 +3153,7 @@ out:
             options, &model, &batch, &runtime, has_tokenizer, backend_name,
             precision_path,
             &artifact_set_id,
-            &execution_record, status, &perf);
+            &execution_record, NULL, status, &perf);
         if (artifact_status != LIS_STATUS_OK) {
             fprintf(stderr,
                     "lis: artifact error: report emission failed: %s\n",
@@ -2710,5 +3185,6 @@ out:
     if (intra_layer_record != NULL) {
         lis_intra_layer_record_destroy(intra_layer_record);
     }
+    free(forced_prefix_ids);
     return status;
 }

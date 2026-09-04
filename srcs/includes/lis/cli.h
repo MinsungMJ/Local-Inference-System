@@ -20,6 +20,7 @@ typedef struct {
     size_t thread_count;
     int diagnostics_enabled;
     const char *forced_prefix_text;
+    const char *forced_prefix_binding_json_path;
     int layer_checkpoints_enabled;
     size_t layer_checkpoints_step;
     int intra_layer_checkpoints_enabled;

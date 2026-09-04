@@ -19,6 +19,11 @@ typedef struct {
     int valid;
 } lis_checkpoint_digest;
 
+lis_status lis_sha256_digest_bytes(
+    const void *data,
+    size_t size,
+    lis_checkpoint_digest *out);
+
 lis_status lis_checkpoint_digest_fp32(
     const char *tensor_role,
     const size_t *shape,
