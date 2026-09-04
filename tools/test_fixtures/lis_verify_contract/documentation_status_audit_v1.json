@@ -14,9 +14,9 @@
     {"capability": "pass4_intra_layer_localization", "status": "implemented_bounded_llama", "classification": "current"},
     {"capability": "legacy_base_verification_report_contract", "status": "planned_unimplemented", "classification": "historical_frozen"},
     {"capability": "lis_verify_product_contract", "status": "contract_only_implemented", "classification": "current"},
-    {"capability": "lis_verify_product_spine", "status": "implemented_m1_m2_m3_real_adapters", "classification": "current"},
+    {"capability": "lis_verify_product_spine", "status": "implemented_m1_m2_m3_m4_ci_product", "classification": "current"},
     {"capability": "forced_prefix_source_bound_report_channel", "status": "implemented_m3", "classification": "current"},
-    {"capability": "make_verify_diff_and_ci_product", "status": "planned_m4", "classification": "current"},
+    {"capability": "make_verify_diff_and_ci_product", "status": "implemented_m4", "classification": "current"},
     {"capability": "selected_checkpoint_numeric_confirmation", "status": "conditional_m6", "classification": "current"},
     {"capability": "external_semantic_adapter", "status": "conditional_m7", "classification": "current"},
     {"capability": "lis_inspect_pass4_view", "status": "separate_future_work", "classification": "current"}
@@ -54,12 +54,17 @@
     },
     {
       "document": "docs/lis_verify_contract.md",
-      "required_text": "Implementation status: M0 contract frozen; M1–M3 product execution implemented",
+      "required_text": "Implementation status: M0 contract frozen; M1–M4 product execution",
       "classification": "current"
     },
     {
       "document": "docs/lis_verify_product_spine.md",
       "required_text": "M3 registers the production `backend` and `runtime` runners",
+      "classification": "current"
+    },
+    {
+      "document": "docs/lis_verify_golden.md",
+      "required_text": "A baseline change is never automatic",
       "classification": "current"
     }
   ],

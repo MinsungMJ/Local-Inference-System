@@ -46,6 +46,7 @@ class TestPackaging(unittest.TestCase):
             package_data,
             {
                 "lis_verify.demo_data": ["*.json"],
+                "lis_verify.golden_models": ["*.json"],
                 "lis_verify.model_profiles": ["*.json"],
             },
         )
