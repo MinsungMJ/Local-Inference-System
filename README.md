@@ -50,7 +50,7 @@ This is bounded digest-based diagnostic evidence. It does not prove tensor equal
 - Token mismatch localisation and mismatch-boundary reproduction require semantically compatible, source-bound execution artifacts.
 - Coverage-scoped layer localisation supports the versioned Llama layer-output trace layout with matching precision paths.
 - Coverage-scoped intra-layer localisation supports Llama decode evidence for one previously identified mismatching layer, using the fixed 17-stage semantic capture profile and an authoritative revalidated layer-output boundary.
-- The C CLI captures the required evidence with `--intra-layer-checkpoints LAYER`; localization and result serialization are provided by the `lis_verify` Python tooling rather than a standalone verification CLI command.
+- The C CLI captures the required evidence with `--intra-layer-checkpoints LAYER`; localization remains available through the `lis_verify` Python library. The installable `lis-verify` product spine exists, while its seeded and real workflow adapters remain gated to Pass 5 M2 and M3 respectively.
 - Qwen3 inference support does not imply layer- or intra-layer-localisation support. Qwen3 and legacy layer-trace layouts are unsupported for these comparisons.
 
 ## Unsupported / Non-Goals
@@ -90,6 +90,28 @@ make test
 ```
 
 `make test` requires no private model artifacts. It builds the binary and runs the core, loader, backend, runtime, CLI, tokenizer, and threading test suites.
+
+## LIS Verify Product Spine
+
+The Pass 5 M1 product spine is installable without UI dependencies:
+
+```bash
+python -m pip install --no-deps .
+lis-verify --help
+lis-verify --version
+```
+
+It provides the frozen `demo`, `backend`, and `runtime` parsers, canonical
+`lis.verification_report/v1` model and serializer, deterministic summaries,
+private attempt workspaces and ledgers, an explicit stage machine, and bounded
+subprocess primitives. The base `lis-verify` path has no required dependency on
+Textual. Install `.[inspect]` only when the optional LIS Inspect TUI is wanted.
+
+M1 is a product-spine milestone, not the customer Alpha. Until M2 connects the
+seeded fixture, `lis-verify demo` fails before attempt creation with exit 2 and
+does not fabricate a report or source identity. `backend` and `runtime` remain
+likewise unconnected until M3. See [LIS Verify Product Spine](docs/lis_verify_product_spine.md)
+and [LIS Verify Product Contract](docs/lis_verify_contract.md).
 
 ## First Run
 
@@ -176,6 +198,8 @@ Currently supports `run_report` JSON and optional perf stderr logs. Trace, layer
 ## Documentation
 
 - [Differential Verification](docs/differential_verification.md)
+- [LIS Verify Product Spine](docs/lis_verify_product_spine.md)
+- [LIS Verify Product Contract](docs/lis_verify_contract.md)
 - [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md)
 - [Precision Policy](docs/precision_policy.md)
 - [HuggingFace tokenizer.json Compatibility](docs/hf_tokenizer_compat.md)

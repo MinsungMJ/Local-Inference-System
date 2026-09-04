@@ -3,8 +3,8 @@
 - Contract status: Approved / frozen for Pass 5 M0
 - Contract version: `lis.verify.product_contract/v1`
 - Customer report schema: `lis.verification_report/v1`
-- Implementation status: Contract only; orchestration and report production are
-  not implemented by M0
+- Implementation status: M0 contract frozen; M1 product spine implemented;
+  seeded and real evidence adapters remain pending M2/M3
 
 This document is the normative human-readable contract for the Pass 5 customer
 product. Machine-readable conformance facts live under
@@ -404,9 +404,18 @@ The following block mirrors the corresponding fields in
 
 ## 12. Implementation transition
 
-M1 consumes this contract to implement packaging, parsing, report models,
-serialization, state-machine scaffolding, workspace handling, and bounded
-execution. M3 consumes the forced-prefix design. Neither milestone may relax or
-reinterpret M0 values in implementation code. A required semantic change needs
-an explicit contract version amendment, debugging verification, and a new clean
-acceptance attempt.
+M1 has consumed this contract to implement packaging, parsing, report models,
+canonical bundle publication, deterministic rendering, state-machine
+scaffolding, private workspace/ledger handling, and bounded execution. M2 will
+connect the seeded model-free evidence adapter. M3 consumes the forced-prefix
+design and connects the real backend/runtime adapters. No milestone may relax
+or reinterpret M0 values in implementation code. A required semantic change
+needs an explicit contract version amendment, debugging verification, and a new
+clean acceptance attempt.
+
+The M1 production runner registry is deliberately empty. A valid but not-yet-
+connected mode exits 2 before attempt creation and emits no report; it does not
+invent unavailable source, binary, model, or input identities. Model-free M1
+integration tests use an explicitly injected runner with synthetic source-bound
+fixture identities. This development boundary is replaced by the M2/M3 mode
+adapters, not treated as a customer verdict.

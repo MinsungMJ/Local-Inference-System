@@ -23,10 +23,11 @@ parser, view, and compatibility tests in `tools/tests/`.
 | `qwen3_1p7b_run.{json,stderr,md}` | Minimal baseline — no per-token data, no token ID list, retention-minimized |
 | `qwen3_1p7b_run_full.{json,stderr,md}` | Fuller fixture — adds `perf-per-token` lines and explicit token IDs |
 | `qwen3_1p7b_run_compare.{json,stderr}` | Second run for two-run compare validation |
-| `lis_verify_contract/` | Pass 5 M0 contract-only fixtures, report schema, five synthetic verdict examples, status/exit/stage mappings, forced-prefix design, and documentation audit |
+| `lis_verify_contract/` | Pass 5 M0 contract fixtures consumed by the M1 product spine: report schema, five synthetic verdict examples, status/exit/stage mappings, forced-prefix design, and documentation audit |
 
 All fixtures are schema-valid against `lis.execution_artifact/v1` and are
 derived from grounded reference parameters, not captured real production runs,
 except that `lis_verify_contract/report_examples/` targets the separately frozen
 `lis.verification_report/v1` schema. Those five reports are synthetic
-conformance examples, not production or acceptance evidence.
+conformance examples used by M1 model-free report/state tests, not production or
+acceptance evidence.

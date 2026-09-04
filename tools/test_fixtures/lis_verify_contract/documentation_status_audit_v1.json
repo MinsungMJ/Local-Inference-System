@@ -1,6 +1,6 @@
 {
   "audit_status": "resolved",
-  "baseline_revision": "1f1e0f7c36ccdff1bf192dd97c0f60e15e120af3",
+  "baseline_revision": "5e2b8745727ba464aa22e7e092074312729ee635",
   "classifications": [
     "current",
     "historical_frozen"
@@ -14,7 +14,7 @@
     {"capability": "pass4_intra_layer_localization", "status": "implemented_bounded_llama", "classification": "current"},
     {"capability": "legacy_base_verification_report_contract", "status": "planned_unimplemented", "classification": "historical_frozen"},
     {"capability": "lis_verify_product_contract", "status": "contract_only_implemented", "classification": "current"},
-    {"capability": "lis_verify_cli_packaging_and_report_production", "status": "planned_m1", "classification": "current"},
+    {"capability": "lis_verify_product_spine", "status": "implemented_m1_adapters_pending_m2_m3", "classification": "current"},
     {"capability": "forced_prefix_source_bound_report_channel", "status": "design_frozen_implementation_pending_m3", "classification": "current"},
     {"capability": "make_verify_diff_and_ci_product", "status": "planned_m4", "classification": "current"},
     {"capability": "selected_checkpoint_numeric_confirmation", "status": "conditional_m6", "classification": "current"},
@@ -34,7 +34,7 @@
     },
     {
       "document": "docs/verification_framework.md",
-      "required_text": "The customer-facing LIS Verify contract is frozen",
+      "required_text": "Its M1 installable CLI, unified report model/production",
       "classification": "current"
     },
     {
@@ -54,7 +54,12 @@
     },
     {
       "document": "docs/lis_verify_contract.md",
-      "required_text": "Implementation status: Contract only",
+      "required_text": "Implementation status: M0 contract frozen; M1 product spine implemented",
+      "classification": "current"
+    },
+    {
+      "document": "docs/lis_verify_product_spine.md",
+      "required_text": "M1 intentionally registers no production mode runner",
       "classification": "current"
     }
   ],

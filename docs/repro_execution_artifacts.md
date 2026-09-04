@@ -523,7 +523,9 @@ coverage, execution ordering, and representation digests.
 The `lis_verify` Python tooling can consume compatible, source-bound artifacts
 for token mismatch localization, mismatch-boundary reproduction, and
 coverage-scoped Llama layer localization. Localization is currently a Python
-library/tooling surface, not a standalone CLI command.
+library/tooling surface. The M1 `lis-verify` entry point and report/lifecycle
+spine are implemented, but seeded and real execution adapters are not connected
+until M2/M3 and therefore do not yet automate this localization end to end.
 
 Layer-localization results identify the earliest observed mismatching Llama
 layer-output checkpoint only within validated common captured coverage. They

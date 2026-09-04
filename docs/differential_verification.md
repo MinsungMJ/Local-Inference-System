@@ -12,6 +12,10 @@
 - Pass 5 M0 product contract: Approved and frozen in
   `docs/lis_verify_contract.md`; contract-only module, conformance fixtures, and
   parity tests are implemented
+- Pass 5 M1 product spine: installable packaging, strict CLI parsing, canonical
+  report model/publication, deterministic summaries, private attempt ledger,
+  explicit stage machine, and bounded subprocess primitives are implemented;
+  seeded and real evidence adapters remain M2/M3 work
 - Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
@@ -20,12 +24,13 @@ with additive implemented diagnostic stages. The base `verification_report`,
 exhaustive tensor comparison, and confirmatory verdict surfaces remain
 unimplemented. Their approved contracts are retained for future work.
 
-Pass 5 M0 adds a separate customer-product contract namespace,
+Pass 5 M0 added a separate customer-product contract namespace,
 `lis.verification_report/v1`. It freezes five customer verdicts, exhaustive
 Pass-local aggregation, exit and strict-policy behavior, final stage state,
 attempt/ledger rules, cleanup/residue semantics, report bounds, and the future
-forced-prefix source-binding design. M0 does not produce that report or add the
-standalone LIS Verify executable.
+forced-prefix source-binding design. M1 now implements the executable and
+report/lifecycle spine without changing those semantics. It does not yet connect
+the seeded `demo` or real backend/runtime evidence workflows.
 
 The implemented boundary includes token mismatch localization,
 mismatch-boundary reproduction, source-bound producer artifacts,
@@ -71,9 +76,10 @@ boundary:
 - LIS Inspect verification views,
 - an external semantic adapter.
 
-The Pass 5 M0 contract-only surface is implemented separately from these
-runtime product capabilities. Its schema and golden examples are conformance
-inputs for later milestones, not production report output.
+The Pass 5 M0 contract surface and M1 product spine are implemented separately
+from the real runtime comparison adapters. The schema and golden examples are
+conformance inputs; M1 model-free integration tests may publish them through an
+injected runner, but they are not production or acceptance evidence.
 
 Comparison Modes A and B remain the intended minimum scope of the original base
 contract. Mode C is deferred. Implemented localization remains bounded to

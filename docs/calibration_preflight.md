@@ -4,8 +4,9 @@
 - Artifact: `kind: "calibration_preflight"` under schema `lis.execution_artifact/v1`.
 - Scope: Pass 0 of the P1 differential-verification system. Passes 1–4 are
   implemented bounded diagnostic stages. The Pass 5 product contract is frozen,
-  while its unified report and orchestration remain unimplemented; numeric
-  confirmation remains conditional future work. See
+  and its M1 report, packaging, secure-workspace, state-machine, and bounded-
+  execution spine is implemented. Seeded and real evidence adapters remain M2
+  and M3 work; numeric confirmation remains conditional future work. See
   `docs/differential_verification.md` and `docs/lis_verify_contract.md`.
 
 ## What Pass 0 is
