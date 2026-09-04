@@ -1,0 +1,103 @@
+name: Public Model Golden
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-model-golden-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  golden:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Check bounded disk readiness
+        run: |
+          available_kib=$(df -Pk "$RUNNER_TEMP" | awk 'NR == 2 {print $4}')
+          test "$available_kib" -ge 2097152
+          mkdir -p "$RUNNER_TEMP/smollm2-135m"
+
+      - name: Explicitly acquire immutable public model files
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 30 --max-time 120 --max-filesize 704 \
+            --output "$RUNNER_TEMP/smollm2-135m/config.json" \
+            https://huggingface.co/HuggingFaceTB/SmolLM2-135M/resolve/28e66ca6931668447a3bac213f23d990ad3b0e2b/config.json
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 30 --max-time 600 --max-filesize 269060552 \
+            --output "$RUNNER_TEMP/smollm2-135m/model.safetensors" \
+            https://huggingface.co/HuggingFaceTB/SmolLM2-135M/resolve/28e66ca6931668447a3bac213f23d990ad3b0e2b/model.safetensors
+
+      - name: Verify model manifest before inference
+        run: PYTHONPATH=tools python -m lis_verify.golden --model "$RUNNER_TEMP/smollm2-135m"
+
+      - name: Prove clean state and freeze acceptance authority
+        run: |
+          make clean
+          PYTHONPATH=tools python -m lis_verify.acceptance \
+            --source-root . \
+            --output "$RUNNER_TEMP/lis-verify-golden-acceptance.json" \
+            --command-file .github/workflows/golden.yml \
+            --command-file Makefile \
+            --command-file tools/lis_verify/golden_models/smollm2_135m_v1.json
+
+      - name: Install verifier and build from frozen source
+        run: |
+          python -m pip install --no-deps .
+          make -j 2 build
+
+      - name: Run strict public-model backend acceptance
+        id: verify
+        env:
+          LIS_VERIFY_ACCEPTANCE_MANIFEST: ${{ runner.temp }}/lis-verify-golden-acceptance.json
+        run: |
+          set +e
+          make verify-diff \
+            VERIFY_MODEL="$RUNNER_TEMP/smollm2-135m" \
+            VERIFY_DIFF_OUT_DIR="$RUNNER_TEMP/lis-verify-golden" \
+            VERIFY_STAGE_TIMEOUT_SECONDS=600
+          verify_status=$?
+          set -e
+          printf 'status=%s\n' "$verify_status" >> "$GITHUB_OUTPUT"
+
+      - name: Validate golden report and write step summary
+        run: |
+          python -m lis_verify.ci_gate \
+            --attempt-root "$RUNNER_TEMP/lis-verify-golden" \
+            --expected-verdict PASS \
+            --observed-exit "${{ steps.verify.outputs.status }}" \
+            --golden-model "$RUNNER_TEMP/smollm2-135m" \
+            --acceptance-manifest "$RUNNER_TEMP/lis-verify-golden-acceptance.json" \
+            --source-root . \
+            --step-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload canonical golden evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lis-verify-golden-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/lis-verify-golden/attempt-*/verification_report.json
+            ${{ runner.temp }}/lis-verify-golden/attempt-*/summary.md
+            ${{ runner.temp }}/lis-verify-golden/attempt-*/attempt.jsonl
+            ${{ runner.temp }}/lis-verify-golden-acceptance.json
+          if-no-files-found: warn
+          retention-days: 30

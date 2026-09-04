@@ -18,19 +18,28 @@ jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
 
-      - name: Build (from scratch)
+      - name: Prove clean state and freeze acceptance authority
         run: |
           make clean
-          make build
+          PYTHONPATH=tools python -m lis_verify.acceptance \
+            --source-root . \
+            --output "$RUNNER_TEMP/lis-verify-ci-acceptance.json" \
+            --command-file .github/workflows/ci.yml \
+            --command-file Makefile
+
+      - name: Build from frozen source
+        run: make -j 2 build
 
       - name: C test suites
         run: make test
@@ -39,26 +48,44 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r tools/requirements.txt
-
-      - name: Install and run model-free LIS Verify demo
-        run: |
           python -m pip install --no-deps .
+
+      - name: LIS Verify verdict-policy gate tests
+        run: python -m unittest tools.tests.test_lis_verify_ci_gate -v
+
+      - name: Run model-free LIS Verify acceptance demo
+        id: demo
+        env:
+          LIS_VERIFY_ACCEPTANCE_MANIFEST: ${{ runner.temp }}/lis-verify-ci-acceptance.json
+        run: |
           set +e
           lis-verify demo --out "$RUNNER_TEMP/lis-verify-demo"
           demo_status=$?
           set -e
-          test "$demo_status" -eq 4
-          DEMO_ROOT="$RUNNER_TEMP/lis-verify-demo" python - <<'PY'
-          import os
-          from pathlib import Path
-          from lis_verify.report_artifact import load_report
+          printf 'status=%s\n' "$demo_status" >> "$GITHUB_OUTPUT"
 
-          attempts = sorted(Path(os.environ["DEMO_ROOT"]).glob("attempt-*"))
-          assert len(attempts) == 1
-          report = load_report(attempts[0] / "verification_report.json")
-          assert report.verdict.value == "REGRESSION"
-          assert not (attempts[0] / "runtime").exists()
-          PY
+      - name: Validate canonical demo evidence
+        run: |
+          python -m lis_verify.ci_gate \
+            --attempt-root "$RUNNER_TEMP/lis-verify-demo" \
+            --expected-verdict REGRESSION \
+            --observed-exit "${{ steps.demo.outputs.status }}" \
+            --acceptance-manifest "$RUNNER_TEMP/lis-verify-ci-acceptance.json" \
+            --source-root . \
+            --step-summary "$GITHUB_STEP_SUMMARY"
 
-      - name: LIS Inspect tests
+      - name: Full Python tests
         run: PYTHONPATH=tools python -m unittest discover -s tools/tests -t . -v
+
+      - name: Upload canonical demo evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lis-verify-demo-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/lis-verify-demo/attempt-*/verification_report.json
+            ${{ runner.temp }}/lis-verify-demo/attempt-*/summary.md
+            ${{ runner.temp }}/lis-verify-demo/attempt-*/attempt.jsonl
+            ${{ runner.temp }}/lis-verify-ci-acceptance.json
+          if-no-files-found: warn
+          retention-days: 14
