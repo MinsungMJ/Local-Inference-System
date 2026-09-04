@@ -294,17 +294,17 @@ class TestPass4ParentContract(Pass4ContractFixtureTestCase):
 
 
 class TestPass4BackwardCompatibility(Pass4ContractFixtureTestCase):
-    def test_every_existing_pass0_through_pass3_fixture_value_is_unchanged(self):
+    def test_prior_contract_records_the_approved_m3_transition(self):
         expected = self.contract["prior_contract"]["canonical_sha256"]
         actual = canonical_json_sha256(
             json.loads(PRIOR_FIXTURE.read_text(encoding="utf-8"))
         )
         self.assertEqual(
             actual,
-            "sha256:9f467c7ed31df9feea4a0757bb76faa91b11f4a17d24c89c09b60040ef8e021b",
+            "sha256:d416381eec06c011426ad1c840ec044334c0ffec73bc62e0f0ece3737df15cf2",
         )
         self.assertEqual(actual, expected)
-        self.assertTrue(
+        self.assertFalse(
             self.contract["prior_contract"][
                 "all_pass0_through_pass3_serialized_values_unchanged"
             ]

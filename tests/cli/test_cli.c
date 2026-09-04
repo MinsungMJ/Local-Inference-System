@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "lis/cli.h"
 #include "lis/artifact.h"
 
@@ -3172,7 +3174,7 @@ static void test_forced_prefix_requires_llama_path(void)
     remove(stderr_path);
 }
 
-static void test_cli_report_json_rejects_forced_prefix(void)
+static void test_cli_report_json_requires_forced_prefix_binding(void)
 {
     const char *report_path = "srcs/libs/test_cli_report_forced_prefix.json";
     const char *stdout_path = "srcs/libs/test_cli_report_forced_prefix.out";
@@ -3197,11 +3199,199 @@ static void test_cli_report_json_rejects_forced_prefix(void)
                run_cli_capture(18, argv, stdout_path, stderr_path), 1);
     expect_file_empty("cli report forced prefix stdout", stdout_path);
     expect_file_contains("cli report forced prefix stderr", stderr_path,
-                         "--report-json does not support --forced-prefix");
+                         "--report-json with --forced-prefix requires "
+                         "--forced-prefix-binding-json");
     expect_file_missing("cli report forced prefix artifact", report_path);
     remove(report_path);
     remove(stdout_path);
     remove(stderr_path);
+}
+
+static int write_forced_binding_variant(
+    const char *path,
+    int applied,
+    size_t token_count,
+    size_t target_step,
+    size_t runtime_step,
+    size_t context_position,
+    const char *policy_sha256,
+    int include_localization,
+    const char *suffix)
+{
+    char json[4096];
+    const char *localization = include_localization
+        ? ",\"source_localization_ref_sha256\":"
+          "\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\""
+        : "";
+    int written = snprintf(
+        json, sizeof(json),
+        "{\"mode\":\"injected_selected_token_prefix_v1\","
+        "\"applied\":%s,\"token_count\":%zu,"
+        "\"token_ids_sha256\":"
+        "\"sha256:463f2998327eb3a694145e6014444480b2235be84aa6cfd57871cc64f1cd816c\","
+        "\"prefix_start_generated_step\":0,"
+        "\"prefix_end_generated_step_exclusive\":%zu,"
+        "\"target_generated_token_step\":%zu,"
+        "\"runtime_checkpoint_step\":%zu,"
+        "\"prompt_token_count\":1,\"context_position\":%zu,"
+        "\"selection_policy\":\"lis_policy_modified_greedy_v1\","
+        "\"selection_policy_sha256\":\"%s\","
+        "\"source_pass0_artifact_sha256\":"
+        "\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\","
+        "\"source_original_run_report_sha256\":"
+        "\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\","
+        "\"source_pass1_artifact_sha256\":"
+        "\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\""
+        "%s%s}",
+        applied ? "true" : "false", token_count, token_count, target_step,
+        runtime_step, context_position, policy_sha256, localization,
+        suffix != NULL ? suffix : "");
+
+    if (written < 0 || (size_t)written >= sizeof(json)) {
+        return 0;
+    }
+    return write_text_file(path, json) == LIS_STATUS_OK;
+}
+
+static void expect_forced_binding_rejected(const char *name,
+                                           const char *binding_path)
+{
+    const char *report_path = "srcs/libs/test_fp_binding_reject_report.json";
+    const char *stdout_path = "srcs/libs/test_fp_binding_reject.out";
+    const char *stderr_path = "srcs/libs/test_fp_binding_reject.err";
+    char *argv[] = {
+        "lis", "--model", "unused-model", "--config", "unused-config",
+        "--tokens", "unused-tokens", "--context", "8", "--batch", "1",
+        "--generate", "3", "--forced-prefix", "0 1",
+        "--forced-prefix-binding-json", (char *)binding_path,
+        "--report-json", (char *)report_path,
+    };
+
+    remove(report_path);
+    remove(stdout_path);
+    remove(stderr_path);
+    expect_int(name, run_cli_capture(19, argv, stdout_path, stderr_path), 1);
+    expect_file_contains(name, stderr_path, "invalid forced-prefix binding");
+    expect_file_missing(name, report_path);
+    remove(report_path);
+    remove(stdout_path);
+    remove(stderr_path);
+}
+
+static void test_forced_prefix_binding_adversarial_inputs(void)
+{
+    static const char policy_sha[] =
+        "sha256:63f64c98586bc3cf31bbcccda5f6f354faba9ba47675780e77608309f7c912d0";
+    static const char wrong_policy_sha[] =
+        "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const char *binding_path = "srcs/libs/test_fp_binding_reject.json";
+    const char *target_path = "srcs/libs/test_fp_binding_target.json";
+    const char *link_path = "srcs/libs/test_fp_binding_link.json";
+    const char *stdout_path = "srcs/libs/test_fp_sign.out";
+    const char *stderr_path = "srcs/libs/test_fp_sign.err";
+    char too_many[256] = {0};
+    size_t offset = 0U;
+    size_t index;
+    char *signed_argv[] = {
+        "lis", "--model", "unused", "--config", "unused", "--tokens",
+        "unused", "--context", "8", "--batch", "1", "--generate", "3",
+        "--forced-prefix", "+0 1", "--forced-prefix-binding-json",
+        (char *)binding_path, "--report-json", "unused-report",
+    };
+
+    remove(binding_path);
+    remove(target_path);
+    remove(link_path);
+    expect_int("write missing-field binding",
+               write_forced_binding_variant(binding_path, 1, 2U, 2U, 3U,
+                                            3U, policy_sha, 0, ""), 1);
+    expect_forced_binding_rejected("forced binding missing field",
+                                   binding_path);
+
+    expect_int("write extra-field binding",
+               write_forced_binding_variant(
+                   binding_path, 1, 2U, 2U, 3U, 3U, policy_sha, 1,
+                   ",\"unexpected\":0"), 1);
+    expect_forced_binding_rejected("forced binding extra field",
+                                   binding_path);
+
+    expect_int("write duplicate-field binding",
+               write_forced_binding_variant(
+                   binding_path, 1, 2U, 2U, 3U, 3U, policy_sha, 0,
+                   ",\"mode\":\"injected_selected_token_prefix_v1\""), 1);
+    expect_forced_binding_rejected("forced binding duplicate field",
+                                   binding_path);
+
+    expect_int("write wrong-policy binding",
+               write_forced_binding_variant(binding_path, 1, 2U, 2U, 3U,
+                                            3U, wrong_policy_sha, 1, ""), 1);
+    expect_forced_binding_rejected("forced binding wrong policy SHA",
+                                   binding_path);
+
+    expect_int("write wrong-step binding",
+               write_forced_binding_variant(binding_path, 1, 2U, 3U, 3U,
+                                            3U, policy_sha, 1, ""), 1);
+    expect_forced_binding_rejected("forced binding wrong target step",
+                                   binding_path);
+
+    expect_int("write wrong-context binding",
+               write_forced_binding_variant(binding_path, 1, 2U, 2U, 3U,
+                                            4U, policy_sha, 1, ""), 1);
+    expect_forced_binding_rejected("forced binding wrong context",
+                                   binding_path);
+
+    expect_int("write count-65 binding",
+               write_forced_binding_variant(binding_path, 1, 65U, 65U, 66U,
+                                            66U, policy_sha, 1, ""), 1);
+    expect_forced_binding_rejected("forced binding count 65",
+                                   binding_path);
+
+    expect_int("write false-applied binding",
+               write_forced_binding_variant(binding_path, 0, 2U, 2U, 3U,
+                                            3U, policy_sha, 1, ""), 1);
+    expect_forced_binding_rejected("forced binding applied false",
+                                   binding_path);
+
+    expect_int("write symlink target binding",
+               write_forced_binding_variant(target_path, 1, 2U, 2U, 3U,
+                                            3U, policy_sha, 1, ""), 1);
+    expect_int("create binding symlink", symlink(target_path, link_path), 0);
+    expect_forced_binding_rejected("forced binding symlink", link_path);
+
+    expect_int("write signed-prefix binding",
+               write_forced_binding_variant(binding_path, 1, 2U, 2U, 3U,
+                                            3U, policy_sha, 1, ""), 1);
+    remove(stdout_path);
+    remove(stderr_path);
+    expect_int("forced prefix rejects explicit sign",
+               run_cli_capture(19, signed_argv, stdout_path, stderr_path), 1);
+    expect_file_contains("forced prefix signed stderr", stderr_path,
+                         "invalid forced prefix");
+
+    for (index = 0U; index < 65U; ++index) {
+        int written = snprintf(too_many + offset, sizeof(too_many) - offset,
+                               "%s0", index == 0U ? "" : " ");
+
+        if (written < 0 || (size_t)written >= sizeof(too_many) - offset) {
+            ++g_failures;
+            break;
+        }
+        offset += (size_t)written;
+    }
+    signed_argv[14] = too_many;
+    remove(stdout_path);
+    remove(stderr_path);
+    expect_int("forced prefix rejects count 65",
+               run_cli_capture(19, signed_argv, stdout_path, stderr_path), 1);
+    expect_file_contains("forced prefix count stderr", stderr_path,
+                         "invalid forced prefix");
+
+    remove(binding_path);
+    remove(target_path);
+    remove(link_path);
+    remove(stdout_path);
+    remove(stderr_path);
+    remove("unused-report");
 }
 
 /*
@@ -3215,6 +3405,14 @@ static void test_forced_prefix_diagnostics_llama_path(void)
     const char *token_path = "srcs/libs/test_fp_llama.txt";
     const char *stdout_path = "srcs/libs/test_fp_llama.out";
     const char *stderr_path = "srcs/libs/test_fp_llama.err";
+    const char *binding_path = "srcs/libs/test_fp_llama_binding.json";
+    const char *bad_binding_path = "srcs/libs/test_fp_llama_bad_binding.json";
+    const char *report_path = "srcs/libs/test_fp_llama_report.json";
+    const char *bad_report_path = "srcs/libs/test_fp_llama_bad_report.json";
+    const char *report_stdout_path = "srcs/libs/test_fp_llama_report.out";
+    const char *report_stderr_path = "srcs/libs/test_fp_llama_report.err";
+    const char *bad_stdout_path = "srcs/libs/test_fp_llama_bad.out";
+    const char *bad_stderr_path = "srcs/libs/test_fp_llama_bad.err";
     const char *config_json =
         "{\"model_type\":\"llama\",\"num_hidden_layers\":1,"
         "\"hidden_size\":1,\"intermediate_size\":1,"
@@ -3255,6 +3453,36 @@ static void test_forced_prefix_diagnostics_llama_path(void)
         1.0f, 1.0f, 1.0f,
         0.1f, 0.2f, 0.9f
     };
+    const char *binding_json =
+        "{\"mode\":\"injected_selected_token_prefix_v1\","
+        "\"applied\":true,\"token_count\":2,"
+        "\"token_ids_sha256\":\"sha256:463f2998327eb3a694145e6014444480b2235be84aa6cfd57871cc64f1cd816c\","
+        "\"prefix_start_generated_step\":0,"
+        "\"prefix_end_generated_step_exclusive\":2,"
+        "\"target_generated_token_step\":2,"
+        "\"runtime_checkpoint_step\":3,"
+        "\"prompt_token_count\":1,\"context_position\":3,"
+        "\"selection_policy\":\"lis_policy_modified_greedy_v1\","
+        "\"selection_policy_sha256\":\"sha256:63f64c98586bc3cf31bbcccda5f6f354faba9ba47675780e77608309f7c912d0\","
+        "\"source_pass0_artifact_sha256\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\","
+        "\"source_original_run_report_sha256\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\","
+        "\"source_pass1_artifact_sha256\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\","
+        "\"source_localization_ref_sha256\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"}";
+    const char *bad_binding_json =
+        "{\"mode\":\"injected_selected_token_prefix_v1\","
+        "\"applied\":true,\"token_count\":2,"
+        "\"token_ids_sha256\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\","
+        "\"prefix_start_generated_step\":0,"
+        "\"prefix_end_generated_step_exclusive\":2,"
+        "\"target_generated_token_step\":2,"
+        "\"runtime_checkpoint_step\":3,"
+        "\"prompt_token_count\":1,\"context_position\":3,"
+        "\"selection_policy\":\"lis_policy_modified_greedy_v1\","
+        "\"selection_policy_sha256\":\"sha256:63f64c98586bc3cf31bbcccda5f6f354faba9ba47675780e77608309f7c912d0\","
+        "\"source_pass0_artifact_sha256\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\","
+        "\"source_original_run_report_sha256\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\","
+        "\"source_pass1_artifact_sha256\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\","
+        "\"source_localization_ref_sha256\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"}";
     char *argv[] = {
         "lis",
         "--model", "srcs/libs/test_fp_llama",
@@ -3266,12 +3494,46 @@ static void test_forced_prefix_diagnostics_llama_path(void)
         "--diagnostics",
         "--forced-prefix", "0 1",
     };
+    char *report_argv[] = {
+        "lis",
+        "--model", "srcs/libs/test_fp_llama",
+        "--config", "srcs/libs/test_fp_llama/config.json",
+        "--tokens", "srcs/libs/test_fp_llama.txt",
+        "--context", "8",
+        "--batch", "1",
+        "--generate", "3",
+        "--forced-prefix", "0 1",
+        "--forced-prefix-binding-json",
+        "srcs/libs/test_fp_llama_binding.json",
+        "--report-json", "srcs/libs/test_fp_llama_report.json",
+    };
+    char *bad_report_argv[] = {
+        "lis",
+        "--model", "srcs/libs/test_fp_llama",
+        "--config", "srcs/libs/test_fp_llama/config.json",
+        "--tokens", "srcs/libs/test_fp_llama.txt",
+        "--context", "8",
+        "--batch", "1",
+        "--generate", "3",
+        "--forced-prefix", "0 1",
+        "--forced-prefix-binding-json",
+        "srcs/libs/test_fp_llama_bad_binding.json",
+        "--report-json", "srcs/libs/test_fp_llama_bad_report.json",
+    };
 
     remove(model_path);
     remove(config_path);
     remove(token_path);
     remove(stdout_path);
     remove(stderr_path);
+    remove(binding_path);
+    remove(bad_binding_path);
+    remove(report_path);
+    remove(bad_report_path);
+    remove(report_stdout_path);
+    remove(report_stderr_path);
+    remove(bad_stdout_path);
+    remove(bad_stderr_path);
     if (system("mkdir -p srcs/libs/test_fp_llama") != 0) {
         fprintf(stderr, "mkdir fp llama fixture failed\n");
         ++g_failures;
@@ -3285,6 +3547,11 @@ static void test_forced_prefix_diagnostics_llama_path(void)
                   LIS_STATUS_OK);
     expect_status("fp llama write tokens",
                   write_text_file(token_path, "0\n"), LIS_STATUS_OK);
+    expect_status("fp llama write binding",
+                  write_text_file(binding_path, binding_json), LIS_STATUS_OK);
+    expect_status("fp llama write bad binding",
+                  write_text_file(bad_binding_path, bad_binding_json),
+                  LIS_STATUS_OK);
     expect_int("fp llama run",
                run_cli_capture(16, argv, stdout_path, stderr_path), 0);
 
@@ -3304,11 +3571,48 @@ static void test_forced_prefix_diagnostics_llama_path(void)
     /* No normal generation output on stdout. */
     expect_file_empty("fp llama stdout empty", stdout_path);
 
+    expect_int("fp report-bound run",
+               run_cli_capture(19, report_argv, report_stdout_path,
+                               report_stderr_path), 0);
+    expect_file_empty("fp report-bound stdout empty", report_stdout_path);
+    expect_file_empty("fp report-bound stderr empty", report_stderr_path);
+    expect_file_contains("fp report object", report_path,
+                         "\"forced_prefix\":{\"mode\":"
+                         "\"injected_selected_token_prefix_v1\"");
+    expect_file_contains("fp report digest", report_path,
+                         "\"token_ids_sha256\":"
+                         "\"sha256:463f2998327eb3a694145e6014444480b2235be84aa6cfd57871cc64f1cd816c\"");
+    expect_file_contains("fp report source binding", report_path,
+                         "\"source_original_run_report_sha256\":"
+                         "\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"");
+    expect_file_contains("fp report selected target", report_path,
+                         "\"selected_token_count\":1");
+    expect_file_not_contains("fp report omits raw prefix IDs", report_path,
+                             "\"selected_token_ids\":[0,1");
+    expect_file_not_contains("fp report omits raw prefix field", report_path,
+                             "full_forced_prefix_token_ids");
+
+    expect_int("fp report rejects digest mismatch",
+               run_cli_capture(19, bad_report_argv, bad_stdout_path,
+                               bad_stderr_path), 1);
+    expect_file_empty("fp bad report stdout empty", bad_stdout_path);
+    expect_file_contains("fp bad binding stderr", bad_stderr_path,
+                         "does not match the applied prefix");
+    expect_file_missing("fp bad report absent", bad_report_path);
+
     remove(model_path);
     remove(config_path);
     remove(token_path);
     remove(stdout_path);
     remove(stderr_path);
+    remove(binding_path);
+    remove(bad_binding_path);
+    remove(report_path);
+    remove(bad_report_path);
+    remove(report_stdout_path);
+    remove(report_stderr_path);
+    remove(bad_stdout_path);
+    remove(bad_stderr_path);
     if (system("rmdir srcs/libs/test_fp_llama 2>/dev/null") != 0) {
         /* best effort cleanup */
     }
@@ -4725,7 +5029,8 @@ int main(void)
     /* Forced-prefix diagnostics */
     test_forced_prefix_requires_diagnostics();
     test_forced_prefix_requires_llama_path();
-    test_cli_report_json_rejects_forced_prefix();
+    test_cli_report_json_requires_forced_prefix_binding();
+    test_forced_prefix_binding_adversarial_inputs();
     test_forced_prefix_diagnostics_llama_path();
 
     /* Markdown companion report tests */

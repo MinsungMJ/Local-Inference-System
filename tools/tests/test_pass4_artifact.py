@@ -525,11 +525,11 @@ class TestPass4PublicExportsAndStability(unittest.TestCase):
             self.assertNotIn(internal, lis_verify.__all__)
             self.assertFalse(hasattr(lis_verify, internal))
 
-    def test_frozen_contracts_and_prior_serializer_goldens_are_unchanged(self):
+    def test_frozen_contracts_and_serializer_goldens_match_current_contract(self):
         expected = {
             "tools/test_fixtures/intra_layer_localization/pass4_contract.json": (
-                "863f61d62a68a2306e8bd4a1182ce346f"
-                "e4e9b93488a1ab76e30156346faa970"
+                "fff60b99b49c5110b7438ffcc33ddf95"
+                "1b67a982382ff559e7affb53a6d38b23"
             ),
             "tools/test_fixtures/intra_layer_localization/"
             "pass4_contract_examples.json": (
@@ -537,13 +537,13 @@ class TestPass4PublicExportsAndStability(unittest.TestCase):
                 "ed74c8c9154bd6606ef19d62b4780fd2"
             ),
             "tools/test_fixtures/differential_verification_contract.json": (
-                "3fddd00772734821d33fc783a9d0135a7"
-                "5c2a35888d870ac8eef20dd5ae68671"
+                "0d8262e76f46db4051dcf31d176e758a"
+                "af388191256a6ee0cf781ab21f6678d0"
             ),
             "tools/test_fixtures/layer_localization/golden/"
             "layer_localization_entry_mismatch.json": (
-                "368a4f6abbd711a45f6107704f315bd48"
-                "66470425830876a02f2df0f3ca39bbd"
+                "1b3b8cc373ad3856fdb449710fdf9c48"
+                "553167a7334bb4f1d5472bdd2c8067d4"
             ),
         }
         for relative, digest in expected.items():

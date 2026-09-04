@@ -57,6 +57,7 @@ def pass1_for(
     ref_penalty=None,
     cand_penalty=None,
     strength=None,
+    mode=ComparisonMode.BACKEND_DIFFERENTIAL,
 ):
     ref = RunSide.from_run_report(
         reference.materialize(),
@@ -74,7 +75,7 @@ def pass1_for(
         PreflightInputs(
             reference=ref,
             candidate=cand,
-            declared_mode=ComparisonMode.BACKEND_DIFFERENTIAL,
+            declared_mode=mode,
         )
     )
     gate = build_gate(artifact)
@@ -491,6 +492,47 @@ class TestPolicyGate(unittest.TestCase):
         pass1 = pass1_for(reference, candidate)
         result = run_prefix_policy_reproduction(
             pass1, reference, candidate
+        )
+        self.assertEqual(
+            result.status,
+            Pass2Status.DECODE_POLICY_REPRODUCTION_FAILED,
+        )
+
+    def test_runtime_differential_allows_distinct_role_binaries(self):
+        reference = load("reference_original_bound.json")
+        candidate = load("candidate_original_binary_mismatch.json")
+        pass1 = pass1_for(
+            reference,
+            candidate,
+            mode=ComparisonMode.RUNTIME_DIFFERENTIAL,
+        )
+        result = run_prefix_policy_reproduction(
+            pass1, reference, candidate
+        )
+        self.assertEqual(result.status, Pass2Status.REPRODUCTION_VERIFIED)
+        self.assertTrue(
+            result.policy_reproduction.build_continuity_verified
+        )
+
+    def test_runtime_differential_rejects_role_binary_drift(self):
+        reference = load("reference_original_bound.json")
+        candidate = load("candidate_original_binary_mismatch.json")
+        pass1 = pass1_for(
+            reference,
+            candidate,
+            mode=ComparisonMode.RUNTIME_DIFFERENTIAL,
+        )
+        result = run_prefix_policy_reproduction(
+            pass1,
+            reference,
+            candidate,
+            reference_reproduction=load("decode_policy_mismatch.json"),
+            candidate_reproduction=changed(
+                load("candidate_reproduction_verified.json"),
+                lambda raw: raw["manifest"]["binary"].update(
+                    {"fingerprint": "fnv1a64:bbbbbbbbbbbbbbbb"}
+                ),
+            ),
         )
         self.assertEqual(
             result.status,

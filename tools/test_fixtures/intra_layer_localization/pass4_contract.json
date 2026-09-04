@@ -6,8 +6,8 @@
   "contract_namespace": "coverage_scoped_intra_layer_localization",
   "prior_contract": {
     "path": "tools/test_fixtures/differential_verification_contract.json",
-    "canonical_sha256": "sha256:9f467c7ed31df9feea4a0757bb76faa91b11f4a17d24c89c09b60040ef8e021b",
-    "all_pass0_through_pass3_serialized_values_unchanged": true
+    "canonical_sha256": "sha256:d416381eec06c011426ad1c840ec044334c0ffec73bc62e0f0ece3737df15cf2",
+    "all_pass0_through_pass3_serialized_values_unchanged": false
   },
   "artifact_identities": {
     "outer_trace": {

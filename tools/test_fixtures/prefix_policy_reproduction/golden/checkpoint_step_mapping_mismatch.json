@@ -8,7 +8,7 @@
   "pass1_status": "first_mismatch_found",
   "pass1_pass2_disposition": "ready",
   "source_binding": {
-    "pass1_artifact_sha256": "sha256:73d08c9ed44a5319627ea4d65ceb20c14e57579db83c4af39dcda4cdcb021037",
+    "pass1_artifact_sha256": "sha256:eee5078dbf77ce6b4929413c2bf98b3bbc3027fab5911a6c33ebe083a63a30ce",
     "reference_original_run_report_sha256": "sha256:08b9e3f042e251db8e69eb744f643f0605feb7b8a4c4e088b346b4f7ef86cdf1",
     "candidate_original_run_report_sha256": "sha256:962987906b3f05c953afbf47ab76f17eaf07399339bf61eac742aa1aeb385eaf",
     "reference_original_verified": true,
@@ -46,7 +46,7 @@
   "policy_reproduction": {
     "status": "verified",
     "build_continuity_verified": true,
-    "inherited_calibration_sha256": "sha256:01d73e409e100ae911f1e679e34c1e0cce2943c6cbfb318afec32f7f258e0100",
+    "inherited_calibration_sha256": "sha256:9821b7fd4c27a67c720ba38839e392ef61260083ea8e684a3ba657800b80a073",
     "runs": [
       {
         "role": "reference_original",
@@ -73,7 +73,7 @@
   },
   "pass3_disposition": "blocked_by_reproduction",
   "localization_ref": {
-    "sha256": "sha256:73d08c9ed44a5319627ea4d65ceb20c14e57579db83c4af39dcda4cdcb021037",
+    "sha256": "sha256:eee5078dbf77ce6b4929413c2bf98b3bbc3027fab5911a6c33ebe083a63a30ce",
     "summary": {
       "pass1_status": "first_mismatch_found",
       "generated_token_step": 17,
@@ -105,8 +105,7 @@
     "hf_default_greedy_ineligible",
     "hf_forced_token_runtime_eligible",
     "internal_lis_differential_only",
-    "oracle_scope_limited",
-    "forced_prefix_report_json_channel_missing"
+    "oracle_scope_limited"
   ],
   "blocking_reasons": [
     "pass2.checkpoint_step_mapping_mismatch"

@@ -40,8 +40,8 @@
     "hf_default_greedy": false,
     "hf_forced_token_runtime": {
       "potentially_eligible": true,
-      "artifact_supported": false,
-      "status": "potentially_eligible_but_artifact_channel_missing"
+      "artifact_supported": true,
+      "status": "eligible_with_source_bound_artifact_channel"
     },
     "oracle_scope": "internal_lis_only"
   },
@@ -60,12 +60,9 @@
     "hf_default_greedy_ineligible",
     "hf_forced_token_runtime_eligible",
     "internal_lis_differential_only",
-    "oracle_scope_limited",
-    "forced_prefix_report_json_channel_missing"
+    "oracle_scope_limited"
   ],
-  "warnings": [
-    "forced-token runtime oracle is potential-only: --forced-prefix and --report-json are mutually exclusive, so no artifact-backed JSON channel exists"
-  ],
+  "warnings": [],
   "blocking_reasons": [],
   "verdict_strength_limit": "checkpoint_confirmation_allowed"
 }

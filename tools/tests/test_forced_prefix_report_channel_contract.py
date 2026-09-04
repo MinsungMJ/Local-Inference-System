@@ -37,9 +37,9 @@ class TestForcedPrefixContract(unittest.TestCase):
         with self.assertRaises((TypeError, ValueError)):
             validate_forced_prefix_metadata(value)
 
-    def test_design_is_frozen_but_implementation_remains_m3(self):
+    def test_design_is_frozen_and_implemented_in_m3(self):
         self.assertEqual(self.contract["contract_status"], "design_frozen")
-        self.assertEqual(self.contract["implementation_status"], "pending_m3")
+        self.assertEqual(self.contract["implementation_status"], "implemented_m3")
         self.assertEqual(self.contract["run_report_schema"], "lis.execution_artifact/v1")
 
     def test_required_fields_match_contract_module(self):
@@ -124,12 +124,12 @@ class TestForcedPrefixContract(unittest.TestCase):
         self.assertIn("request_only_evidence", rejection)
         self.assertIn("prefill_substituted_for_decode_boundary", rejection)
 
-    def test_current_c_cli_still_rejects_the_unimplemented_combination(self):
+    def test_c_cli_requires_source_binding_for_the_combination(self):
         source = (ROOT / "srcs" / "cli" / "driver.c").read_text()
-        self.assertIn("--report-json does not support ", source)
-        self.assertIn("--forced-prefix", source)
+        self.assertIn("--forced-prefix-binding-json", source)
+        self.assertIn("does not match the applied prefix", source)
 
-    def test_pass0_still_reports_artifact_channel_as_unimplemented(self):
+    def test_pass0_reports_artifact_channel_as_implemented(self):
         base = json.loads(
             (
                 ROOT
@@ -138,7 +138,7 @@ class TestForcedPrefixContract(unittest.TestCase):
                 / "differential_verification_contract.json"
             ).read_text()
         )
-        self.assertFalse(
+        self.assertTrue(
             base["calibration_preflight"]["mvp"][
                 "hf_forced_token_runtime_artifact_supported"
             ]

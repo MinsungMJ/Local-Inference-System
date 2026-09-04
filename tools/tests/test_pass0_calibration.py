@@ -317,13 +317,13 @@ class TestModesAndOracle(unittest.TestCase):
                    side("candidate", prompt_token_array=[1, 2, 3]))
         self.assertFalse(live.oracle_eligibility.hf_default_greedy)
 
-    def test_16_forced_token_runtime_potential_only(self):
+    def test_16_forced_token_runtime_artifact_channel(self):
         art = run(side("reference"), side("candidate"))
         forced = art.oracle_eligibility.hf_forced_token_runtime
         self.assertTrue(forced.potentially_eligible)
-        self.assertFalse(forced.artifact_supported)
-        self.assertEqual(forced.status, "potentially_eligible_but_artifact_channel_missing")
-        self.assertIn("forced_prefix_report_json_channel_missing", codes(art))
+        self.assertTrue(forced.artifact_supported)
+        self.assertEqual(forced.status, "eligible_with_source_bound_artifact_channel")
+        self.assertNotIn("forced_prefix_report_json_channel_missing", codes(art))
         self.assertEqual(art.oracle_eligibility.oracle_scope.value, "internal_lis_only")
 
     def test_18_aggregator_escalation_not_registry(self):

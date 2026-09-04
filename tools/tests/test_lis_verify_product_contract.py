@@ -63,7 +63,7 @@ FIXTURE_ROOT = ROOT / "tools" / "test_fixtures" / "lis_verify_contract"
 LEGACY_FIXTURE = (
     ROOT / "tools" / "test_fixtures" / "differential_verification_contract.json"
 )
-LEGACY_SHA256 = "3fddd00772734821d33fc783a9d0135a75c2a35888d870ac8eef20dd5ae68671"
+LEGACY_SHA256 = "0d8262e76f46db4051dcf31d176e758aaf388191256a6ee0cf781ab21f6678d0"
 
 
 def load(name):

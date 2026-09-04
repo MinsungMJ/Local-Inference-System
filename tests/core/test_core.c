@@ -479,6 +479,44 @@ static void test_checkpoint_digest_vectors(void)
     }
 }
 
+static void test_generic_sha256_vectors(void)
+{
+    static const struct {
+        const char *input;
+        const char *expected;
+    } vectors[] = {
+        {
+            "",
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+            "[0,1]",
+            "463f2998327eb3a694145e6014444480b2235be84aa6cfd57871cc64f1cd816c"
+        }
+    };
+    size_t index;
+
+    for (index = 0U; index < sizeof(vectors) / sizeof(vectors[0]); ++index) {
+        lis_checkpoint_digest digest = {{0}, 0};
+        char hex[LIS_CHECKPOINT_DIGEST_HEX_SIZE + 1U];
+
+        expect_status("generic sha256 vector",
+                      lis_sha256_digest_bytes(vectors[index].input,
+                                              strlen(vectors[index].input),
+                                              &digest),
+                      LIS_STATUS_OK);
+        lis_checkpoint_digest_hex(&digest, hex);
+        if (strcmp(hex, vectors[index].expected) != 0) {
+            fprintf(stderr, "generic sha256: expected %s, got %s\n",
+                    vectors[index].expected, hex);
+            ++g_failures;
+        }
+    }
+    expect_status("generic sha256 null input",
+                  lis_sha256_digest_bytes(NULL, 1U, NULL),
+                  LIS_STATUS_INVALID_ARGUMENT);
+}
+
 static lis_status deterministic_random_source(void *context,
                                               unsigned char *buffer,
                                               size_t size)
@@ -3277,6 +3315,7 @@ int main(void)
     test_layer_trace_record_growth();
     test_layer_trace_record_overflow();
     test_checkpoint_digest_vectors();
+    test_generic_sha256_vectors();
     test_artifact_set_id_lifecycle();
     test_layer_trace_coordinate_guards();
     test_intra_layer_stage_taxonomy();

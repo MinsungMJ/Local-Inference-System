@@ -45,21 +45,21 @@ class TestDocumentationStatusAudit(unittest.TestCase):
         calibration = (ROOT / "docs" / "calibration_preflight.md").read_text()
         self.assertNotIn("Passes 2–6 remain planned", calibration)
 
-    def test_forced_prefix_design_is_not_claimed_as_implemented(self):
+    def test_forced_prefix_channel_is_claimed_as_source_bound(self):
         contract = " ".join(
             (ROOT / "docs" / "lis_verify_contract.md").read_text().split()
         )
-        self.assertIn("remains unimplemented until M3", contract)
-        self.assertIn("artifact_supported = false", contract)
-        self.assertIn("current C CLI rejection", contract)
+        self.assertIn("implemented by M3", contract)
+        self.assertIn("artifact_supported = true", contract)
+        self.assertIn("binding input", contract)
 
-    def test_m2_demo_does_not_claim_m3_adapters(self):
+    def test_m3_real_adapters_are_current(self):
         spine = " ".join(
             (ROOT / "docs" / "lis_verify_product_spine.md").read_text().split()
         )
-        self.assertIn("M2 registers the production `demo` runner", spine)
-        self.assertIn("Calling `backend` or `runtime` still exits 2", spine)
-        self.assertIn("remain M3 work", spine)
+        self.assertIn("M3 registers the production `backend` and `runtime` runners", spine)
+        self.assertIn("binary-adjacent", spine)
+        self.assertIn("fresh bounded recapture", spine)
 
     def test_pass3_and_pass4_nonclaims_remain_visible(self):
         differential = " ".join(

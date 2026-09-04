@@ -1276,7 +1276,7 @@
       "strongest_downstream_strength_limit": "checkpoint_confirmation_allowed",
       "enables_confirmed_first_divergence": false,
       "external_semantic_mode_blocked_in_mvp": true,
-      "hf_forced_token_runtime_artifact_supported": false,
+      "hf_forced_token_runtime_artifact_supported": true,
       "hf_default_greedy_requires_array_equal": true
     }
   },

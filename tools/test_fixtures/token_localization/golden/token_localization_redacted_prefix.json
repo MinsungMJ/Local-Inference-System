@@ -72,7 +72,7 @@
   },
   "pass2_disposition": "ready",
   "calibration_ref": {
-    "sha256": "sha256:a464bcbe2e5325efd8003d111ce21db4cd973db2f5187c78295bf28991b29b42",
+    "sha256": "sha256:91af40f5705ba1499d19f67f4356d7a71e0ca438bb01fdd482662722eb5b178a",
     "summary": {
       "comparison_mode": "backend_differential",
       "pass0_verdict": "limited_comparison_allowed",
@@ -100,8 +100,7 @@
     "hf_default_greedy_ineligible",
     "hf_forced_token_runtime_eligible",
     "internal_lis_differential_only",
-    "oracle_scope_limited",
-    "forced_prefix_report_json_channel_missing"
+    "oracle_scope_limited"
   ],
   "blocking_reasons": [],
   "warnings": []

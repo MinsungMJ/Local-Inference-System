@@ -1,6 +1,6 @@
 {
   "contract_status": "design_frozen",
-  "implementation_status": "pending_m3",
+  "implementation_status": "implemented_m3",
   "run_report_schema": "lis.execution_artifact/v1",
   "object_name": "forced_prefix",
   "presence": "required_when_forced_prefix_applied_otherwise_absent",

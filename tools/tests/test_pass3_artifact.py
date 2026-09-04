@@ -125,15 +125,15 @@ class TestPass3MappingBoundary(unittest.TestCase):
 
 
 class TestExistingIdentityStability(unittest.TestCase):
-    def test_pass1_and_pass2_golden_hashes_are_unchanged(self):
+    def test_pass1_and_pass2_golden_hashes_match_current_contract(self):
         paths = (
             (
                 ROOT / "tools/test_fixtures/token_localization/golden/token_localization_mismatch_n.json",
-                "sha256:412df64c358a6d08bcd7eb8e59e1f2614cf2f89d89c47f4635adb3c66e9feaab",
+                "sha256:70c3e1cee5232e09eb16ca7ee53017972b30a93ece51211c2aad95b33770c2fd",
             ),
             (
                 ROOT / "tools/test_fixtures/prefix_policy_reproduction/golden/prefix_policy_reproduction_verified.json",
-                "sha256:b99eafad812d4b202b6b2e4b6818b0af93759db7eb71efe6e17994bd06dbb26d",
+                "sha256:7ba2d3f4bdf5b30ab55522765431e89d4b0ed649737b2c0d8c6e09ee2acbd11b",
             ),
         )
         for path, expected in paths:

@@ -2,13 +2,13 @@
   "schema": "lis.execution_artifact/v1",
   "kind": "layer_localization",
   "contract_version": "differential_verification_contract_v1",
-  "pass2_artifact_sha256": "sha256:3486ada4339eb672a61b6dae92995b58fc13ae9c0b7081b6e09db896c5e858e7",
+  "pass2_artifact_sha256": "sha256:201e54751b4330b9e992afa046d1f57c97f939d47d6d95a757e189d475cb250c",
   "pass2_object_artifact_coherence_verified": true,
   "pass2_evidence": {
     "reproduction_evidence_tier": "original_pair_boundary_consistent",
     "generated_token_step": 17,
     "runtime_checkpoint_step": 18,
-    "localization_ref_sha256": "sha256:6760e3379c7b0da0d8591a30efabea782b01b66b50cd19e858ea98458f7709bd",
+    "localization_ref_sha256": "sha256:db61d0c36d95e35f1023d7b4d1b9ae87299938e7810f8185191f56a5ec8c1796",
     "reference_original_run_report_sha256": "sha256:18d09a3d361525f96297df61590ce5533f78bc904701b5bb60e7ee2fed3e2bb0",
     "candidate_original_run_report_sha256": "sha256:ecdf8a6802796b4479dad6afd38428c9ba7ad4eaf56c19dc9d96279444558947",
     "reference_reproduction_sha256": null,
@@ -203,8 +203,7 @@
     "hf_default_greedy_ineligible",
     "hf_forced_token_runtime_eligible",
     "internal_lis_differential_only",
-    "oracle_scope_limited",
-    "forced_prefix_report_json_channel_missing"
+    "oracle_scope_limited"
   ],
   "warnings": [],
   "semantic_limits": {

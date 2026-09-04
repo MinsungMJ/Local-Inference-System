@@ -145,7 +145,7 @@ class TestNamespaceConsistency(CalibrationContractTestCase):
         )
         self.assertFalse(mvp["enables_confirmed_first_divergence"])
         self.assertTrue(mvp["external_semantic_mode_blocked_in_mvp"])
-        self.assertFalse(mvp["hf_forced_token_runtime_artifact_supported"])
+        self.assertTrue(mvp["hf_forced_token_runtime_artifact_supported"])
         self.assertTrue(mvp["hf_default_greedy_requires_array_equal"])
 
     def test_calibration_does_not_mutate_frozen_report_enums(self):

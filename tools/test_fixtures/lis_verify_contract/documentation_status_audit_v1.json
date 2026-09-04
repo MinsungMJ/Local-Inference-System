@@ -14,8 +14,8 @@
     {"capability": "pass4_intra_layer_localization", "status": "implemented_bounded_llama", "classification": "current"},
     {"capability": "legacy_base_verification_report_contract", "status": "planned_unimplemented", "classification": "historical_frozen"},
     {"capability": "lis_verify_product_contract", "status": "contract_only_implemented", "classification": "current"},
-    {"capability": "lis_verify_product_spine", "status": "implemented_m1_m2_demo_adapter_real_adapters_pending_m3", "classification": "current"},
-    {"capability": "forced_prefix_source_bound_report_channel", "status": "design_frozen_implementation_pending_m3", "classification": "current"},
+    {"capability": "lis_verify_product_spine", "status": "implemented_m1_m2_m3_real_adapters", "classification": "current"},
+    {"capability": "forced_prefix_source_bound_report_channel", "status": "implemented_m3", "classification": "current"},
     {"capability": "make_verify_diff_and_ci_product", "status": "planned_m4", "classification": "current"},
     {"capability": "selected_checkpoint_numeric_confirmation", "status": "conditional_m6", "classification": "current"},
     {"capability": "external_semantic_adapter", "status": "conditional_m7", "classification": "current"},
@@ -29,7 +29,7 @@
     },
     {
       "document": "docs/calibration_preflight.md",
-      "required_text": "Pass 5 M0 freezes an additive source-bound report design",
+      "required_text": "Pass 5 M3 implements the additive source-bound report design",
       "classification": "current"
     },
     {
@@ -39,7 +39,7 @@
     },
     {
       "document": "docs/repro_execution_artifacts.md",
-      "required_text": "That design is not an implementation claim",
+      "required_text": "The M3 producer now permits the combination only with a valid source binding",
       "classification": "current"
     },
     {
@@ -54,12 +54,12 @@
     },
     {
       "document": "docs/lis_verify_contract.md",
-      "required_text": "Implementation status: M0 contract frozen; M1 product spine and M2 seeded evidence adapter implemented",
+      "required_text": "Implementation status: M0 contract frozen; M1–M3 product execution implemented",
       "classification": "current"
     },
     {
       "document": "docs/lis_verify_product_spine.md",
-      "required_text": "M2 registers the production `demo` runner",
+      "required_text": "M3 registers the production `backend` and `runtime` runners",
       "classification": "current"
     }
   ],
@@ -71,7 +71,7 @@
     "missing_coverage_not_equal",
     "pass3a_discovery_not_authoritative_pass4_parent",
     "qwen3_layout_not_supported_by_pass3_or_pass4",
-    "forced_prefix_design_not_implemented_by_m0"
+    "forced_prefix_raw_token_ids_not_retained_by_default"
   ],
   "public_repository_references_private_archive": false
 }

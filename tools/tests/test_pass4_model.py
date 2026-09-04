@@ -1076,12 +1076,12 @@ class TestPass4ModelContractParity(unittest.TestCase):
                 Pass4Status.NOT_APPLICABLE, reason_codes=reasons
             )
 
-    def test_existing_frozen_contract_values_are_untouched(self):
+    def test_frozen_contract_records_current_prior_contract_identity(self):
         self.assertEqual(self.contract["status"], "frozen")
         self.assertEqual(self.contract["scope"], "P4-1_contract_only")
         self.assertEqual(
             self.contract["prior_contract"]["canonical_sha256"],
-            "sha256:9f467c7ed31df9feea4a0757bb76faa91b11f4a17d24c89c09b60040ef8e021b",
+            "sha256:d416381eec06c011426ad1c840ec044334c0ffec73bc62e0f0ece3737df15cf2",
         )
         boundary = self.contract["implementation_boundary"]
         for key in (
