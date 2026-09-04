@@ -123,13 +123,13 @@ Artifact requests are fail-closed:
 - if required identity cannot be captured, LIS reports an artifact error
   explicitly instead of silently emitting a partial JSON file
 - if report writing fails, the CLI reports the artifact failure
-- unsupported combinations are rejected explicitly; current LIS rejects
-  `--report-json` together with `--forced-prefix`
+- unsupported combinations are rejected explicitly; `--report-json` together
+  with `--forced-prefix` requires the internal source-binding input
 
-Pass 5 M0 freezes the future additive `forced_prefix` report object and its
-source-binding rules in `docs/lis_verify_contract.md`. That design is not an
-implementation claim: until M3 changes the C producer and binding path, the
-rejection above and Pass 0's `artifact_supported = false` remain authoritative.
+Pass 5 M0 froze the additive `forced_prefix` report object and its source-binding
+rules in `docs/lis_verify_contract.md`. The M3 producer now permits the
+combination only with a valid source binding, recomputes the applied prefix
+count and SHA-256, and omits the raw forced-token array from normal reports.
 
 This contract is intentionally narrow. It does not add:
 
@@ -524,8 +524,8 @@ The `lis_verify` Python tooling can consume compatible, source-bound artifacts
 for token mismatch localization, mismatch-boundary reproduction, and
 coverage-scoped Llama layer localization. The M1 `lis-verify` entry point and
 report/lifecycle spine are implemented. M2 connects a packaged model-free
-seeded adapter that automates Pass 0–4 consumption end to end; real execution
-adapters remain M3 work.
+seeded adapter; M3 connects bounded real backend/runtime execution, independent
+reproduction, and fresh Pass 3/4 recapture.
 
 Layer-localization results identify the earliest observed mismatching Llama
 layer-output checkpoint only within validated common captured coverage. They

@@ -100,11 +100,10 @@ internal LIS differential.
 - `lis_internal_backend_differential` — the MVP's primary capability.
 - `hf_default_greedy` — eligible only for a raw-greedy, fully calibrated run with
   array-equal prompt identity. **Always false** for the current LIS build.
-- `hf_forced_token_runtime` — a structured object: `potentially_eligible` but
-  `artifact_supported = false`, because `--forced-prefix` and `--report-json` are
-  mutually exclusive today. Pass 5 M0 freezes an additive source-bound report
-  design for later M3 implementation; M0 does not change this current false
-  implementation status.
+- `hf_forced_token_runtime` — a structured object: `potentially_eligible` and
+  `artifact_supported = true`. Pass 5 M3 implements the additive source-bound
+  report design: `--forced-prefix` and `--report-json` may be combined only with
+  the orchestrator's validated binding metadata.
 - `oracle_scope` — capped at `internal_lis_only` in the MVP.
 
 Internal differential success is never serialized as external semantic

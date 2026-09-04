@@ -16,8 +16,10 @@
   report model/publication, deterministic summaries, private attempt ledger,
   explicit stage machine, and bounded subprocess primitives are implemented
 - Pass 5 M2 model-free Alpha: the packaged seeded `demo` adapter exercises the
-  actual Pass 0–4 consumers and emits a unified bounded `REGRESSION`; real
-  backend/runtime evidence adapters remain M3 work
+  actual Pass 0–4 consumers and emits a unified bounded `REGRESSION`
+- Pass 5 M3 real execution: source-bound `backend` and `runtime` adapters,
+  binary-adjacent provenance, forced-prefix reproduction, and fresh bounded
+  Pass 3/4 recapture are implemented
 - Base contract — Implementation status: Planned / Not yet implemented
 - Contract version: 1.0
 
@@ -32,7 +34,7 @@ Pass-local aggregation, exit and strict-policy behavior, final stage state,
 attempt/ledger rules, cleanup/residue semantics, report bounds, and the future
 forced-prefix source-binding design. M1 now implements the executable and
 report/lifecycle spine without changing those semantics. M2 connects the
-seeded `demo`; real backend/runtime evidence workflows remain pending M3.
+seeded `demo`; M3 connects the real backend/runtime evidence workflows.
 
 The implemented boundary includes token mismatch localization,
 mismatch-boundary reproduction, source-bound producer artifacts,
@@ -787,9 +789,9 @@ Key invariants (see also Corrections 1–4 in the implementation plan):
 - The reason-code registry stores base severity only; mode-specific escalation
   (e.g. `external_oracle_ineligible` blocking only in Mode C) is performed by the
   aggregator, listed in `aggregator_escalated_codes`.
-- Forced-token runtime oracle is potential-only:
-  `hf_forced_token_runtime.artifact_supported = false` while `--forced-prefix`
-  and `--report-json` are mutually exclusive.
+- Forced-token runtime oracle is source-bound:
+  `hf_forced_token_runtime.artifact_supported = true`; `--forced-prefix` with
+  `--report-json` requires M3 binding metadata and actual-prefix verification.
 - Prompt-token array equality (`array_equal`) is distinct from digest-only
   identity (`digest_only`); only `array_equal` enables HF default-greedy
   eligibility.
@@ -896,7 +898,7 @@ Markdown/fixture consistency checks (see
     "strongest_downstream_strength_limit": "checkpoint_confirmation_allowed",
     "enables_confirmed_first_divergence": false,
     "external_semantic_mode_blocked_in_mvp": true,
-    "hf_forced_token_runtime_artifact_supported": false,
+    "hf_forced_token_runtime_artifact_supported": true,
     "hf_default_greedy_requires_array_equal": true
   }
 }

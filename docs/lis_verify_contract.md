@@ -3,8 +3,8 @@
 - Contract status: Approved / frozen for Pass 5 M0
 - Contract version: `lis.verify.product_contract/v1`
 - Customer report schema: `lis.verification_report/v1`
-- Implementation status: M0 contract frozen; M1 product spine and M2 seeded
-  evidence adapter implemented; real evidence adapters remain pending M3
+- Implementation status: M0 contract frozen; M1–M3 product execution implemented;
+  public-model release gating remains M4
 
 This document is the normative human-readable contract for the Pass 5 customer
 product. Machine-readable conformance facts live under
@@ -279,14 +279,14 @@ heartbeat state.
 
 ## 9. Forced-prefix run-report design
 
-The forced-prefix artifact channel is design-frozen by M0 and remains
-unimplemented until M3. The current C CLI rejection of `--forced-prefix` with
-`--report-json` and Pass 0's `artifact_supported = false` therefore remain
-accurate after M0.
+The forced-prefix artifact channel was design-frozen by M0 and is implemented
+by M3. Pass 0 now reports `artifact_supported = true`. The C CLI permits
+`--forced-prefix` with `--report-json` only when the internal
+`--forced-prefix-binding-json` binding input is also present and valid.
 
-M3 may allow the combination only when the orchestrator supplies complete
-source-binding metadata. The C run report must compute the digest and count from
-the prefix actually applied. The additive `forced_prefix` object contains:
+The orchestrator supplies complete source-binding metadata. The C run report
+computes the digest and count from the prefix actually applied. The additive
+`forced_prefix` object contains:
 
 ```text
 mode
@@ -408,14 +408,18 @@ M1 consumed this contract to implement packaging, parsing, report models,
 canonical bundle publication, deterministic rendering, state-machine
 scaffolding, private workspace/ledger handling, and bounded execution. M2
 connects the seeded model-free evidence adapter through the actual Pass 0–4
-consumers. M3 consumes the forced-prefix
-design and connects the real backend/runtime adapters. No milestone may relax
+consumers. M3 implements the forced-prefix design and connects the real
+backend/runtime adapters. No milestone may relax
 or reinterpret M0 values in implementation code. A required semantic change
 needs an explicit contract version amendment, debugging verification, and a new
 clean acceptance attempt.
 
-The production runner registry now contains only the M2 `demo` adapter. It
-reports explicit synthetic fixture-component SHA-256 identities and warns that
-no model or LIS binary was executed. A valid but not-yet-connected `backend` or
-`runtime` mode exits 2 before attempt creation and emits no report; it does not
+The production runner registry contains the M2 `demo` adapter and the M3
+`backend` and `runtime` adapters. Real modes resolve a local supported-model
+profile, validate binary-adjacent `lis.build_provenance/v1`, execute LIS through
+the bounded process adapter, and publish a canonical result for handled
+unsupported, timeout, integrity, equality, and regression outcomes. They do not
 invent unavailable customer source, binary, model, or input identities.
+An otherwise eligible binary with no adjacent provenance is `INCONCLUSIVE`;
+malformed or binary-incoherent provenance is a `HARNESS_ERROR` integrity
+failure.

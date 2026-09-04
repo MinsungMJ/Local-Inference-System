@@ -1,13 +1,14 @@
 # LIS Verify Product Spine
 
-- Milestone: Pass 5 M1 spine with M2 demo adapter
+- Milestone: Pass 5 M1–M3 product execution
 - Status: Implemented
 - Product contract: `lis.verify.product_contract/v1`
 - Report schema: `lis.verification_report/v1`
 
-M1 provides the reusable lifecycle framework. M2 connects its first production
-adapter: a model-free seeded demonstration that runs the actual Pass 0–4
-consumer chain without claiming that a customer model or binary was executed.
+M1 provides the reusable lifecycle framework. M2 connects the model-free seeded
+demonstration. M3 connects real local-model `backend` and `runtime` execution,
+including source-bound forced-prefix reproduction and bounded Pass 3/4
+recapture.
 
 ## Installation
 
@@ -47,11 +48,22 @@ Common options are `--out`, `--require-supported`, `--debug-retain`,
 checkpoint steps, target layers, intermediate artifact paths, and artifact-set
 IDs are not customer options.
 
-M2 registers the production `demo` runner. It consumes packaged, digest-bound
-synthetic replay evidence in a bounded child process and deterministically
-produces an actionable `REGRESSION`. Calling `backend` or `runtime` still exits
-2 before attempt creation because those adapters remain M3 work. This avoids
-inventing unavailable customer source identities.
+M2 registers the production `demo` runner. M3 registers the production
+`backend` and `runtime` runners. `backend` resolves the checkout binary before
+`PATH`, compares `LIS_SIMD=0` with normal optimized dispatch, and refuses to call
+reference fallback an optimized-path pass. `runtime` requires two distinct
+explicit binary identities and preserves each role across reproduction.
+
+Both real modes use the packaged `plain_rope_llama_direct_token_v1` profile:
+direct token ID `[1]`, context 128, batch 1, generation limit 8, and one thread.
+The local model must be a merged `model.safetensors` plain-RoPE Llama directory.
+This generic support profile is not the M4 public-model revision manifest.
+
+Every eligible binary requires a binary-adjacent `<binary>.lis-build.json`
+manifest with schema `lis.build_provenance/v1`. Its canonical source-tree and
+binary SHA-256 values are verified before inference. A missing sidecar yields
+`INCONCLUSIVE`; a stale, tampered, malformed, or symlinked sidecar fails as an
+integrity error. Neither path invents source authority.
 
 ## Implemented components
 
@@ -67,8 +79,14 @@ inventing unavailable customer source identities.
 - append-only, fsync-backed ledger with mutation detection;
 - shell-free streaming subprocess capture with a combined 1 MiB cap;
 - per-stage timeout, process-group termination, signal classification, and
-  bounded grace; and
-- observed cleanup/residue reporting and explicit debug retention.
+  bounded grace;
+- observed cleanup/residue reporting and explicit debug retention;
+- real LIS model/profile and binary provenance preflight;
+- source-bound non-empty forced-prefix reproduction without normal raw-prefix
+  retention;
+- role-aware backend/runtime binary continuity; and
+- Pass 3A discovery, fresh bounded recapture, Pass 3B revalidation, and Pass 4
+  intra-layer localization for reproduced mismatches.
 
 ## Output lifecycle
 
@@ -86,6 +104,13 @@ request validation
   -> summary publication
   -> verification_report.json publication
 ```
+
+An equal real pair stops after Pass 1 and records Pass 2–4 as
+`not_applicable`. A mismatch runs an independent paired reproduction. For a
+non-empty prefix, the C producer recomputes the applied count/digest and binds
+the run to Pass 0, the role-specific original report, Pass 1, and localization.
+Only verified reproduction can enter Pass 3A. A discovered layer then triggers
+one fresh bounded recapture generation before Pass 3B and Pass 4.
 
 The final report is the only customer-result source of truth. `summary.md` and
 terminal output are deterministic projections and cannot strengthen evidence.

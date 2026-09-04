@@ -50,7 +50,7 @@ This is bounded digest-based diagnostic evidence. It does not prove tensor equal
 - Token mismatch localisation and mismatch-boundary reproduction require semantically compatible, source-bound execution artifacts.
 - Coverage-scoped layer localisation supports the versioned Llama layer-output trace layout with matching precision paths.
 - Coverage-scoped intra-layer localisation supports Llama decode evidence for one previously identified mismatching layer, using the fixed 17-stage semantic capture profile and an authoritative revalidated layer-output boundary.
-- The C CLI captures the required evidence with `--intra-layer-checkpoints LAYER`; localization remains available through the `lis_verify` Python library. The installable `lis-verify demo` Alpha exercises the full Pass 0–4 consumer chain over packaged model-free evidence. Real backend and runtime adapters remain gated to Pass 5 M3.
+- The C CLI captures the required evidence with `--intra-layer-checkpoints LAYER`; the installable `lis-verify` Alpha provides a model-free demo plus source-bound real backend and runtime comparison workflows.
 - Qwen3 inference support does not imply layer- or intra-layer-localisation support. Qwen3 and legacy layer-trace layouts are unsupported for these comparisons.
 
 ## Unsupported / Non-Goals
@@ -91,10 +91,10 @@ make test
 
 `make test` requires no private model artifacts. It builds the binary and runs the core, loader, backend, runtime, CLI, tokenizer, and threading test suites.
 
-## LIS Verify Model-Free Alpha
+## LIS Verify Alpha
 
-The Pass 5 M2 Alpha is installable without UI dependencies and runs without a
-model or network access:
+The model-free demonstration is installable without UI dependencies and runs
+without a model or network access:
 
 ```bash
 python -m pip install --no-deps .
@@ -108,9 +108,27 @@ replay evidence; it does not execute a model or LIS binary. Bounded digests and
 suspect intervals remain diagnostic evidence, not numeric or first-divergence
 confirmation.
 
+Real local-model comparisons use the frozen direct-token profile:
+
+```bash
+lis-verify backend --model /path/to/plain-rope-llama --out .lis/verify
+lis-verify runtime \
+  --reference-bin /path/to/reference/lis \
+  --candidate-bin /path/to/candidate/lis \
+  --model /path/to/plain-rope-llama \
+  --out .lis/verify
+```
+
+Each eligible binary must have a canonical binary-adjacent
+`<binary>.lis-build.json` provenance sidecar. `make build` creates one for
+`srcs/libs/lis`. Missing provenance yields `INCONCLUSIVE`; malformed, stale,
+or binary-mismatched provenance fails as an integrity error. Real workflows do
+not download models: they require a local merged `model.safetensors` directory
+matching the packaged plain-RoPE Llama profile. Runtime mode requires distinct
+reference and candidate binary identities.
+
 The base `lis-verify` path has no required dependency on Textual. Install
-`.[inspect]` only when the optional LIS Inspect TUI is wanted. `backend` and
-`runtime` remain unavailable until M3. See
+`.[inspect]` only when the optional LIS Inspect TUI is wanted. See
 [LIS Verify Model-Free Demo](docs/lis_verify_demo.md),
 [LIS Verify Product Spine](docs/lis_verify_product_spine.md), and
 [LIS Verify Product Contract](docs/lis_verify_contract.md).

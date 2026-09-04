@@ -160,6 +160,6 @@ diagnostic library and artifact surfaces. The customer-facing LIS Verify
 contract is frozen in `docs/lis_verify_contract.md`. Its M1 installable CLI,
 unified report model/production, state-machine orchestration spine, private
 workspace/ledger, deterministic renderers, and bounded execution primitives are
-implemented. The M2 seeded `demo` adapter now exercises Pass 0–4 through the
-unified report. Real backend/runtime adapters, `verify-diff`, and the public
-model CI workflow remain later milestones.
+implemented. The M2 seeded `demo` adapter exercises Pass 0–4 through the unified
+report. M3 adds source-bound real backend/runtime adapters and the forced-prefix
+reproduction channel. `verify-diff` and the public-model CI workflow remain M4.
