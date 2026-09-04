@@ -40,6 +40,10 @@ class TestPackaging(unittest.TestCase):
         self.assertEqual(config["where"], ["tools"])
         self.assertEqual(config["include"], ["lis_verify*", "lis_inspect*"])
 
+    def test_demo_json_resources_are_packaged(self):
+        package_data = self.pyproject["tool"]["setuptools"]["package-data"]
+        self.assertEqual(package_data, {"lis_verify.demo_data": ["*.json"]})
+
 
 if __name__ == "__main__":
     unittest.main()
