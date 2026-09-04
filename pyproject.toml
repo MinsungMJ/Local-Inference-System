@@ -21,5 +21,8 @@ lis-inspect = "lis_inspect.cli:main"
 where = ["tools"]
 include = ["lis_verify*", "lis_inspect*"]
 
+[tool.setuptools.package-data]
+"lis_verify.demo_data" = ["*.json"]
+
 [tool.setuptools.dynamic]
 version = {attr = "lis_verify.__version__"}

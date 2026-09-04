@@ -1,0 +1,1196 @@
+{
+  "intra_layer_checkpoint_layout": {
+    "layout_name": "llama_intra_layer_summary",
+    "layout_version": 1,
+    "model_family": "llama3_decoder",
+    "stage_taxonomy": "lis.llama.intra_layer_stages/v1",
+    "runtime_checkpoint_step": 18,
+    "phase": "decode",
+    "target_layer": 8,
+    "batch_index": 0,
+    "sequence_index": 0,
+    "token_position": 23,
+    "ordering_semantics": "runtime_step_layer_stage_ordinal",
+    "duplicate_coordinate_policy": "reject_artifact_before_write",
+    "requested_coordinates": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "layer_input",
+        "tensor_role": "layer_input",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_norm_output",
+        "tensor_role": "attention_norm_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 1,
+        "execution_ordinal": 1
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "query_projection_output",
+        "tensor_role": "query_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 2,
+        "execution_ordinal": 2
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "key_projection_output",
+        "tensor_role": "key_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 3,
+        "execution_ordinal": 3
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "value_projection_output",
+        "tensor_role": "value_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 4,
+        "execution_ordinal": 4
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "rope_query_output",
+        "tensor_role": "rope_query_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 5,
+        "execution_ordinal": 5
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "rope_key_output",
+        "tensor_role": "rope_key_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 6,
+        "execution_ordinal": 6
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_scores",
+        "tensor_role": "attention_scores",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 7,
+        "execution_ordinal": 7
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_probabilities",
+        "tensor_role": "attention_probabilities",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 8,
+        "execution_ordinal": 8
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_context",
+        "tensor_role": "attention_context",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 9,
+        "execution_ordinal": 9
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_output_projection",
+        "tensor_role": "attention_output_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 10,
+        "execution_ordinal": 10
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "post_attention_residual",
+        "tensor_role": "post_attention_residual",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 11,
+        "execution_ordinal": 11
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_norm_output",
+        "tensor_role": "mlp_norm_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 12,
+        "execution_ordinal": 12
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_gate_projection",
+        "tensor_role": "mlp_gate_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 13,
+        "execution_ordinal": 13
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_up_projection",
+        "tensor_role": "mlp_up_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 14,
+        "execution_ordinal": 14
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_gated_activation",
+        "tensor_role": "mlp_gated_activation",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 15,
+        "execution_ordinal": 15
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_down_projection",
+        "tensor_role": "mlp_down_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 16,
+        "execution_ordinal": 16
+      }
+    ],
+    "captured_coordinates": [
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "layer_input",
+        "tensor_role": "layer_input",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 0,
+        "execution_ordinal": 0
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_norm_output",
+        "tensor_role": "attention_norm_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 1,
+        "execution_ordinal": 1
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "query_projection_output",
+        "tensor_role": "query_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 2,
+        "execution_ordinal": 2
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "key_projection_output",
+        "tensor_role": "key_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 3,
+        "execution_ordinal": 3
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "value_projection_output",
+        "tensor_role": "value_projection_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 4,
+        "execution_ordinal": 4
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "rope_query_output",
+        "tensor_role": "rope_query_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 5,
+        "execution_ordinal": 5
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "rope_key_output",
+        "tensor_role": "rope_key_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 6,
+        "execution_ordinal": 6
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_scores",
+        "tensor_role": "attention_scores",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 7,
+        "execution_ordinal": 7
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_probabilities",
+        "tensor_role": "attention_probabilities",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 8,
+        "execution_ordinal": 8
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_context",
+        "tensor_role": "attention_context",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 9,
+        "execution_ordinal": 9
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "attention_output_projection",
+        "tensor_role": "attention_output_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 10,
+        "execution_ordinal": 10
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "post_attention_residual",
+        "tensor_role": "post_attention_residual",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 11,
+        "execution_ordinal": 11
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_norm_output",
+        "tensor_role": "mlp_norm_output",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 12,
+        "execution_ordinal": 12
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_gate_projection",
+        "tensor_role": "mlp_gate_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 13,
+        "execution_ordinal": 13
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_up_projection",
+        "tensor_role": "mlp_up_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 14,
+        "execution_ordinal": 14
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_gated_activation",
+        "tensor_role": "mlp_gated_activation",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 15,
+        "execution_ordinal": 15
+      },
+      {
+        "runtime_checkpoint_step": 18,
+        "layer_index": 8,
+        "stage_id": "mlp_down_projection",
+        "tensor_role": "mlp_down_projection",
+        "batch_index": 0,
+        "sequence_index": 0,
+        "token_position": 23,
+        "stage_order": 16,
+        "execution_ordinal": 16
+      }
+    ],
+    "missing_coordinates": [],
+    "available_summary_fields": [
+      "min",
+      "max",
+      "mean",
+      "l2",
+      "nan",
+      "inf",
+      "digest"
+    ],
+    "digest_contract": {
+      "algorithm": "sha256",
+      "version": "lis.checkpoint.intra_layer.fp32le/v1",
+      "observed_dtype": "fp32",
+      "byte_order": "little",
+      "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero"
+    },
+    "full_tensor_payload_allowed": false
+  },
+  "intra_layer_trace": [
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "layer_input",
+      "tensor_role": "layer_input",
+      "public_name": "Layer input",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 0,
+      "execution_ordinal": 0,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 0,
+      "max": 0,
+      "mean": 0,
+      "l2": 0,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "layer_input",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "attention_norm_output",
+      "tensor_role": "attention_norm_output",
+      "public_name": "Pre-attention RMSNorm output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 1,
+      "execution_ordinal": 1,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 1,
+      "max": 1,
+      "mean": 1,
+      "l2": 1,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "attention_norm_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "query_projection_output",
+      "tensor_role": "query_projection_output",
+      "public_name": "Q projection output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 2,
+      "execution_ordinal": 2,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 2,
+      "max": 2,
+      "mean": 2,
+      "l2": 2,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "query_projection_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "key_projection_output",
+      "tensor_role": "key_projection_output",
+      "public_name": "K projection output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 3,
+      "execution_ordinal": 3,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 3,
+      "max": 3,
+      "mean": 3,
+      "l2": 3,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "key_projection_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000003"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "value_projection_output",
+      "tensor_role": "value_projection_output",
+      "public_name": "V projection output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 4,
+      "execution_ordinal": 4,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 4,
+      "max": 4,
+      "mean": 4,
+      "l2": 4,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "value_projection_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000004"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "rope_query_output",
+      "tensor_role": "rope_query_output",
+      "public_name": "RoPE-applied Q",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 5,
+      "execution_ordinal": 5,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 5,
+      "max": 5,
+      "mean": 5,
+      "l2": 5,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "rope_query_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000005"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "rope_key_output",
+      "tensor_role": "rope_key_output",
+      "public_name": "RoPE-applied K",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 6,
+      "execution_ordinal": 6,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 6,
+      "max": 6,
+      "mean": 6,
+      "l2": 6,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "rope_key_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000006"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "attention_scores",
+      "tensor_role": "attention_scores",
+      "public_name": "Attention pre-softmax scores",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 7,
+      "execution_ordinal": 7,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 7,
+      "max": 7,
+      "mean": 7,
+      "l2": 7,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "attention_scores",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000007"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "attention_probabilities",
+      "tensor_role": "attention_probabilities",
+      "public_name": "Attention softmax output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 8,
+      "execution_ordinal": 8,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 8,
+      "max": 8,
+      "mean": 8,
+      "l2": 8,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "attention_probabilities",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000008"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "attention_context",
+      "tensor_role": "attention_context",
+      "public_name": "Attention context",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 9,
+      "execution_ordinal": 9,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 9,
+      "max": 9,
+      "mean": 9,
+      "l2": 9,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "attention_context",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000009"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "attention_output_projection",
+      "tensor_role": "attention_output_projection",
+      "public_name": "Attention output projection",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 10,
+      "execution_ordinal": 10,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 10,
+      "max": 10,
+      "mean": 10,
+      "l2": 10,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "attention_output_projection",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000a"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "post_attention_residual",
+      "tensor_role": "post_attention_residual",
+      "public_name": "Post-attention residual",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 11,
+      "execution_ordinal": 11,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 11,
+      "max": 11,
+      "mean": 11,
+      "l2": 11,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "post_attention_residual",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000b"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "mlp_norm_output",
+      "tensor_role": "mlp_norm_output",
+      "public_name": "Pre-MLP RMSNorm output",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 12,
+      "execution_ordinal": 12,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 12,
+      "max": 12,
+      "mean": 12,
+      "l2": 12,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "mlp_norm_output",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000c"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "mlp_gate_projection",
+      "tensor_role": "mlp_gate_projection",
+      "public_name": "MLP gate projection",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 13,
+      "execution_ordinal": 13,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 13,
+      "max": 13,
+      "mean": 13,
+      "l2": 13,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "mlp_gate_projection",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000d"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "mlp_up_projection",
+      "tensor_role": "mlp_up_projection",
+      "public_name": "MLP up projection",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 14,
+      "execution_ordinal": 14,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 14,
+      "max": 14,
+      "mean": 14,
+      "l2": 14,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "mlp_up_projection",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000e"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "mlp_gated_activation",
+      "tensor_role": "mlp_gated_activation",
+      "public_name": "MLP gated activation",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 15,
+      "execution_ordinal": 15,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 15,
+      "max": 15,
+      "mean": 15,
+      "l2": 15,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "mlp_gated_activation",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:000000000000000000000000000000000000000000000000000000000000000f"
+      }
+    },
+    {
+      "runtime_checkpoint_step": 18,
+      "phase": "decode",
+      "layer_index": 8,
+      "stage_id": "mlp_down_projection",
+      "tensor_role": "mlp_down_projection",
+      "public_name": "MLP down projection",
+      "batch_index": 0,
+      "sequence_index": 0,
+      "token_position": 23,
+      "stage_order": 16,
+      "execution_ordinal": 16,
+      "shape": [
+        1
+      ],
+      "observed_dtype": "fp32",
+      "precision_path": "f32_accum;weights=bf16;kv=bf16",
+      "element_count": 1,
+      "available_summary_fields": [
+        "min",
+        "max",
+        "mean",
+        "l2",
+        "nan",
+        "inf",
+        "digest"
+      ],
+      "min": 16,
+      "max": 16,
+      "mean": 16,
+      "l2": 16,
+      "nan": 0,
+      "inf": 0,
+      "digest": {
+        "algorithm": "sha256",
+        "version": "lis.checkpoint.intra_layer.fp32le/v1",
+        "tensor_role": "mlp_down_projection",
+        "shape": [
+          1
+        ],
+        "observed_dtype": "fp32",
+        "byte_order": "little",
+        "canonicalization": "ieee754-binary32-le;canonical-qnan;preserve-signed-zero",
+        "value": "sha256:0000000000000000000000000000000000000000000000000000000000000010"
+      }
+    }
+  ]
+}

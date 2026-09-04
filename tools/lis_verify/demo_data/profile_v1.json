@@ -1,0 +1,49 @@
+{
+  "schema": "lis.demo_profile/v1",
+  "seed": 240517,
+  "comparison_mode": "backend_differential",
+  "build_calibration": {
+    "build_id": "lis_demo_seeded_replay_v1",
+    "repetition_penalty": 1.2,
+    "repetition_penalty_enabled": true,
+    "structural_token_suppression": true,
+    "rms_norm_eps_runtime_bound": {
+      "llama3_decoder": false,
+      "qwen3_dense_decoder": true
+    },
+    "kv_write_round_to_nearest_even": false,
+    "fma_contraction_backend_defined": true,
+    "reduction_order_backend_defined": true
+  },
+  "prompt_token_ids": [1, 2, 3],
+  "runtime_checkpoint_step": 18,
+  "target_layer": 8,
+  "layer_indices": [0, 4, 8, 12],
+  "total_layer_count": 13,
+  "candidate_layer_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "candidate_intra_layer_mismatch_stage_order": 7,
+  "generations": {
+    "discovery": {
+      "reference_original_artifact_set_id": "aset1:11111111111111111111111111111111",
+      "candidate_original_artifact_set_id": "aset1:22222222222222222222222222222222",
+      "reference_reproduction_artifact_set_id": "aset1:33333333333333333333333333333333",
+      "candidate_reproduction_artifact_set_id": "aset1:44444444444444444444444444444444"
+    },
+    "authoritative": {
+      "reference_original_artifact_set_id": "aset1:55555555555555555555555555555555",
+      "candidate_original_artifact_set_id": "aset1:66666666666666666666666666666666",
+      "reference_reproduction_artifact_set_id": "aset1:77777777777777777777777777777777",
+      "candidate_reproduction_artifact_set_id": "aset1:88888888888888888888888888888888"
+    }
+  },
+  "expected": {
+    "pass0_status": "limited_comparison_allowed",
+    "pass1_status": "first_mismatch_found",
+    "pass2_status": "reproduction_verified",
+    "pass3_status": "observable_mismatch_found",
+    "pass4_status": "observable_intra_layer_mismatch_found",
+    "generated_token_step": 17,
+    "layer_interval": "(4, 8]",
+    "intra_layer_interval": "(rope_key_output, attention_scores]"
+  }
+}

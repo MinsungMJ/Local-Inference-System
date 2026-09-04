@@ -17,7 +17,15 @@ from .product_contract import (
 
 
 RunnerRegistry = Mapping[str, object]
-DEFAULT_RUNNERS: dict[str, object] = {}
+
+
+def _run_demo(request: CommandRequest) -> OrchestrationResult:
+    from .demo import run_demo
+
+    return run_demo(request)
+
+
+DEFAULT_RUNNERS: dict[str, object] = {"demo": _run_demo}
 
 
 class BoundedArgumentParser(argparse.ArgumentParser):

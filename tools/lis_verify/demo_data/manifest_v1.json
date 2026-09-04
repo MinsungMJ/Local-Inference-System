@@ -1,0 +1,31 @@
+{
+  "schema": "lis.demo_fixture_manifest/v1",
+  "fixture_id": "lis-seeded-mismatch-240517",
+  "fixture_version": 1,
+  "resources": {
+    "profile": {
+      "file": "profile_v1.json",
+      "sha256": "sha256:e52a58951d09e5283d14031ab9fda24258d7d98963e3d0f27e3a6c057059bd49"
+    },
+    "reference_original": {
+      "file": "reference_original.json",
+      "sha256": "sha256:8425b704b3507993d416fa1b781209821baab5caaf442ee1151ed45410ebb6bf"
+    },
+    "candidate_original": {
+      "file": "candidate_original.json",
+      "sha256": "sha256:35233824c1d9a2f7845793c1db317c896d79cfa47dca572183a85e95f91fcd43"
+    },
+    "reference_reproduction": {
+      "file": "reference_reproduction.json",
+      "sha256": "sha256:c9676640fb2715b8c41c3c97d84a86229777714b9c8a977e6a521addfe140b7d"
+    },
+    "candidate_reproduction": {
+      "file": "candidate_reproduction.json",
+      "sha256": "sha256:ee86edeb35d555929e6c82169e5f95e22c7f952141acddb8616e8def11e8cfd6"
+    },
+    "intra_layer_trace": {
+      "file": "intra_layer_trace.json",
+      "sha256": "sha256:5766483c98ed989f6af8a76ea5bbac6026fb6b587b5247726fb8cdaf2af129c8"
+    }
+  }
+}
