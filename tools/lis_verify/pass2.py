@@ -52,6 +52,7 @@ from .pass2_model import (
     RunContextEvidence,
     TargetCheckpoint,
 )
+from .product_contract import validate_forced_prefix_metadata
 
 
 _NOT_EVALUATED = "not_evaluated"
@@ -454,6 +455,40 @@ def _compare_prefixes(
         )
     verified = []
     for run in runs:
+        forced = run.raw.get("forced_prefix")
+        if forced is not None:
+            try:
+                validate_forced_prefix_metadata(forced)
+            except (TypeError, ValueError) as exc:
+                raise Pass2InputError(
+                    f"{run.role}: malformed forced-prefix metadata"
+                ) from exc
+            if forced["token_count"] != len(expected):
+                return (
+                    PrefixGateResult(
+                        _FAILED,
+                        len(expected),
+                        expected_sha256,
+                        tuple(verified),
+                        failed_side=run.role,
+                        mismatch_kind="length_mismatch",
+                    ),
+                    Pass2ReasonCode.PREFIX_TOKEN_MISMATCH,
+                )
+            if forced["token_ids_sha256"] != expected_sha256:
+                return (
+                    PrefixGateResult(
+                        _FAILED,
+                        len(expected),
+                        expected_sha256,
+                        tuple(verified),
+                        failed_side=run.role,
+                        mismatch_kind="digest_mismatch",
+                    ),
+                    Pass2ReasonCode.PREFIX_DIGEST_MISMATCH,
+                )
+            verified.append(run.role)
+            continue
         values = selected_tokens(run)
         if values is None:
             return (
@@ -607,18 +642,22 @@ def run_prefix_policy_reproduction(
     runs: list[RunEvidence] = [reference, candidate]
     warnings = _thread_warnings(runs)
 
-    # Gate 3: original-pair build continuity.
+    # Gate 3: original-pair build continuity. Backend differential compares
+    # two dispatch paths in one binary, whereas runtime differential is
+    # specifically allowed to compare two different binaries. The latter is
+    # bound role-by-role at Gate 7 instead of cross-role here.
+    cross_role_binary_required = (
+        pass1.comparison_mode.value == "backend_differential"
+    )
+    original_builds_verified = (
+        not cross_role_binary_required
+        or reference.binary_fingerprint == candidate.binary_fingerprint
+    )
     original_policy = _policy(
         pass1,
         runs,
-        status=(
-            _VERIFIED
-            if reference.binary_fingerprint == candidate.binary_fingerprint
-            else _FAILED
-        ),
-        verified=(
-            reference.binary_fingerprint == candidate.binary_fingerprint
-        ),
+        status=_VERIFIED if original_builds_verified else _FAILED,
+        verified=original_builds_verified,
     )
     if not original_policy.build_continuity_verified:
         return _result(
@@ -791,11 +830,23 @@ def run_prefix_policy_reproduction(
             warnings=warnings,
         )
 
-    # Gate 7: policy build continuity across originals and reruns.
-    common_binary = reference.binary_fingerprint
-    policy_verified = all(
-        run.binary_fingerprint == common_binary for run in runs
-    )
+    # Gate 7: policy build continuity across originals and reruns. Backend
+    # differential keeps a common binary across both roles. Runtime
+    # differential keeps each role on its own original binary.
+    if cross_role_binary_required:
+        common_binary = reference.binary_fingerprint
+        policy_verified = all(
+            run.binary_fingerprint == common_binary for run in runs
+        )
+    elif has_reproductions:
+        policy_verified = (
+            reference_rerun.binary_fingerprint
+            == reference.binary_fingerprint
+            and candidate_rerun.binary_fingerprint
+            == candidate.binary_fingerprint
+        )
+    else:
+        policy_verified = True
     policy = _policy(
         pass1,
         runs,

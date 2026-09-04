@@ -25,7 +25,23 @@ def _run_demo(request: CommandRequest) -> OrchestrationResult:
     return run_demo(request)
 
 
-DEFAULT_RUNNERS: dict[str, object] = {"demo": _run_demo}
+def _run_backend(request: CommandRequest) -> OrchestrationResult:
+    from .real import run_backend
+
+    return run_backend(request)
+
+
+def _run_runtime(request: CommandRequest) -> OrchestrationResult:
+    from .real import run_runtime
+
+    return run_runtime(request)
+
+
+DEFAULT_RUNNERS: dict[str, object] = {
+    "demo": _run_demo,
+    "backend": _run_backend,
+    "runtime": _run_runtime,
+}
 
 
 class BoundedArgumentParser(argparse.ArgumentParser):

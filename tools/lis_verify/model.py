@@ -189,9 +189,11 @@ class NumericPolicy:
 
 @dataclass
 class ForcedTokenRuntimeEligibility:
-    """Correction 3: forced-token runtime oracle potential vs artifact-backed
-    eligibility are kept distinct. ``artifact_supported`` is False today because
-    ``--forced-prefix`` and ``--report-json`` are mutually exclusive."""
+    """Forced-token runtime potential and artifact-backed eligibility.
+
+    M3 sets ``artifact_supported`` only because the C producer and Python
+    source binder now implement the frozen report channel.
+    """
 
     potentially_eligible: bool
     artifact_supported: bool

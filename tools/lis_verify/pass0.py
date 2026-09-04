@@ -36,12 +36,7 @@ from .model import (
 from .reason_codes import AGGREGATOR_ESCALATED, base_severity, order_codes
 
 
-_FORCED_TOKEN_STATUS = "potentially_eligible_but_artifact_channel_missing"
-_FORCED_TOKEN_WARNING = (
-    "forced-token runtime oracle is potential-only: --forced-prefix and "
-    "--report-json are mutually exclusive, so no artifact-backed JSON channel "
-    "exists"
-)
+_FORCED_TOKEN_STATUS = "eligible_with_source_bound_artifact_channel"
 
 
 def effective_severity(
@@ -101,15 +96,14 @@ def run_calibration_preflight(inputs: PreflightInputs) -> CalibrationPreflightAr
     if not hf_default_greedy:
         codes.append(C.HF_DEFAULT_GREEDY_INELIGIBLE)
 
-    # Correction 3: forced-token runtime is potential-only (no artifact channel).
+    # The M3 source-bound report channel makes forced-token runtime evidence
+    # artifact-backed. The Python binder still has to verify every source SHA.
     forced = ForcedTokenRuntimeEligibility(
         potentially_eligible=True,
-        artifact_supported=False,
+        artifact_supported=True,
         status=_FORCED_TOKEN_STATUS,
     )
     codes.append(C.HF_FORCED_TOKEN_RUNTIME_ELIGIBLE)
-    codes.append(C.FORCED_PREFIX_REPORT_JSON_CHANNEL_MISSING)
-    warnings.append(_FORCED_TOKEN_WARNING)
 
     family_block = C.INCOMPATIBLE_MODEL_FAMILY in codes
     policy_block = C.INCOMPATIBLE_DECODE_POLICY in codes

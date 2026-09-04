@@ -11,6 +11,13 @@ __version__ = "0.2.0a1"
 
 from .artifact import serialize, to_json
 from .build_profile import BuildCalibrationProfile, default_build_profile
+from .forced_prefix import (
+    ForcedPrefixBindingError,
+    build_forced_prefix_metadata,
+    forced_prefix_binding_bytes,
+    validate_forced_prefix_reproduction,
+    validate_paired_forced_prefix_reproductions,
+)
 from .gate import Pass0GateDecision, build_gate
 from .inputs import DecodeTraceSummary, PreflightInputs, RunSide
 from .model import (
@@ -111,6 +118,7 @@ from .report_mapping import map_block_reason
 
 __all__ = [
     "BuildCalibrationProfile",
+    "ForcedPrefixBindingError",
     "default_build_profile",
     "CalibrationPreflightArtifact",
     "CalibrationReasonCode",
@@ -126,10 +134,12 @@ __all__ = [
     "DecodeTraceSummary",
     "Pass0GateDecision",
     "build_gate",
+    "build_forced_prefix_metadata",
     "run_calibration_preflight",
     "serialize",
     "to_json",
     "map_block_reason",
+    "forced_prefix_binding_bytes",
     "CanonicalRunReport",
     "build_source_binding",
     "canonical_json_sha256",
@@ -159,6 +169,8 @@ __all__ = [
     "TRACE_STEP_EVIDENCE",
     "THREAD_COUNT_CAVEAT",
     "run_prefix_policy_reproduction",
+    "validate_forced_prefix_reproduction",
+    "validate_paired_forced_prefix_reproductions",
     "serialize_pass2",
     "pass2_to_json",
     "map_pass2_reason",
