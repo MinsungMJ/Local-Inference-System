@@ -3,8 +3,8 @@
 - Contract status: Approved / frozen for Pass 5 M0
 - Contract version: `lis.verify.product_contract/v1`
 - Customer report schema: `lis.verification_report/v1`
-- Implementation status: M0 contract frozen; M1–M3 product execution implemented;
-  public-model release gating remains M4
+- Implementation status: M0 contract frozen; M1–M4 product execution, public
+  golden manifest, and CI release gates implemented
 
 This document is the normative human-readable contract for the Pass 5 customer
 product. Machine-readable conformance facts live under
@@ -409,8 +409,10 @@ canonical bundle publication, deterministic rendering, state-machine
 scaffolding, private workspace/ledger handling, and bounded execution. M2
 connects the seeded model-free evidence adapter through the actual Pass 0–4
 consumers. M3 implements the forced-prefix design and connects the real
-backend/runtime adapters. No milestone may relax
-or reinterpret M0 values in implementation code. A required semantic change
+backend/runtime adapters. M4 adds the strict public-model manifest,
+`verify-diff`, acceptance authority, and report-first CI gates without changing
+the frozen verdicts. No milestone may relax or reinterpret M0 values in
+implementation code. A required semantic change
 needs an explicit contract version amendment, debugging verification, and a new
 clean acceptance attempt.
 

@@ -70,5 +70,6 @@ The replay computation runs in a shell-free bounded worker. Timeout produces
 `INCONCLUSIVE` (exit 3); handled SIGINT/SIGTERM preserve exits 130/143; fixture,
 worker-output, or binding corruption produces `HARNESS_ERROR` (exit 2). No
 failure path promotes partial evidence to the seeded `REGRESSION`, and there is
-no silent retry. Real `backend` and `runtime` workflows remain unavailable
-until M3.
+no silent retry. Real `backend` and `runtime` workflows are documented in
+`lis_verify_product_spine.md`; the repeatable public-model gate is documented in
+`lis_verify_golden.md`.

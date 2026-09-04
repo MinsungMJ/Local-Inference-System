@@ -1,6 +1,6 @@
 # LIS Verify Product Spine
 
-- Milestone: Pass 5 M1–M3 product execution
+- Milestone: Pass 5 M1–M4 product execution and CI gating
 - Status: Implemented
 - Product contract: `lis.verify.product_contract/v1`
 - Report schema: `lis.verification_report/v1`
@@ -9,6 +9,8 @@ M1 provides the reusable lifecycle framework. M2 connects the model-free seeded
 demonstration. M3 connects real local-model `backend` and `runtime` execution,
 including source-bound forced-prefix reproduction and bounded Pass 3/4
 recapture.
+M4 adds a pinned public-model manifest, strict local-material verification,
+acceptance-classified CI consumption, and the `make verify-diff` wrapper.
 
 ## Installation
 
@@ -57,7 +59,8 @@ explicit binary identities and preserves each role across reproduction.
 Both real modes use the packaged `plain_rope_llama_direct_token_v1` profile:
 direct token ID `[1]`, context 128, batch 1, generation limit 8, and one thread.
 The local model must be a merged `model.safetensors` plain-RoPE Llama directory.
-This generic support profile is not the M4 public-model revision manifest.
+The generic profile remains distinct from the M4 public-model revision
+manifest in `lis_verify.golden_models`.
 
 Every eligible binary requires a binary-adjacent `<binary>.lis-build.json`
 manifest with schema `lis.build_provenance/v1`. Its canonical source-tree and
@@ -86,7 +89,12 @@ integrity error. Neither path invents source authority.
   retention;
 - role-aware backend/runtime binary continuity; and
 - Pass 3A discovery, fresh bounded recapture, Pass 3B revalidation, and Pass 4
-  intra-layer localization for reproduced mismatches.
+  intra-layer localization for reproduced mismatches;
+- immutable public-model material, license, configuration, and expected-result
+  manifest validation;
+- clean-state acceptance-manifest loading for CI without adding a public CLI
+  mode or Pass control; and
+- canonical report/summary/ledger CI validation with bounded step summaries.
 
 ## Output lifecycle
 
@@ -133,3 +141,8 @@ Implementation/debugging attempts and verification/acceptance attempts use
 separate identities and evidence. A clean one-shot acceptance begins only after
 debug workspaces and processes are scoped-cleaned and the final source and
 package inputs are frozen.
+
+Normal interactive commands remain `development_debugging`. CI supplies the
+private `LIS_VERIFY_ACCEPTANCE_MANIFEST` authority only after clean state,
+source revision/tree, dependency files, and command files have been frozen.
+Malformed or non-private authority fails before an attempt is started.

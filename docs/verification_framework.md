@@ -12,6 +12,7 @@ documented policy or report a documented unsupported result.
 |---|---|---|---|
 | Kernel verification | `make verify-kernels` | Compare backend kernel outputs against the reference behavior at focused shapes. The initial implementation reuses `srcs/libs/test_cpu_avx`, but the entry point is intentionally backend-neutral so future non-SIMD kernel checks can live under the same target. | Yes |
 | CLI regression | `make verify-cli` | Reuse the existing bounded CLI integration tests, including diagnostics and end-to-end validation fixtures. | Yes |
+| LIS Verify differential gate | `make verify-diff` | Run the strict source-bound backend workflow over an explicitly supplied local golden-compatible model. Reference fallback cannot satisfy the optimized gate. | Public-model nightly/release |
 | Token parity | `make verify-token-parity` | Run a fixed Llama-family prompt through the reference path and the default dispatch path, then compare the exact generated token ID sequence. The harness writes a verification snapshot JSON that embeds both core run reports. Requires the documented local model artifacts. | Model-backed routine |
 | Performance smoke | `make verify-perf-smoke` | Exercise the existing perf parser on a tiny default-dispatch run and write CSV/Markdown plus a bounded benchmark snapshot JSON reusing the core run-report contract. This is protocol verification, not a benchmark expansion. | Optional |
 
@@ -111,6 +112,7 @@ observability no longer depends only on parsing stderr.
 make verify
 make verify-kernels
 make verify-cli
+make verify-diff VERIFY_MODEL=/path/to/frozen-golden-model
 make verify-token-parity
 make verify-qwen3-sanity
 make verify-perf-smoke
@@ -162,4 +164,6 @@ unified report model/production, state-machine orchestration spine, private
 workspace/ledger, deterministic renderers, and bounded execution primitives are
 implemented. The M2 seeded `demo` adapter exercises Pass 0–4 through the unified
 report. M3 adds source-bound real backend/runtime adapters and the forced-prefix
-reproduction channel. `verify-diff` and the public-model CI workflow remain M4.
+reproduction channel. M4 adds `verify-diff`, a pinned SmolLM2-135M manifest,
+model-free pull-request evidence upload, and a scheduled/release public-model
+acceptance workflow.

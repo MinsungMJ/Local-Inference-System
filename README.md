@@ -91,7 +91,7 @@ make test
 
 `make test` requires no private model artifacts. It builds the binary and runs the core, loader, backend, runtime, CLI, tokenizer, and threading test suites.
 
-## LIS Verify Alpha
+## LIS Verify
 
 The model-free demonstration is installable without UI dependencies and runs
 without a model or network access:
@@ -127,9 +127,25 @@ not download models: they require a local merged `model.safetensors` directory
 matching the packaged plain-RoPE Llama profile. Runtime mode requires distinct
 reference and candidate binary identities.
 
+The public-model golden gate is a strict backend comparison over an explicitly
+prepared local copy of the pinned SmolLM2-135M material:
+
+```bash
+make verify-diff \
+  VERIFY_MODEL=/path/to/frozen-smollm2-135m \
+  VERIFY_DIFF_OUT_DIR=.lis/verify
+```
+
+`make verify-diff` never downloads a model. It requires optimized-backend
+support and therefore preserves semantic `UNSUPPORTED` while returning exit 6
+when the candidate falls back to the reference backend. The repository stores
+only the canonical public-model manifest; the scheduled/release workflow has a
+separate, visible immutable-revision download step.
+
 The base `lis-verify` path has no required dependency on Textual. Install
 `.[inspect]` only when the optional LIS Inspect TUI is wanted. See
 [LIS Verify Model-Free Demo](docs/lis_verify_demo.md),
+[LIS Verify Golden Workflows](docs/lis_verify_golden.md),
 [LIS Verify Product Spine](docs/lis_verify_product_spine.md), and
 [LIS Verify Product Contract](docs/lis_verify_contract.md).
 
@@ -160,6 +176,7 @@ Model-backed targets require explicit environment variables. Unset variables yie
 
 ```bash
 make verify-token-parity VERIFY_MODEL=/path/to/plain-rope-llama
+make verify-diff VERIFY_MODEL=/path/to/frozen-smollm2-135m
 make verify-qwen3-sanity VERIFY_QWEN3_MODEL=/path/to/qwen3-dense
 make bench BENCH_MODEL=/path/to/plain-rope-llama
 ```
@@ -220,6 +237,7 @@ Currently supports `run_report` JSON and optional perf stderr logs. Trace, layer
 - [Differential Verification](docs/differential_verification.md)
 - [LIS Verify Product Spine](docs/lis_verify_product_spine.md)
 - [LIS Verify Model-Free Demo](docs/lis_verify_demo.md)
+- [LIS Verify Golden Workflows](docs/lis_verify_golden.md)
 - [LIS Verify Product Contract](docs/lis_verify_contract.md)
 - [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md)
 - [Precision Policy](docs/precision_policy.md)
