@@ -7,6 +7,8 @@ and root-cause identification are intentionally out of scope.
 
 from __future__ import annotations
 
+__version__ = "0.1.0a1"
+
 from .artifact import serialize, to_json
 from .build_profile import BuildCalibrationProfile, default_build_profile
 from .gate import Pass0GateDecision, build_gate
