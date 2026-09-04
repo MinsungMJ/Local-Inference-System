@@ -156,7 +156,7 @@ OBJS := $(APP_OBJS) $(CORE_OBJS) $(LOADER_OBJS) $(BACKEND_OBJS) \
 DEPS := $(OBJS:.o=.d)
 
 .PHONY: all build test docs clean bench verify verify-kernels verify-cli \
-	verify-test-isolation verify-token-parity verify-qwen3-sanity \
+	verify-diff verify-test-isolation verify-token-parity verify-qwen3-sanity \
 	verify-perf-smoke
 
 # Default build/test do not require model artifacts. Model-backed validation
@@ -170,6 +170,8 @@ VERIFY_CONFIG ?=
 VERIFY_HF_TOKENIZER ?=
 VERIFY_QWEN3_MODEL ?=
 VERIFY_OUT_DIR ?= tests/verification
+VERIFY_DIFF_OUT_DIR ?= .lis/verify
+VERIFY_STAGE_TIMEOUT_SECONDS ?= 600
 VERIFY_CONFIG_PATH = $(if $(strip $(VERIFY_MODEL)),$(if $(strip $(VERIFY_CONFIG)),$(VERIFY_CONFIG),$(VERIFY_MODEL)/config.json),)
 VERIFY_HF_TOKENIZER_PATH = $(if $(strip $(VERIFY_MODEL)),$(if $(strip $(VERIFY_HF_TOKENIZER)),$(VERIFY_HF_TOKENIZER),$(VERIFY_MODEL)/tokenizer.json),)
 
@@ -252,6 +254,17 @@ verify-kernels: $(TEST_CPU_AVX_BIN)
 verify-cli: $(TEST_CLI_BIN)
 	$(TEST_CLI_BIN)
 
+verify-diff: build
+	@if [ -z "$(strip $(VERIFY_MODEL))" ]; then \
+		printf '%s\n' "error: VERIFY_MODEL is required for $@. Set VERIFY_MODEL=/path/to/frozen-golden-model."; \
+		exit 2; \
+	fi
+	PYTHONPATH=tools python3 -m lis_verify backend \
+		--model "$(VERIFY_MODEL)" \
+		--out "$(VERIFY_DIFF_OUT_DIR)" \
+		--require-supported \
+		--stage-timeout-seconds "$(VERIFY_STAGE_TIMEOUT_SECONDS)"
+
 verify-test-isolation: $(BIN) $(TEST_RUNTIME_BIN) $(TEST_CLI_BIN)
 	python3 tests/verification/check_p4_11_isolation.py \
 		--production-bin $(BIN) \
@@ -306,6 +319,7 @@ docs:
 	@printf '  docs/repro_execution_artifacts.md\n'
 	@printf '  docs/loader_format_scope.md\n'
 	@printf '  docs/hf_tokenizer_compat.md\n'
+	@printf '  docs/lis_verify_golden.md\n'
 	@printf '  docs/verification_framework.md\n'
 	@printf '  docs/precision_policy.md\n'
 	@printf '  docs/qwen3_dense_scope.md\n'

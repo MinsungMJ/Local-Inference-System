@@ -23,6 +23,7 @@ include = ["lis_verify*", "lis_inspect*"]
 
 [tool.setuptools.package-data]
 "lis_verify.demo_data" = ["*.json"]
+"lis_verify.golden_models" = ["*.json"]
 "lis_verify.model_profiles" = ["*.json"]
 
 [tool.setuptools.dynamic]

@@ -361,6 +361,7 @@ def _setup(context: RunContext) -> RealSetup:
     model = resolve_model(context.request.model, profile)
     if context.request.mode == "backend":
         binary = resolve_backend_binary()
+        _validate_acceptance_candidate(context, binary)
         return RealSetup(
             profile,
             model,
@@ -376,6 +377,7 @@ def _setup(context: RunContext) -> RealSetup:
     assert context.request.candidate_bin is not None
     reference = resolve_binary(context.request.reference_bin)
     candidate = resolve_binary(context.request.candidate_bin)
+    _validate_acceptance_candidate(context, candidate)
     if reference.provenance.binary_sha256 == candidate.provenance.binary_sha256:
         raise RealExecutionError(
             "runtime comparison requires two distinct binary identities",
@@ -390,6 +392,24 @@ def _setup(context: RunContext) -> RealSetup:
         {},
         ComparisonMode.RUNTIME_DIFFERENTIAL,
     )
+
+
+def _validate_acceptance_candidate(
+    context: RunContext, candidate: ResolvedBinary
+) -> None:
+    manifest = context.request.acceptance_manifest
+    if manifest is None:
+        return
+    provenance = candidate.provenance
+    if (
+        provenance.revision != manifest.source_revision
+        or provenance.source_sha256 != manifest.source_tree_sha256
+        or provenance.dirty is not False
+    ):
+        raise RealExecutionError(
+            "acceptance manifest does not bind the candidate source",
+            classification="harness_error",
+        )
 
 
 def _run_pass0(

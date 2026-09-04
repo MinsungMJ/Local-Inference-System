@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 from typing import Mapping, Sequence
 
 from . import __version__
+from .acceptance import AcceptanceManifestError, load_acceptance_manifest
 from .orchestrator import CommandRequest, OrchestrationResult
 from .product_contract import (
     CLI_DEFAULTS,
@@ -121,6 +123,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def parse_command(argv: Sequence[str] | None = None) -> CommandRequest:
     args = build_parser().parse_args(argv)
+    acceptance_path = os.environ.get("LIS_VERIFY_ACCEPTANCE_MANIFEST")
+    acceptance_manifest = None
+    workflow = WorkflowClassification.DEVELOPMENT_DEBUGGING
+    if acceptance_path is not None:
+        acceptance_manifest = load_acceptance_manifest(Path(acceptance_path))
+        workflow = WorkflowClassification.VERIFICATION_ACCEPTANCE
     return CommandRequest(
         mode=args.mode,
         output_root=args.out,
@@ -131,7 +139,8 @@ def parse_command(argv: Sequence[str] | None = None) -> CommandRequest:
         model=getattr(args, "model", None),
         reference_bin=getattr(args, "reference_bin", None),
         candidate_bin=getattr(args, "candidate_bin", None),
-        workflow=WorkflowClassification.DEVELOPMENT_DEBUGGING,
+        workflow=workflow,
+        acceptance_manifest=acceptance_manifest,
     )
 
 
@@ -140,7 +149,11 @@ def main(
     *,
     runners: RunnerRegistry | None = None,
 ) -> int:
-    request = parse_command(argv)
+    try:
+        request = parse_command(argv)
+    except AcceptanceManifestError:
+        print("lis-verify: acceptance authority failed closed", file=sys.stderr)
+        return 2
     registry = DEFAULT_RUNNERS if runners is None else runners
     runner = registry.get(request.mode)
     if runner is None:

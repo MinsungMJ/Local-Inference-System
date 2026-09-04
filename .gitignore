@@ -18,6 +18,14 @@ __pycache__/
 .venv/
 tools/.venv/
 
+# Python packaging output
+build/
+dist/
+*.egg-info/
+
+# Private LIS Verify attempts
+.lis/
+
 # OS Generated
 .DS_Store
 
