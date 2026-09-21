@@ -167,3 +167,7 @@ report. M3 adds source-bound real backend/runtime adapters and the forced-prefix
 reproduction channel. M4 adds `verify-diff`, a pinned SmolLM2-135M manifest,
 model-free pull-request evidence upload, and a scheduled/release public-model
 acceptance workflow.
+M5 local preparation adds the offline `lis-verify-usability` operator kit for
+strict pseudonymous session validation and bounded aggregate metrics. It does
+not claim that the human cohort, real-workflow integrations, four-week retained
+use, or M5 acceptance have occurred.

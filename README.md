@@ -146,8 +146,21 @@ The base `lis-verify` path has no required dependency on Textual. Install
 `.[inspect]` only when the optional LIS Inspect TUI is wanted. See
 [LIS Verify Model-Free Demo](docs/lis_verify_demo.md),
 [LIS Verify Golden Workflows](docs/lis_verify_golden.md),
+[LIS Verify Customer-Validation Kit](docs/lis_verify_customer_validation.md),
 [LIS Verify Product Spine](docs/lis_verify_product_spine.md), and
 [LIS Verify Product Contract](docs/lis_verify_contract.md).
+
+M5's participant-free preparation includes an offline operator command for
+strictly validating private pseudonymous session records and emitting bounded
+aggregate metrics:
+
+```bash
+lis-verify-usability --records /private/m5-records --out /private/m5-output/aggregate.json
+```
+
+This command performs no recruitment, participant contact, telemetry, or Beta
+acceptance. Human observation and four-week retention evidence remain required
+before M5 can be accepted.
 
 ## First Run
 
@@ -238,6 +251,7 @@ Currently supports `run_report` JSON and optional perf stderr logs. Trace, layer
 - [LIS Verify Product Spine](docs/lis_verify_product_spine.md)
 - [LIS Verify Model-Free Demo](docs/lis_verify_demo.md)
 - [LIS Verify Golden Workflows](docs/lis_verify_golden.md)
+- [LIS Verify Customer-Validation Kit](docs/lis_verify_customer_validation.md)
 - [LIS Verify Product Contract](docs/lis_verify_contract.md)
 - [Reproducibility and Execution Artifacts](docs/repro_execution_artifacts.md)
 - [Precision Policy](docs/precision_policy.md)

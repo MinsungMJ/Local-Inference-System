@@ -1,6 +1,6 @@
 # LIS Verify Product Spine
 
-- Milestone: Pass 5 M1–M4 product execution and CI gating
+- Milestone: Pass 5 M1–M4 product execution and M5 local preparation
 - Status: Implemented
 - Product contract: `lis.verify.product_contract/v1`
 - Report schema: `lis.verification_report/v1`
@@ -11,6 +11,9 @@ including source-bound forced-prefix reproduction and bounded Pass 3/4
 recapture.
 M4 adds a pinned public-model manifest, strict local-material verification,
 acceptance-classified CI consumption, and the `make verify-diff` wrapper.
+M5 local preparation adds an offline, privacy-bounded customer-validation
+record validator and deterministic aggregate metric report. It does not replace
+the required human cohort, real workflow observation, or four-week follow-up.
 
 ## Installation
 
@@ -94,7 +97,9 @@ integrity error. Neither path invents source authority.
   manifest validation;
 - clean-state acceptance-manifest loading for CI without adding a public CLI
   mode or Pass control; and
-- canonical report/summary/ledger CI validation with bounded step summaries.
+- canonical report/summary/ledger CI validation with bounded step summaries; and
+- strict pseudonymous M5 session-record validation and rational metric
+  aggregation that can become only `READY_FOR_HUMAN_REVIEW`.
 
 ## Output lifecycle
 
@@ -146,3 +151,8 @@ Normal interactive commands remain `development_debugging`. CI supplies the
 private `LIS_VERIFY_ACCEPTANCE_MANIFEST` authority only after clean state,
 source revision/tree, dependency files, and command files have been frozen.
 Malformed or non-private authority fails before an attempt is started.
+
+The separate `lis-verify-usability` operator command accepts only private,
+canonical, free-text-free M5 records. Its aggregate report keeps M5/M6/M7
+authorization nonclaims false; human observation and privacy review remain
+outside the automated product boundary.

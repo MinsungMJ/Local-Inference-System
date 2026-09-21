@@ -320,6 +320,7 @@ docs:
 	@printf '  docs/loader_format_scope.md\n'
 	@printf '  docs/hf_tokenizer_compat.md\n'
 	@printf '  docs/lis_verify_golden.md\n'
+	@printf '  docs/lis_verify_customer_validation.md\n'
 	@printf '  docs/verification_framework.md\n'
 	@printf '  docs/precision_policy.md\n'
 	@printf '  docs/qwen3_dense_scope.md\n'

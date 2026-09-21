@@ -15,6 +15,7 @@ PUBLIC_DOCS = (
     ROOT / "docs" / "verification_framework.md",
     ROOT / "docs" / "lis_verify_contract.md",
     ROOT / "docs" / "lis_verify_product_spine.md",
+    ROOT / "docs" / "lis_verify_customer_validation.md",
     ROOT / "README.md",
 )
 

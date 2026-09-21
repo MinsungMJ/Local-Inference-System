@@ -17,6 +17,7 @@
     {"capability": "lis_verify_product_spine", "status": "implemented_m1_m2_m3_m4_ci_product", "classification": "current"},
     {"capability": "forced_prefix_source_bound_report_channel", "status": "implemented_m3", "classification": "current"},
     {"capability": "make_verify_diff_and_ci_product", "status": "implemented_m4", "classification": "current"},
+    {"capability": "customer_validation_local_kit", "status": "implemented_m5_local_preparation_human_observation_pending", "classification": "current"},
     {"capability": "selected_checkpoint_numeric_confirmation", "status": "conditional_m6", "classification": "current"},
     {"capability": "external_semantic_adapter", "status": "conditional_m7", "classification": "current"},
     {"capability": "lis_inspect_pass4_view", "status": "separate_future_work", "classification": "current"}
@@ -65,6 +66,11 @@
     {
       "document": "docs/lis_verify_golden.md",
       "required_text": "A baseline change is never automatic",
+      "classification": "current"
+    },
+    {
+      "document": "docs/lis_verify_customer_validation.md",
+      "required_text": "The `READY_FOR_HUMAN_REVIEW` state is not M5 acceptance",
       "classification": "current"
     }
   ],
