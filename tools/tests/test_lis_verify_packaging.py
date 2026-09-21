@@ -22,6 +22,10 @@ class TestPackaging(unittest.TestCase):
             {"attr": "lis_verify.__version__"},
         )
         self.assertEqual(project["scripts"]["lis-verify"], "lis_verify.cli:main")
+        self.assertEqual(
+            project["scripts"]["lis-verify-usability"],
+            "lis_verify.usability:main",
+        )
         self.assertEqual(project["requires-python"], ">=3.10")
 
     def test_textual_is_only_an_optional_inspect_dependency(self):
@@ -31,6 +35,13 @@ class TestPackaging(unittest.TestCase):
     def test_importing_cli_does_not_import_textual(self):
         before = set(sys.modules)
         import lis_verify.cli  # noqa: F401
+
+        imported = set(sys.modules) - before
+        self.assertFalse(any(name == "textual" or name.startswith("textual.") for name in imported))
+
+    def test_importing_usability_cli_does_not_import_textual(self):
+        before = set(sys.modules)
+        import lis_verify.usability  # noqa: F401
 
         imported = set(sys.modules) - before
         self.assertFalse(any(name == "textual" or name.startswith("textual.") for name in imported))
@@ -48,6 +59,7 @@ class TestPackaging(unittest.TestCase):
                 "lis_verify.demo_data": ["*.json"],
                 "lis_verify.golden_models": ["*.json"],
                 "lis_verify.model_profiles": ["*.json"],
+                "lis_verify.usability_contract": ["*.json"],
             },
         )
 
